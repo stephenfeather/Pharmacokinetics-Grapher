@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import type { Prescription, FrequencyLabel, ValidationResult } from '@/core/models/prescription'
+import type { Prescription, FrequencyLabel, DurationUnit, ValidationResult } from '@/core/models/prescription'
 import { FREQUENCY_MAP, validatePrescription } from '@/core/models/prescription'
 import ImportPrescriptions from './ImportPrescriptions.vue'
 
@@ -28,6 +28,8 @@ const halfLife = ref(props.initial?.halfLife ?? 6)
 const peak = ref(props.initial?.peak ?? 2)
 const uptake = ref(props.initial?.uptake ?? 1.5)
 const metaboliteLife = ref<number | undefined>(props.initial?.metaboliteLife)
+const duration = ref<number | undefined>(props.initial?.duration ?? 7)
+const durationUnit = ref<DurationUnit>(props.initial?.durationUnit ?? 'days')
 
 // Phase 2: Watch frequency -> adjust times array
 watch(frequency, (newFreq) => {
@@ -66,6 +68,9 @@ const prescription = computed<Prescription>(() => ({
   uptake: uptake.value,
   ...(metaboliteLife.value !== undefined && !isNaN(metaboliteLife.value)
     ? { metaboliteLife: metaboliteLife.value }
+    : {}),
+  ...(duration.value !== undefined && !isNaN(duration.value)
+    ? { duration: duration.value, durationUnit: durationUnit.value }
     : {}),
 }))
 
@@ -204,6 +209,32 @@ function handleImportSuccess(count: number) {
         <small id="hint-metabolite" class="field-hint"
           >Optional. Range: 0.1 - 1,000 hours</small
         >
+      </div>
+
+      <!-- Medication Duration -->
+      <div class="duration-input-group">
+        <div class="form-field duration-value">
+          <label for="rx-duration">Medication Duration</label>
+          <input
+            id="rx-duration"
+            v-model.number="duration"
+            type="number"
+            min="0.1"
+            step="0.5"
+            aria-describedby="hint-duration"
+          />
+          <small id="hint-duration" class="field-hint">
+            {{ durationUnit === 'days' ? 'Range: 0.1 - 365 days' : 'Range: 0.1 - 8760 hours' }}
+          </small>
+        </div>
+
+        <div class="form-field duration-unit">
+          <label for="rx-duration-unit">Unit</label>
+          <select id="rx-duration-unit" v-model="durationUnit">
+            <option value="days">Days</option>
+            <option value="hours">Hours</option>
+          </select>
+        </div>
       </div>
 
       <!-- Phase 2: Dynamic time inputs with fieldset -->
@@ -455,6 +486,44 @@ fieldset legend {
 .validation-warnings li {
   color: #d97706;
   margin-bottom: 0.25rem;
+}
+
+.duration-input-group {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  align-items: flex-start;
+}
+
+.duration-input-group .duration-value {
+  flex: 2;
+  margin-bottom: 0;
+}
+
+.duration-input-group .duration-unit {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.duration-input-group .form-field label {
+  margin-bottom: 0.25rem;
+}
+
+@media (max-width: 600px) {
+  .duration-input-group {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .duration-input-group .duration-value {
+    flex: 1;
+    margin-bottom: 1rem;
+  }
+
+  .duration-input-group .duration-unit {
+    flex: 1;
+    margin-bottom: 0;
+  }
 }
 
 button[type='submit'] {

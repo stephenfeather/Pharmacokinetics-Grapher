@@ -47,9 +47,9 @@ function expandDoseTimes(times: string[], numDays: number): number[] {
  * 2. For each timepoint in the simulation, sum raw contributions from all prior doses
  * 3. Normalize final curve so peak = 1.0
  *
- * @param prescription - Prescription with dose, frequency, times, halfLife, uptake
+ * @param prescription - Prescription with dose, frequency, times, halfLife, uptake (duration optional)
  * @param startHours - Simulation start time in hours from midnight
- * @param endHours - Simulation end time in hours from midnight
+ * @param endHours - Simulation end time in hours from midnight (overridden by prescription.duration if present)
  * @param intervalMinutes - Time step resolution (default 15 min)
  * @returns Array of TimeSeriesPoint with normalized concentrations (peak = 1.0)
  */
@@ -59,13 +59,23 @@ export function accumulateDoses(
   endHours: number,
   intervalMinutes: number = 15,
 ): TimeSeriesPoint[] {
+  // Use prescription duration if available, otherwise use endHours parameter
+  let effectiveEndHours = endHours
+  if (prescription.duration !== undefined && prescription.durationUnit !== undefined) {
+    const durationInHours =
+      prescription.durationUnit === 'days'
+        ? prescription.duration * 24
+        : prescription.duration
+    effectiveEndHours = startHours + durationInHours
+  }
+
   // Expand prescription times across simulation window
-  const numDays = Math.ceil(endHours / 24) + 1
+  const numDays = Math.ceil(effectiveEndHours / 24) + 1
   const doseTimes = expandDoseTimes(prescription.times, numDays)
 
   // Generate timepoints for simulation
   const points: TimeSeriesPoint[] = []
-  const steps = Math.ceil((endHours - startHours) * 60 / intervalMinutes)
+  const steps = Math.ceil((effectiveEndHours - startHours) * 60 / intervalMinutes)
   let maxConc = 0
 
   // For each timepoint, sum contributions from all prior doses
@@ -109,9 +119,11 @@ export function accumulateDoses(
  * - Assigned colors from predefined palette
  * - Labels formatted as "name (frequency)"
  *
+ * When prescriptions have duration fields, the graph timeframe accommodates the longest duration.
+ *
  * @param prescriptions - Array of prescriptions to visualize
  * @param startHours - Simulation start time in hours
- * @param endHours - Simulation end time in hours
+ * @param endHours - Simulation end time in hours (may be extended by prescription durations)
  * @returns Array of GraphDataset ready for Chart.js rendering
  */
 export function getGraphData(
@@ -119,8 +131,21 @@ export function getGraphData(
   startHours: number,
   endHours: number,
 ): GraphDataset[] {
+  // Calculate effective end time based on longest prescription duration
+  let effectiveEndHours = endHours
+  for (const rx of prescriptions) {
+    if (rx.duration !== undefined && rx.durationUnit !== undefined) {
+      const durationInHours =
+        rx.durationUnit === 'days'
+          ? rx.duration * 24
+          : rx.duration
+      const rxEndTime = startHours + durationInHours
+      effectiveEndHours = Math.max(effectiveEndHours, rxEndTime)
+    }
+  }
+
   return prescriptions.map((rx) => ({
     label: `${rx.name} ${rx.dose}mg (${rx.frequency})`,
-    data: accumulateDoses(rx, startHours, endHours),
+    data: accumulateDoses(rx, startHours, effectiveEndHours),
   }))
 }

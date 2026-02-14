@@ -10,6 +10,8 @@ export type FrequencyLabel =
   | 'q12h'
   | 'custom'
 
+export type DurationUnit = 'days' | 'hours'
+
 export interface Prescription {
   id?: string
   name: string
@@ -20,6 +22,8 @@ export interface Prescription {
   metaboliteLife?: number
   peak: number
   uptake: number
+  duration?: number
+  durationUnit?: DurationUnit
 }
 
 export interface TimeSeriesPoint {
@@ -103,6 +107,12 @@ export const VALIDATION_RULES = {
     required: false,
     min: 0.1,
     max: 1000,
+  },
+  duration: {
+    required: false,
+    min: 0.1,
+    maxDays: 365,
+    maxHours: 8760,
   },
 } as const
 
@@ -294,6 +304,69 @@ function validateMetaboliteLife(
   return errors
 }
 
+function validateDuration(
+  duration: number | undefined,
+  durationUnit: DurationUnit | undefined,
+): string[] {
+  const errors: string[] = []
+
+  // If neither field is provided, validation passes
+  if (
+    (duration === undefined || duration === null) &&
+    (durationUnit === undefined || durationUnit === null)
+  ) {
+    return errors
+  }
+
+  // Cross-field validation: both must be provided together
+  if (
+    (duration !== undefined && duration !== null) &&
+    (durationUnit === undefined || durationUnit === null)
+  ) {
+    errors.push('Duration unit must be provided when duration is set')
+    return errors
+  }
+
+  if (
+    (durationUnit !== undefined && durationUnit !== null) &&
+    (duration === undefined || duration === null)
+  ) {
+    errors.push('Duration value must be provided when duration unit is set')
+    return errors
+  }
+
+  // If we get here, both duration and durationUnit are defined
+  if (typeof duration !== 'number' || isNaN(duration)) {
+    errors.push('Duration must be a number when provided')
+    return errors
+  }
+
+  if (duration < VALIDATION_RULES.duration.min) {
+    errors.push(
+      `Duration must be at least ${VALIDATION_RULES.duration.min}`,
+    )
+  }
+
+  // Unit-specific max validation
+  if (durationUnit === 'days') {
+    if (duration > VALIDATION_RULES.duration.maxDays) {
+      errors.push(
+        `Duration in days must be at most ${VALIDATION_RULES.duration.maxDays}`,
+      )
+    }
+  } else if (durationUnit === 'hours') {
+    if (duration > VALIDATION_RULES.duration.maxHours) {
+      errors.push(
+        `Duration in hours must be at most ${VALIDATION_RULES.duration.maxHours}`,
+      )
+    }
+  } else {
+    errors.push(`Duration unit must be 'days' or 'hours'`)
+  }
+
+  return errors
+}
+
 function checkCrossFieldWarnings(rx: Prescription): string[] {
   const warnings: string[] = []
 
@@ -341,6 +414,7 @@ export function validatePrescription(rx: Prescription): ValidationResult {
     ...validatePeak(rx.peak),
     ...validateUptake(rx.uptake),
     ...validateMetaboliteLife(rx.metaboliteLife),
+    ...validateDuration(rx.duration, rx.durationUnit),
   ]
 
   const warnings = checkCrossFieldWarnings(rx)

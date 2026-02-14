@@ -832,6 +832,124 @@ describe('Prescription Models', () => {
     })
   })
 
+  // ─── Phase 15: Duration Fields ───
+
+  describe('Prescription interface with duration', () => {
+    it('allows optional duration field', () => {
+      const rx: Prescription = makeValid({ duration: 7 })
+      expect(rx.duration).toBe(7)
+    })
+
+    it('allows optional durationUnit field', () => {
+      const rx: Prescription = makeValid({ durationUnit: 'days' })
+      expect(rx.durationUnit).toBe('days')
+    })
+
+    it('accepts both duration and durationUnit together', () => {
+      const rx: Prescription = makeValid({ duration: 10, durationUnit: 'hours' })
+      expect(rx.duration).toBe(10)
+      expect(rx.durationUnit).toBe('hours')
+    })
+
+    it('durationUnit can be "days" or "hours"', () => {
+      const days: Prescription = makeValid({ durationUnit: 'days' })
+      const hours: Prescription = makeValid({ durationUnit: 'hours' })
+      expect(days.durationUnit).toBe('days')
+      expect(hours.durationUnit).toBe('hours')
+    })
+  })
+
+  describe('Duration Validation', () => {
+    it('validateDuration accepts valid day duration', () => {
+      // Import validateDuration when it exists
+      // For now this test documents expected behavior
+      const rx: Prescription = makeValid({ duration: 7, durationUnit: 'days' })
+      const result = validatePrescription(rx)
+      // Should be valid with duration and unit
+      expect(result.valid).toBe(true)
+    })
+
+    it('validateDuration accepts valid hour duration', () => {
+      const rx: Prescription = makeValid({ duration: 168, durationUnit: 'hours' })
+      const result = validatePrescription(rx)
+      expect(result.valid).toBe(true)
+    })
+
+    it('validatePrescription passes when duration is undefined', () => {
+      const rx: Prescription = makeValid()
+      // Test that prescription without duration fields is still valid
+      const rxWithoutDuration: Prescription = {
+        ...rx,
+        duration: undefined,
+        durationUnit: undefined,
+      }
+      const result = validatePrescription(rxWithoutDuration)
+      expect(result.valid).toBe(true)
+    })
+
+    it('validatePrescription errors when duration provided without durationUnit', () => {
+      const rx: Prescription = makeValid({ duration: 7 })
+      const result = validatePrescription(rx)
+      // Should fail cross-field validation
+      expect(result.errors.length).toBeGreaterThan(0)
+    })
+
+    it('validatePrescription errors when durationUnit provided without duration', () => {
+      const rx: Prescription = makeValid({ durationUnit: 'days' })
+      const result = validatePrescription(rx)
+      // Should fail cross-field validation
+      expect(result.errors.length).toBeGreaterThan(0)
+    })
+
+    it('validatePrescription errors when duration is negative', () => {
+      const rx: Prescription = makeValid({ duration: -5, durationUnit: 'days' })
+      const result = validatePrescription(rx)
+      expect(result.errors.length).toBeGreaterThan(0)
+    })
+
+    it('validatePrescription errors when duration is zero', () => {
+      const rx: Prescription = makeValid({ duration: 0, durationUnit: 'days' })
+      const result = validatePrescription(rx)
+      expect(result.errors.length).toBeGreaterThan(0)
+    })
+
+    it('validatePrescription errors when duration exceeds max for days (365)', () => {
+      const rx: Prescription = makeValid({ duration: 366, durationUnit: 'days' })
+      const result = validatePrescription(rx)
+      expect(result.errors.length).toBeGreaterThan(0)
+    })
+
+    it('validatePrescription errors when duration exceeds max for hours (8760)', () => {
+      const rx: Prescription = makeValid({ duration: 8761, durationUnit: 'hours' })
+      const result = validatePrescription(rx)
+      expect(result.errors.length).toBeGreaterThan(0)
+    })
+
+    it('validatePrescription accepts boundary: 0.1 days', () => {
+      const rx: Prescription = makeValid({ duration: 0.1, durationUnit: 'days' })
+      const result = validatePrescription(rx)
+      expect(result.valid).toBe(true)
+    })
+
+    it('validatePrescription accepts boundary: 365 days', () => {
+      const rx: Prescription = makeValid({ duration: 365, durationUnit: 'days' })
+      const result = validatePrescription(rx)
+      expect(result.valid).toBe(true)
+    })
+
+    it('validatePrescription accepts boundary: 0.1 hours', () => {
+      const rx: Prescription = makeValid({ duration: 0.1, durationUnit: 'hours' })
+      const result = validatePrescription(rx)
+      expect(result.valid).toBe(true)
+    })
+
+    it('validatePrescription accepts boundary: 8760 hours', () => {
+      const rx: Prescription = makeValid({ duration: 8760, durationUnit: 'hours' })
+      const result = validatePrescription(rx)
+      expect(result.valid).toBe(true)
+    })
+  })
+
   // ─── Phase 16: Barrel Exports ───
 
   describe('barrel exports from index.ts', () => {

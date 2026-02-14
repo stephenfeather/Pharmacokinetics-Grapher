@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { accumulateDoses } from '../multiDose'
-import { SINGLE_DOSE_FIXTURE, BID_MULTI_DOSE_FIXTURE } from '../../models/__tests__/fixtures'
+import { accumulateDoses, getGraphData } from '../multiDose'
+import { SINGLE_DOSE_FIXTURE, BID_MULTI_DOSE_FIXTURE, IBUPROFEN_FIXTURE } from '../../models/__tests__/fixtures'
 
 describe('accumulateDoses - Multi-dose Accumulation', () => {
   describe('Phase 1: Single dose (once daily)', () => {
@@ -121,6 +121,55 @@ describe('accumulateDoses - Multi-dose Accumulation', () => {
         expect(point.concentration).toBeGreaterThanOrEqual(0)
         expect(point.concentration).toBeLessThanOrEqual(1.0)
       }
+    })
+  })
+
+  describe('Phase 4: Graph Data Generation - getGraphData', () => {
+    it('generates label with name, dose, and frequency', () => {
+      const result = getGraphData([SINGLE_DOSE_FIXTURE], 0, 24)
+      expect(result).toHaveLength(1)
+      expect(result[0]!.label).toBe('Test Drug A 500mg (once)')
+    })
+
+    it('generates labels for multiple prescriptions', () => {
+      const result = getGraphData(
+        [SINGLE_DOSE_FIXTURE, BID_MULTI_DOSE_FIXTURE],
+        0, 24,
+      )
+      expect(result).toHaveLength(2)
+      expect(result[0]!.label).toBe('Test Drug A 500mg (once)')
+      expect(result[1]!.label).toBe('Test Drug B 500mg (bid)')
+    })
+
+    it('includes dose value in label for differentiation', () => {
+      const lowDose = { ...IBUPROFEN_FIXTURE, dose: 200 }
+      const highDose = { ...IBUPROFEN_FIXTURE, dose: 800 }
+      const result = getGraphData([lowDose, highDose], 0, 24)
+      expect(result[0]!.label).toBe('Ibuprofen 200mg (tid)')
+      expect(result[1]!.label).toBe('Ibuprofen 800mg (tid)')
+    })
+
+    it('does not assign color property (defers to GraphViewer)', () => {
+      const result = getGraphData([SINGLE_DOSE_FIXTURE], 0, 24)
+      expect(result[0]!.color).toBeUndefined()
+    })
+
+    it('handles decimal dose values', () => {
+      const rx = { ...SINGLE_DOSE_FIXTURE, dose: 0.5 }
+      const result = getGraphData([rx], 0, 24)
+      expect(result[0]!.label).toBe('Test Drug A 0.5mg (once)')
+    })
+
+    it('returns empty array for no prescriptions', () => {
+      const result = getGraphData([], 0, 24)
+      expect(result).toEqual([])
+    })
+
+    it('generates concentration data via accumulateDoses', () => {
+      const result = getGraphData([SINGLE_DOSE_FIXTURE], 0, 24)
+      expect(result[0]!.data.length).toBeGreaterThan(0)
+      expect(result[0]!.data[0]).toHaveProperty('time')
+      expect(result[0]!.data[0]).toHaveProperty('concentration')
     })
   })
 })

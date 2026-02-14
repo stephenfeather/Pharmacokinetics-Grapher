@@ -32,6 +32,10 @@ vi.mock('@/core/export', () => ({
   downloadImage: mockDownloadImage,
 }))
 
+vi.mock('chartjs-plugin-a11y-legend', () => ({
+  default: { id: 'a11y-legend' },
+}))
+
 describe('GraphViewer', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -457,6 +461,160 @@ describe('GraphViewer', () => {
       const wrapper = mount(GraphViewer, { props: { datasets } })
       const vm = wrapper.vm as any
       expect(vm.exportAsImage()).toBe(true)
+    })
+  })
+
+  // ---- Phase 7: Legend Configuration ----
+
+  describe('legend configuration', () => {
+    const singleDataset = [
+      { label: 'Ibuprofen 400mg (tid)', data: [{ time: 0, concentration: 0 }] },
+    ]
+
+    const multiDataset = [
+      { label: 'Ibuprofen 400mg (tid)', data: [{ time: 0, concentration: 0 }] },
+      { label: 'Amoxicillin 500mg (bid)', data: [{ time: 0, concentration: 0 }] },
+    ]
+
+    it('enables legend display', () => {
+      mount(GraphViewer, { props: { datasets: singleDataset } })
+      const config = (MockChart as any).mock.calls[0]?.[1]
+      expect(config?.options?.plugins?.legend?.display).toBe(true)
+    })
+
+    it('positions legend at top by default', () => {
+      mount(GraphViewer, { props: { datasets: singleDataset } })
+      const config = (MockChart as any).mock.calls[0]?.[1]
+      expect(config?.options?.plugins?.legend?.position).toBe('top')
+    })
+
+    it('configures usePointStyle for legend labels', () => {
+      mount(GraphViewer, { props: { datasets: singleDataset } })
+      const config = (MockChart as any).mock.calls[0]?.[1]
+      expect(config?.options?.plugins?.legend?.labels?.usePointStyle).toBe(true)
+    })
+
+    it('defines explicit onClick handler for legend', () => {
+      mount(GraphViewer, { props: { datasets: singleDataset } })
+      const config = (MockChart as any).mock.calls[0]?.[1]
+      expect(typeof config?.options?.plugins?.legend?.onClick).toBe('function')
+    })
+
+    it('defines generateLabels callback for custom label formatting', () => {
+      mount(GraphViewer, { props: { datasets: singleDataset } })
+      const config = (MockChart as any).mock.calls[0]?.[1]
+      expect(typeof config?.options?.plugins?.legend?.labels?.generateLabels).toBe('function')
+    })
+
+    it('passes all dataset labels to Chart.js', () => {
+      mount(GraphViewer, { props: { datasets: multiDataset } })
+      const config = (MockChart as any).mock.calls[0]?.[1]
+      expect(config?.data?.datasets?.[0]?.label).toBe('Ibuprofen 400mg (tid)')
+      expect(config?.data?.datasets?.[1]?.label).toBe('Amoxicillin 500mg (bid)')
+    })
+
+    it('assigns distinct colors from 8-color palette to datasets', () => {
+      mount(GraphViewer, { props: { datasets: multiDataset } })
+      const config = (MockChart as any).mock.calls[0]?.[1]
+      const color0 = config?.data?.datasets?.[0]?.borderColor
+      const color1 = config?.data?.datasets?.[1]?.borderColor
+      expect(color0).toBe('#3B82F6') // blue
+      expect(color1).toBe('#EF4444') // red
+      expect(color0).not.toBe(color1) // distinct
+    })
+  })
+
+  // ---- Phase 8: Canvas Accessibility ----
+
+  describe('canvas accessibility', () => {
+    it('canvas has role="img"', () => {
+      const datasets = [
+        { label: 'Test', data: [{ time: 0, concentration: 0 }] },
+      ]
+      const wrapper = mount(GraphViewer, { props: { datasets } })
+      const canvas = wrapper.find('canvas')
+      expect(canvas.attributes('role')).toBe('img')
+    })
+
+    it('canvas has descriptive aria-label with dataset names', () => {
+      const datasets = [
+        { label: 'Drug A', data: [{ time: 0, concentration: 0 }] },
+        { label: 'Drug B', data: [{ time: 0, concentration: 0 }] },
+      ]
+      const wrapper = mount(GraphViewer, { props: { datasets } })
+      const ariaLabel = wrapper.find('canvas').attributes('aria-label')
+      expect(ariaLabel).toContain('Drug A')
+      expect(ariaLabel).toContain('Drug B')
+    })
+
+    it('canvas aria-label indicates no data when datasets empty', () => {
+      const wrapper = mount(GraphViewer, { props: { datasets: [] } })
+      const ariaLabel = wrapper.find('canvas').attributes('aria-label')
+      expect(ariaLabel).toContain('no data')
+    })
+
+    it('renders screen-reader summary text', () => {
+      const datasets = [
+        { label: 'Test Drug', data: [{ time: 0, concentration: 0 }] },
+      ]
+      const wrapper = mount(GraphViewer, { props: { datasets } })
+      const srOnly = wrapper.find('.sr-only')
+      expect(srOnly.exists()).toBe(true)
+      expect(srOnly.text()).toContain('Test Drug')
+    })
+  })
+
+  // ---- Phase 9: Legend onClick Handler ----
+
+  describe('legend onClick handler', () => {
+    it('onClick handler calls chart.hide for visible dataset', () => {
+      const datasets = [
+        { label: 'Drug A', data: [{ time: 0, concentration: 0 }] },
+      ]
+      mount(GraphViewer, { props: { datasets } })
+      const config = (MockChart as any).mock.calls[0]?.[1]
+      const onClick = config?.options?.plugins?.legend?.onClick
+
+      // Create mock chart and legend item
+      const mockHide = vi.fn()
+      const mockShow = vi.fn()
+      const mockChart = {
+        isDatasetVisible: vi.fn().mockReturnValue(true),
+        hide: mockHide,
+        show: mockShow,
+      }
+      const legendItem = { datasetIndex: 0 }
+      const legend = { chart: mockChart }
+
+      onClick(null, legendItem, legend)
+
+      expect(mockChart.isDatasetVisible).toHaveBeenCalledWith(0)
+      expect(mockHide).toHaveBeenCalledWith(0)
+      expect(mockShow).not.toHaveBeenCalled()
+    })
+
+    it('onClick handler calls chart.show for hidden dataset', () => {
+      const datasets = [
+        { label: 'Drug A', data: [{ time: 0, concentration: 0 }] },
+      ]
+      mount(GraphViewer, { props: { datasets } })
+      const config = (MockChart as any).mock.calls[0]?.[1]
+      const onClick = config?.options?.plugins?.legend?.onClick
+
+      const mockHide = vi.fn()
+      const mockShow = vi.fn()
+      const mockChart = {
+        isDatasetVisible: vi.fn().mockReturnValue(false),
+        hide: mockHide,
+        show: mockShow,
+      }
+      const legendItem = { datasetIndex: 0 }
+      const legend = { chart: mockChart }
+
+      onClick(null, legendItem, legend)
+
+      expect(mockShow).toHaveBeenCalledWith(0)
+      expect(mockHide).not.toHaveBeenCalled()
     })
   })
 })

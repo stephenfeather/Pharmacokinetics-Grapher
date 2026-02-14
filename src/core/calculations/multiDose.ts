@@ -119,17 +119,8 @@ export function getGraphData(
   startHours: number,
   endHours: number,
 ): GraphDataset[] {
-  const colors = [
-    '#3B82F6', // blue
-    '#EF4444', // red
-    '#10B981', // emerald
-    '#F59E0B', // amber
-    '#8B5CF6', // violet
-  ]
-
-  return prescriptions.map((rx, index) => ({
-    label: `${rx.name} (${rx.frequency})`,
+  return prescriptions.map((rx) => ({
+    label: `${rx.name} ${rx.dose}mg (${rx.frequency})`,
     data: accumulateDoses(rx, startHours, endHours),
-    color: colors[index % colors.length],
   }))
 }

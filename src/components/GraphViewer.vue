@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { Chart, registerables } from 'chart.js'
+import a11yLegend from 'chartjs-plugin-a11y-legend'
 import type { GraphDataset } from '@/core/models/prescription'
 import { generateFilename, downloadImage } from '@/core/export'
 
-Chart.register(...registerables)
+Chart.register(...registerables, a11yLegend as any)
 
 // ---- Props ----
 
@@ -37,6 +38,26 @@ const DEFAULT_COLORS = [
   '#06B6D4', // cyan
   '#84CC16', // lime
 ]
+
+// ---- Responsive legend ----
+
+const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024)
+
+function handleResize() {
+  windowWidth.value = window.innerWidth
+}
+
+const isMobile = computed(() => windowWidth.value < 768)
+
+// ---- Canvas accessibility ----
+
+const chartAriaLabel = computed(() => {
+  if (props.datasets.length === 0) {
+    return 'Pharmacokinetic graph - no data loaded'
+  }
+  const drugList = props.datasets.map((ds) => ds.label).join(', ')
+  return `Pharmacokinetic concentration graph showing: ${drugList}. Time range: ${props.startHours} to ${props.endHours} hours. Y-axis: relative concentration 0 to 1.`
+})
 
 // ---- Helpers ----
 
@@ -116,8 +137,35 @@ function renderChart(): void {
       plugins: {
         legend: {
           display: true,
-          position: 'top',
-          labels: { usePointStyle: true, padding: 16 },
+          position: (isMobile.value ? 'bottom' : 'top') as 'top' | 'bottom',
+          labels: {
+            usePointStyle: true,
+            padding: isMobile.value ? 10 : 16,
+            font: { size: isMobile.value ? 11 : 13 },
+            color: '#374151',
+            generateLabels: (chart: Chart) => {
+              const datasets = chart.data.datasets
+              return datasets.map((ds, i) => ({
+                text: ds.label || '',
+                fillStyle: ds.borderColor as string,
+                strokeStyle: ds.borderColor as string,
+                lineWidth: 2,
+                hidden: !chart.isDatasetVisible(i),
+                datasetIndex: i,
+                fontColor: chart.isDatasetVisible(i) ? '#374151' : '#9CA3AF',
+              }))
+            },
+          },
+          onClick: (_e: unknown, legendItem: { datasetIndex?: number }, legend: { chart: Chart }) => {
+            const index = legendItem.datasetIndex
+            if (index === undefined) return
+            const ci = legend.chart
+            if (ci.isDatasetVisible(index)) {
+              ci.hide(index)
+            } else {
+              ci.show(index)
+            }
+          },
         },
         tooltip: {
           mode: 'index',
@@ -149,10 +197,11 @@ function renderChart(): void {
 
 onMounted(() => {
   renderChart()
+  window.addEventListener('resize', handleResize)
 })
 
 watch(
-  [() => props.datasets, () => props.startHours, () => props.endHours],
+  [() => props.datasets, () => props.startHours, () => props.endHours, isMobile],
   () => {
     renderChart()
   },
@@ -160,6 +209,7 @@ watch(
 )
 
 onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
   if (chartInstance) {
     chartInstance.destroy()
     chartInstance = null
@@ -225,7 +275,16 @@ defineExpose({
       Educational purposes only. Not for medical decisions.
     </div>
     <div class="chart-container">
-      <canvas ref="canvasRef"></canvas>
+      <canvas ref="canvasRef" role="img" :aria-label="chartAriaLabel"></canvas>
+    </div>
+    <div v-if="hasDatasets" class="sr-only" aria-live="polite">
+      <p>
+        Graph displaying relative drug concentration over time for:
+        <span v-for="(ds, i) in props.datasets" :key="i">
+          {{ ds.label }}{{ i < props.datasets.length - 1 ? ', ' : '' }}
+        </span>.
+        Click legend items to toggle individual curves.
+      </p>
     </div>
     <div v-if="hasDatasets" class="graph-actions">
       <button
@@ -293,5 +352,25 @@ defineExpose({
 .download-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Screen reader only utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .chart-container {
+    height: 300px;
+  }
 }
 </style>

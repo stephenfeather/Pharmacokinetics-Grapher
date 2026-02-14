@@ -22,6 +22,8 @@ const statusMessage = ref('')
 
 const startHours = ref(0)
 const endHours = ref(48)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const useAutoTimeframe = ref(true)
 
 // ---- Refs for focus management ----
 

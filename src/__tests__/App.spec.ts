@@ -35,6 +35,7 @@ interface AppComponentState {
   startHours: number
   endHours: number
   autoEndHours: number
+  useAutoTimeframe: boolean
   switchView: (view: 'form' | 'list' | 'graph') => void
   handleFormSubmit: (rx: Prescription) => void
   saveCurrentPrescription: () => void
@@ -1638,6 +1639,212 @@ describe('App.vue - Phase 4: Styling and Polish', () => {
       // autoEndHours should recalculate based on new endHours
       // (may affect numDays calculation for dose expansion)
       expect([firstValue, secondValue].some((v) => v !== firstValue)).toBe(true)
+    })
+  })
+
+  describe('Auto vs Manual Timeframe Mode - useAutoTimeframe Toggle', () => {
+    it('initializes useAutoTimeframe to true (auto mode by default)', () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      // When: component mounts
+      // Then: useAutoTimeframe should be true by default
+      expect(vm.useAutoTimeframe).toBe(true)
+    })
+
+    it('can toggle useAutoTimeframe to false (manual mode)', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      // Given: useAutoTimeframe is true
+      expect(vm.useAutoTimeframe).toBe(true)
+
+      // When: toggle to false
+      vm.useAutoTimeframe = false
+      await flushPromises()
+
+      // Then: useAutoTimeframe should be false
+      expect(vm.useAutoTimeframe).toBe(false)
+    })
+
+    it('can toggle useAutoTimeframe back to true (auto mode)', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      // Given: useAutoTimeframe is false
+      vm.useAutoTimeframe = false
+      await flushPromises()
+
+      // When: toggle back to true
+      vm.useAutoTimeframe = true
+      await flushPromises()
+
+      // Then: useAutoTimeframe should be true
+      expect(vm.useAutoTimeframe).toBe(true)
+    })
+
+    it('maintains toggle state when prescription changes', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription1: Prescription = {
+        name: 'Drug A',
+        frequency: 'once',
+        times: ['09:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      const prescription2: Prescription = {
+        name: 'Drug B',
+        frequency: 'once',
+        times: ['09:00'],
+        dose: 500,
+        halfLife: 12,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      // Set to manual mode
+      vm.useAutoTimeframe = false
+      await flushPromises()
+
+      // Change prescription
+      vm.currentPrescription = prescription1
+      vm.comparePrescriptions = [prescription1]
+      await flushPromises()
+
+      expect(vm.useAutoTimeframe).toBe(false)
+
+      // Change to different prescription
+      vm.currentPrescription = prescription2
+      vm.comparePrescriptions = [prescription2]
+      await flushPromises()
+
+      // Toggle state should persist
+      expect(vm.useAutoTimeframe).toBe(false)
+    })
+
+    it('maintains toggle state when endHours changes', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      // Set to manual mode
+      vm.useAutoTimeframe = false
+      await flushPromises()
+
+      // Change endHours
+      vm.endHours = 72
+      await flushPromises()
+
+      // Toggle state should persist
+      expect(vm.useAutoTimeframe).toBe(false)
+    })
+
+    it('toggle state persists across view switches', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      // Set to manual mode
+      vm.useAutoTimeframe = false
+      await flushPromises()
+
+      // Switch views
+      vm.switchView('list')
+      await flushPromises()
+
+      expect(vm.useAutoTimeframe).toBe(false)
+
+      vm.switchView('form')
+      await flushPromises()
+
+      expect(vm.useAutoTimeframe).toBe(false)
+    })
+
+    it('toggle behaves independently from activeTab state', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      // Toggle is independent of activeTab
+      expect(vm.useAutoTimeframe).toBe(true)
+      expect(vm.activeTab).toBe('form')
+
+      // Change tab
+      vm.activeTab = 'list'
+      await flushPromises()
+
+      // useAutoTimeframe should still be true
+      expect(vm.useAutoTimeframe).toBe(true)
+
+      // Toggle useAutoTimeframe
+      vm.useAutoTimeframe = false
+      await flushPromises()
+
+      // activeTab should not change
+      expect(vm.activeTab).toBe('list')
+      expect(vm.useAutoTimeframe).toBe(false)
+    })
+
+    it('supports rapid toggling without issues', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      // Rapid toggles
+      vm.useAutoTimeframe = false
+      await flushPromises()
+      vm.useAutoTimeframe = true
+      await flushPromises()
+      vm.useAutoTimeframe = false
+      await flushPromises()
+      vm.useAutoTimeframe = true
+      await flushPromises()
+
+      // Should end in true state
+      expect(vm.useAutoTimeframe).toBe(true)
+    })
+
+    it('can be toggled while viewing graph', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'once',
+        times: ['09:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.comparePrescriptions = [prescription]
+      vm.switchView('graph')
+      await flushPromises()
+
+      // While viewing graph, toggle auto mode
+      vm.useAutoTimeframe = false
+      await flushPromises()
+
+      expect(vm.useAutoTimeframe).toBe(false)
+      expect(vm.activeTab).toBe('graph')
+    })
+
+    it('supports manual mode for user control', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      // User explicitly wants manual control
+      vm.useAutoTimeframe = false
+      await flushPromises()
+
+      // User can set custom endHours
+      vm.endHours = 100
+      await flushPromises()
+
+      expect(vm.useAutoTimeframe).toBe(false)
+      expect(vm.endHours).toBe(100)
     })
   })
 })

@@ -4,21 +4,32 @@ import { mount } from '@vue/test-utils'
 import GraphViewer from '../GraphViewer.vue'
 
 // Setup mocks with vi.hoisted() for proper hoisting
-const { mockDestroy, MockChart } = vi.hoisted(() => {
+const { mockDestroy, mockToBase64Image, MockChart, mockDownloadImage } = vi.hoisted(() => {
   const mockDestroy = vi.fn()
+  const mockToBase64Image = vi.fn().mockReturnValue('data:image/png;base64,mock-image-data')
 
   // Create a spy on a constructor function
   const MockChart = vi.fn(function (this: any) {
     this.destroy = mockDestroy
+    this.toBase64Image = mockToBase64Image
   })
   ;(MockChart as any).register = vi.fn()
 
-  return { mockDestroy, MockChart: MockChart as any }
+  const mockDownloadImage = vi.fn().mockReturnValue(true)
+
+  return { mockDestroy, mockToBase64Image, MockChart: MockChart as any, mockDownloadImage }
 })
 
 vi.mock('chart.js', () => ({
   Chart: MockChart,
   registerables: [],
+}))
+
+vi.mock('@/core/export', () => ({
+  generateFilename: vi.fn(
+    (names: string[] = []) => `pk-graph-${names.join('-')}-test.png`,
+  ),
+  downloadImage: mockDownloadImage,
 }))
 
 describe('GraphViewer', () => {
@@ -324,6 +335,128 @@ describe('GraphViewer', () => {
       expect(config?.data?.datasets?.[8]?.borderColor).toBe('#3B82F6')
       // 10th dataset (index 9) wraps to second color
       expect(config?.data?.datasets?.[9]?.borderColor).toBe('#EF4444')
+    })
+  })
+
+  // ---- Phase 4: Download Button ----
+
+  describe('download button', () => {
+    it('does not render download button when datasets are empty', () => {
+      const wrapper = mount(GraphViewer, { props: { datasets: [] } })
+      expect(wrapper.find('[data-testid="download-graph-btn"]').exists()).toBe(false)
+    })
+
+    it('renders download button when datasets exist', () => {
+      const datasets = [
+        { label: 'Test', data: [{ time: 0, concentration: 0 }] },
+      ]
+      const wrapper = mount(GraphViewer, { props: { datasets } })
+      expect(wrapper.find('[data-testid="download-graph-btn"]').exists()).toBe(true)
+    })
+
+    it('download button text is "Download as PNG"', () => {
+      const datasets = [
+        { label: 'Test', data: [{ time: 0, concentration: 0 }] },
+      ]
+      const wrapper = mount(GraphViewer, { props: { datasets } })
+      expect(wrapper.find('[data-testid="download-graph-btn"]').text()).toBe('Download as PNG')
+    })
+
+    it('download button has aria-label', () => {
+      const datasets = [
+        { label: 'Test', data: [{ time: 0, concentration: 0 }] },
+      ]
+      const wrapper = mount(GraphViewer, { props: { datasets } })
+      const btn = wrapper.find('[data-testid="download-graph-btn"]')
+      expect(btn.attributes('aria-label')).toBe('Download graph as PNG image')
+    })
+
+    it('download button has type="button"', () => {
+      const datasets = [
+        { label: 'Test', data: [{ time: 0, concentration: 0 }] },
+      ]
+      const wrapper = mount(GraphViewer, { props: { datasets } })
+      const btn = wrapper.find('[data-testid="download-graph-btn"]')
+      expect(btn.attributes('type')).toBe('button')
+    })
+  })
+
+  // ---- Phase 5: Export Functionality ----
+
+  describe('export functionality', () => {
+    it('calls toBase64Image when download button is clicked', async () => {
+      const datasets = [
+        { label: 'Drug A', data: [{ time: 0, concentration: 0 }] },
+      ]
+      const wrapper = mount(GraphViewer, { props: { datasets } })
+      await wrapper.find('[data-testid="download-graph-btn"]').trigger('click')
+      expect(mockToBase64Image).toHaveBeenCalledWith('image/png', 1.0)
+    })
+
+    it('calls downloadImage with generated filename', async () => {
+      const datasets = [
+        { label: 'Drug A', data: [{ time: 0, concentration: 0 }] },
+      ]
+      const wrapper = mount(GraphViewer, { props: { datasets } })
+      await wrapper.find('[data-testid="download-graph-btn"]').trigger('click')
+      expect(mockDownloadImage).toHaveBeenCalledWith(
+        'data:image/png;base64,mock-image-data',
+        expect.stringContaining('pk-graph'),
+      )
+    })
+
+    it('hides download button after datasets become empty', async () => {
+      const datasets = [
+        { label: 'Test', data: [{ time: 0, concentration: 0 }] },
+      ]
+      const wrapper = mount(GraphViewer, { props: { datasets } })
+      expect(wrapper.find('[data-testid="download-graph-btn"]').exists()).toBe(true)
+
+      await wrapper.setProps({ datasets: [] })
+      expect(wrapper.find('[data-testid="download-graph-btn"]').exists()).toBe(false)
+    })
+  })
+
+  // ---- Phase 6: defineExpose ----
+
+  describe('exposed methods', () => {
+    it('exposes getChartInstance method', () => {
+      const datasets = [
+        { label: 'Test', data: [{ time: 0, concentration: 0 }] },
+      ]
+      const wrapper = mount(GraphViewer, { props: { datasets } })
+      const vm = wrapper.vm as any
+      expect(typeof vm.getChartInstance).toBe('function')
+    })
+
+    it('getChartInstance returns null when no datasets', () => {
+      const wrapper = mount(GraphViewer, { props: { datasets: [] } })
+      const vm = wrapper.vm as any
+      expect(vm.getChartInstance()).toBeNull()
+    })
+
+    it('exposes exportAsImage method', () => {
+      const datasets = [
+        { label: 'Test', data: [{ time: 0, concentration: 0 }] },
+      ]
+      const wrapper = mount(GraphViewer, { props: { datasets } })
+      const vm = wrapper.vm as any
+      expect(typeof vm.exportAsImage).toBe('function')
+    })
+
+    it('exportAsImage returns false when no chart instance', () => {
+      const wrapper = mount(GraphViewer, { props: { datasets: [] } })
+      const vm = wrapper.vm as any
+      expect(vm.exportAsImage()).toBe(false)
+    })
+
+    it('exportAsImage returns true when chart exists', () => {
+      const datasets = [
+        { label: 'Test', data: [{ time: 0, concentration: 0 }] },
+      ]
+      const wrapper = mount(GraphViewer, { props: { datasets } })
+      const vm = wrapper.vm as any
+      expect(vm.exportAsImage()).toBe(true)
     })
   })
 })

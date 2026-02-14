@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { Chart, registerables } from 'chart.js'
 import type { GraphDataset } from '@/core/models/prescription'
+import { generateFilename, downloadImage } from '@/core/export'
 
 Chart.register(...registerables)
 
@@ -164,6 +165,58 @@ onUnmounted(() => {
     chartInstance = null
   }
 })
+
+// ---- Export API ----
+
+const isExporting = ref(false)
+const hasDatasets = computed(() => props.datasets.length > 0)
+
+/**
+ * Get the current Chart.js instance (or null if no chart is rendered).
+ */
+function getChartInstance(): Chart | null {
+  return chartInstance
+}
+
+/**
+ * Export the current chart as a PNG image and trigger browser download.
+ * Returns true if download was triggered, false if no chart exists.
+ */
+function exportAsImage(): boolean {
+  if (!chartInstance) {
+    return false
+  }
+
+  const dataUrl = chartInstance.toBase64Image('image/png', 1.0) as string
+  const drugNames = props.datasets.map((ds) => ds.label)
+  const filename = generateFilename(drugNames)
+  return downloadImage(dataUrl, filename)
+}
+
+/**
+ * Handle download button click with visual feedback.
+ */
+function handleDownload(): void {
+  if (isExporting.value || !chartInstance) return
+  isExporting.value = true
+
+  const success = exportAsImage()
+
+  if (!success) {
+    isExporting.value = false
+    return
+  }
+
+  // Reset button state after a brief visual feedback period
+  setTimeout(() => {
+    isExporting.value = false
+  }, 1000)
+}
+
+defineExpose({
+  getChartInstance,
+  exportAsImage,
+})
 </script>
 
 <template>
@@ -173,6 +226,19 @@ onUnmounted(() => {
     </div>
     <div class="chart-container">
       <canvas ref="canvasRef"></canvas>
+    </div>
+    <div v-if="hasDatasets" class="graph-actions">
+      <button
+        type="button"
+        class="download-btn"
+        :disabled="isExporting"
+        :aria-busy="isExporting"
+        aria-label="Download graph as PNG image"
+        data-testid="download-graph-btn"
+        @click="handleDownload"
+      >
+        {{ isExporting ? 'Downloading...' : 'Download as PNG' }}
+      </button>
     </div>
   </div>
 </template>
@@ -197,5 +263,35 @@ onUnmounted(() => {
   font-size: 0.85rem;
   color: #92400e;
   text-align: center;
+}
+
+.graph-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.download-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: 1px solid #3b82f6;
+  border-radius: 6px;
+  background: white;
+  color: #3b82f6;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.download-btn:hover:not(:disabled) {
+  background: #3b82f6;
+  color: white;
+}
+
+.download-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 </style>

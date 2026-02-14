@@ -55,6 +55,24 @@ export function getLastDoseTime(prescription: Prescription, numDays: number): nu
 }
 
 /**
+ * Calculate the required tail-off duration based on half-life
+ * Shows adequate decay behavior after last dose to visualize pharmacokinetics
+ *
+ * @param halfLife - Drug half-life in hours
+ * @param decayFactor - Number of half-lives to allow for tail-off (default: 5 for ~97% elimination)
+ *                      Formula: tailOffDuration = halfLife * decayFactor
+ *                      Examples:
+ *                        - decayFactor=1 → ~50% elimination
+ *                        - decayFactor=3 → ~87.5% elimination
+ *                        - decayFactor=5 → ~96.875% elimination (97%)
+ *                        - decayFactor=10 → ~99.9% elimination
+ * @returns Duration in hours to extend graph past last dose
+ */
+export function calculateTailOffDuration(halfLife: number, decayFactor: number = 5): number {
+  return halfLife * decayFactor
+}
+
+/**
  * Calculate accumulated drug concentration over time from repeated doses
  *
  * Strategy:

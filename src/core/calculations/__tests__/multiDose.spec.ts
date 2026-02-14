@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { accumulateDoses, getGraphData, getLastDoseTime } from '../multiDose'
+import { accumulateDoses, getGraphData, getLastDoseTime, calculateTailOffDuration } from '../multiDose'
 import { SINGLE_DOSE_FIXTURE, BID_MULTI_DOSE_FIXTURE, IBUPROFEN_FIXTURE } from '../../models/__tests__/fixtures'
 
 describe('accumulateDoses - Multi-dose Accumulation', () => {
@@ -267,6 +267,97 @@ describe('accumulateDoses - Multi-dose Accumulation', () => {
       }
       const result = getLastDoseTime(rx, 1)
       expect(result).toBe(23)
+    })
+  })
+
+  describe('Phase 6: Calculate Tail-Off Duration - calculateTailOffDuration', () => {
+    it('calculates tail-off duration with default decay factor (5)', () => {
+      // Given: halfLife = 6 hours with default decayFactor
+      // When: calculating tail-off duration
+      // Then: should return 6 * 5 = 30 hours
+      // (5 half-lives = ~97% elimination, 3.125% remaining)
+      const result = calculateTailOffDuration(6)
+      expect(result).toBe(30)
+    })
+
+    it('calculates tail-off duration for 24-hour half-life', () => {
+      // Given: halfLife = 24 hours (e.g., warfarin) with default decayFactor
+      // When: calculating tail-off duration
+      // Then: should return 24 * 5 = 120 hours (5 days)
+      const result = calculateTailOffDuration(24)
+      expect(result).toBe(120)
+    })
+
+    it('respects custom decay factor', () => {
+      // Given: halfLife = 6 hours with custom decayFactor = 3
+      // When: calculating tail-off duration
+      // Then: should return 6 * 3 = 18 hours (3 half-lives = ~87.5% elimination)
+      const result = calculateTailOffDuration(6, 3)
+      expect(result).toBe(18)
+    })
+
+    it('respects custom decay factor for long half-life', () => {
+      // Given: halfLife = 24 hours with custom decayFactor = 7
+      // When: calculating tail-off duration
+      // Then: should return 24 * 7 = 168 hours (7 days)
+      const result = calculateTailOffDuration(24, 7)
+      expect(result).toBe(168)
+    })
+
+    it('handles very short half-life', () => {
+      // Given: halfLife = 0.5 hours (30 minutes, e.g., nitroglycerin)
+      // When: calculating tail-off duration with default decayFactor
+      // Then: should return 0.5 * 5 = 2.5 hours
+      const result = calculateTailOffDuration(0.5)
+      expect(result).toBe(2.5)
+    })
+
+    it('handles very long half-life', () => {
+      // Given: halfLife = 240 hours (10 days, e.g., amiodarone)
+      // When: calculating tail-off duration with default decayFactor
+      // Then: should return 240 * 5 = 1200 hours (50 days)
+      const result = calculateTailOffDuration(240)
+      expect(result).toBe(1200)
+    })
+
+    it('handles fractional half-life values', () => {
+      // Given: halfLife = 3.5 hours with default decayFactor
+      // When: calculating tail-off duration
+      // Then: should return 3.5 * 5 = 17.5 hours
+      const result = calculateTailOffDuration(3.5)
+      expect(result).toBe(17.5)
+    })
+
+    it('decay factor of 1 returns halfLife (minimal tail-off)', () => {
+      // Given: halfLife = 6 hours with decayFactor = 1
+      // When: calculating tail-off duration
+      // Then: should return 6 * 1 = 6 hours (1 half-life = ~50% elimination)
+      const result = calculateTailOffDuration(6, 1)
+      expect(result).toBe(6)
+    })
+
+    it('decay factor of 10 returns 10x halfLife (extensive tail-off)', () => {
+      // Given: halfLife = 6 hours with decayFactor = 10
+      // When: calculating tail-off duration
+      // Then: should return 6 * 10 = 60 hours (10 half-lives = ~99.9% elimination)
+      const result = calculateTailOffDuration(6, 10)
+      expect(result).toBe(60)
+    })
+
+    it('decay factor of 0 returns 0 (no tail-off)', () => {
+      // Given: halfLife = 6 hours with decayFactor = 0
+      // When: calculating tail-off duration
+      // Then: should return 0 (no additional time needed)
+      const result = calculateTailOffDuration(6, 0)
+      expect(result).toBe(0)
+    })
+
+    it('handles decimal decay factor', () => {
+      // Given: halfLife = 6 hours with decayFactor = 2.5
+      // When: calculating tail-off duration
+      // Then: should return 6 * 2.5 = 15 hours
+      const result = calculateTailOffDuration(6, 2.5)
+      expect(result).toBe(15)
     })
   })
 })

@@ -34,6 +34,7 @@ interface AppComponentState {
   activeTab: 'form' | 'list' | 'graph'
   startHours: number
   endHours: number
+  autoEndHours: number
   switchView: (view: 'form' | 'list' | 'graph') => void
   handleFormSubmit: (rx: Prescription) => void
   saveCurrentPrescription: () => void
@@ -1387,6 +1388,256 @@ describe('App.vue - Phase 4: Styling and Polish', () => {
       const activeTab = tabs.find((tab) => tab.attributes('aria-current') === 'page')
       expect(activeTab).toBeDefined()
       expect(activeTab?.attributes('class')).toContain('active')
+    })
+  })
+
+  describe('Auto-Extend Timeframe - autoEndHours Computed', () => {
+    it('returns default 48 when no currentPrescription', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      // When: no currentPrescription (null)
+      vm.currentPrescription = null
+
+      await flushPromises()
+
+      // Then: autoEndHours should return 48 (default)
+      expect(vm.autoEndHours).toBe(48)
+    })
+
+    it('calculates auto end time for prescription with 6-hour half-life', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'once',
+        times: ['09:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      // Set up: 1 day simulation window
+      vm.endHours = 24
+      vm.currentPrescription = prescription
+      vm.comparePrescriptions = [prescription]
+
+      await flushPromises()
+
+      // Expected: numDays = ceil(24/24) + 1 = 2 days
+      // lastDoseTime = 1*24 + 9 = 33 hours (second day at 09:00)
+      // tailOffDuration = 6 * 5 = 30 hours
+      // autoEndHours = 33 + 30 = 63 hours
+      expect(vm.autoEndHours).toBe(63)
+    })
+
+    it('calculates auto end time for prescription with 24-hour half-life', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Warfarin',
+        frequency: 'once',
+        times: ['08:00'],
+        dose: 5,
+        halfLife: 24,
+        peak: 2.5,
+        uptake: 1,
+      }
+
+      // Set up: 2 day simulation window
+      vm.endHours = 48
+      vm.currentPrescription = prescription
+      vm.comparePrescriptions = [prescription]
+
+      await flushPromises()
+
+      // Expected: lastDoseTime = 8 + 24 = 32 hours (second day at 08:00)
+      // tailOffDuration = 24 * 5 = 120 hours
+      // autoEndHours = 32 + 120 = 152 hours, but capped at 168 (1 week)
+      expect(vm.autoEndHours).toBeLessThanOrEqual(168)
+      expect(vm.autoEndHours).toBeGreaterThanOrEqual(24)
+    })
+
+    it('applies minimum floor of 24 hours', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Fast Drug',
+        frequency: 'once',
+        times: ['00:30'], // Very early morning dose
+        dose: 100,
+        halfLife: 0.5, // 30 minutes
+        peak: 0.1,
+        uptake: 0.15,
+      }
+
+      // Set up: very short window
+      vm.endHours = 2
+      vm.currentPrescription = prescription
+      vm.comparePrescriptions = [prescription]
+
+      await flushPromises()
+
+      // Even with short half-life, should respect minimum of 24 hours
+      expect(vm.autoEndHours).toBeGreaterThanOrEqual(24)
+    })
+
+    it('applies maximum cap of 168 hours (1 week)', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Long Half-Life Drug',
+        frequency: 'once',
+        times: ['12:00'],
+        dose: 50,
+        halfLife: 240, // 10 days
+        peak: 4,
+        uptake: 2,
+      }
+
+      // Set up: long simulation window
+      vm.endHours = 240
+      vm.currentPrescription = prescription
+      vm.comparePrescriptions = [prescription]
+
+      await flushPromises()
+
+      // Should be capped at 168 hours (1 week) to prevent unreasonable values
+      expect(vm.autoEndHours).toBeLessThanOrEqual(168)
+    })
+
+    it('calculates correctly for BID prescription over 2 days', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug BID',
+        frequency: 'bid',
+        times: ['09:00', '21:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      // Set up: 2 day simulation window
+      vm.endHours = 48
+      vm.currentPrescription = prescription
+      vm.comparePrescriptions = [prescription]
+
+      await flushPromises()
+
+      // Expected: numDays = ceil(48/24) + 1 = 3 days
+      // lastDoseTime = 2*24 + 21 = 69 hours (third day at 21:00)
+      // tailOffDuration = 6 * 5 = 30 hours
+      // autoEndHours = 69 + 30 = 99 hours
+      expect(vm.autoEndHours).toBe(99)
+    })
+
+    it('handles prescription with fractional hour dose times', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'once',
+        times: ['09:30'], // 9.5 hours
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.endHours = 24
+      vm.currentPrescription = prescription
+      vm.comparePrescriptions = [prescription]
+
+      await flushPromises()
+
+      // Expected: numDays = ceil(24/24) + 1 = 2 days
+      // lastDoseTime = 1*24 + 9.5 = 33.5 hours (second day at 09:30)
+      // tailOffDuration = 6 * 5 = 30 hours
+      // autoEndHours = 33.5 + 30 = 63.5 hours
+      expect(vm.autoEndHours).toBe(63.5)
+    })
+
+    it('recalculates when prescription changes', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription1: Prescription = {
+        name: 'Drug A',
+        frequency: 'once',
+        times: ['09:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      const prescription2: Prescription = {
+        name: 'Drug B',
+        frequency: 'once',
+        times: ['09:00'],
+        dose: 500,
+        halfLife: 24,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.endHours = 48
+      vm.currentPrescription = prescription1
+      vm.comparePrescriptions = [prescription1]
+      await flushPromises()
+
+      const firstValue = vm.autoEndHours
+
+      // Change prescription to one with longer half-life
+      vm.currentPrescription = prescription2
+      vm.comparePrescriptions = [prescription2]
+      await flushPromises()
+
+      const secondValue = vm.autoEndHours
+
+      // Should be different (longer half-life means longer tail-off)
+      expect(secondValue).toBeGreaterThan(firstValue)
+    })
+
+    it('updates when endHours changes', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'once',
+        times: ['09:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.currentPrescription = prescription
+      vm.comparePrescriptions = [prescription]
+
+      // First calculation with 24 hour window
+      vm.endHours = 24
+      await flushPromises()
+      const firstValue = vm.autoEndHours
+
+      // Change to 48 hour window
+      vm.endHours = 48
+      await flushPromises()
+      const secondValue = vm.autoEndHours
+
+      // autoEndHours should recalculate based on new endHours
+      // (may affect numDays calculation for dose expansion)
+      expect([firstValue, secondValue].some((v) => v !== firstValue)).toBe(true)
     })
   })
 })

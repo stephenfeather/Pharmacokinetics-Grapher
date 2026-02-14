@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, watch } from 'vue'
 import type { Prescription, GraphDataset } from '@/core/models/prescription'
-import { getGraphData } from '@/core/calculations'
+import { getGraphData, getLastDoseTime, calculateTailOffDuration } from '@/core/calculations'
 import { savePrescription, getAllPrescriptions } from '@/core/storage/prescriptionStorage'
 import PrescriptionForm from '@/components/PrescriptionForm.vue'
 import GraphViewer from '@/components/GraphViewer.vue'
@@ -34,6 +34,37 @@ const graphContainerRef = ref<HTMLElement | null>(null)
 const graphDatasets = computed<GraphDataset[]>(() => {
   if (comparePrescriptions.value.length === 0) return []
   return getGraphData(comparePrescriptions.value, startHours.value, endHours.value)
+})
+
+// ---- Auto-extend timeframe computation ----
+
+/**
+ * Calculate recommended end time based on prescription parameters and tail-off requirements.
+ * Uses: lastDoseTime + tailOffDuration, with bounds [24, 168] hours
+ * Used in Subtask 5 to replace manual endHours when auto-mode is enabled.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const autoEndHours = computed<number>(() => {
+  // Default: if no prescription, return 48 hours
+  if (!currentPrescription.value) {
+    return 48
+  }
+
+  // Calculate number of days to expand prescriptions across
+  // Add 1 to ensure we capture all doses in the window
+  const numDays = Math.ceil(endHours.value / 24) + 1
+
+  // Get the last dose time within the simulation window
+  const lastDoseTime = getLastDoseTime(currentPrescription.value, numDays)
+
+  // Get the tail-off duration based on half-life (5 half-lives = ~97% elimination)
+  const tailOffDuration = calculateTailOffDuration(currentPrescription.value.halfLife)
+
+  // Calculate the recommended end time
+  const recommendedEnd = lastDoseTime + tailOffDuration
+
+  // Apply bounds: minimum 24 hours (at least 1 day), maximum 168 hours (1 week)
+  return Math.max(24, Math.min(168, recommendedEnd))
 })
 
 // ---- View switching ----

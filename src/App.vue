@@ -73,6 +73,12 @@ function handleFormSubmit(rx: Prescription) {
   switchView('graph')
 }
 
+function handleImportSuccess(count: number) {
+  savedPrescriptions.value = getAllPrescriptions()
+  statusMessage.value = `Successfully imported ${count} prescription${count !== 1 ? 's' : ''}. Showing saved prescriptions.`
+  switchView('list')
+}
+
 function saveCurrentPrescription() {
   if (currentPrescription.value) {
     const saved = savePrescription(currentPrescription.value)
@@ -190,7 +196,7 @@ watch(comparePrescriptions, (newVal) => {
 
     <main class="app-main">
       <div v-if="showForm" ref="formRef" role="region" aria-label="Prescription form">
-        <PrescriptionForm @submit="handleFormSubmit" />
+        <PrescriptionForm @submit="handleFormSubmit" @imported="handleImportSuccess" />
       </div>
 
       <div v-if="showList" class="list-section" ref="listContainerRef">

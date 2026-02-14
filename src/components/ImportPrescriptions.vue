@@ -141,12 +141,22 @@ function handleClose() {
           Cancel
         </button>
         <button
+          v-if="!showResult || importResult.success === 0"
           type="button"
           class="btn-primary"
           @click="handleImport"
           :disabled="!isValidJson || jsonInput.trim().length === 0"
         >
           Import
+        </button>
+        <button
+          v-if="showResult && importResult.success > 0"
+          type="button"
+          class="btn-primary"
+          data-testid="done-btn"
+          @click="handleClose"
+        >
+          Done
         </button>
       </div>
     </div>

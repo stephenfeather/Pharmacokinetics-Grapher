@@ -475,6 +475,60 @@ describe('PrescriptionForm', () => {
     })
   })
 
+  describe('import event propagation (regression)', () => {
+    it('renders import link button', () => {
+      const wrapper = mountForm()
+      const importLink = wrapper.find('.import-link')
+      expect(importLink.exists()).toBe(true)
+      expect(importLink.text()).toContain('import')
+    })
+
+    it('shows import modal when import link is clicked', async () => {
+      const wrapper = mountForm()
+      await wrapper.find('.import-link').trigger('click')
+      await nextTick()
+      // ImportPrescriptions component should now be visible
+      const importModal = wrapper.findComponent({ name: 'ImportPrescriptions' })
+      expect(importModal.exists()).toBe(true)
+    })
+
+    it('re-emits imported event from ImportPrescriptions upward', async () => {
+      const wrapper = mountForm()
+      // Open the import modal
+      await wrapper.find('.import-link').trigger('click')
+      await nextTick()
+
+      // Find the ImportPrescriptions child and simulate it emitting 'imported'
+      const importComponent = wrapper.findComponent({ name: 'ImportPrescriptions' })
+      expect(importComponent.exists()).toBe(true)
+      importComponent.vm.$emit('imported', 3)
+      await nextTick()
+
+      // PrescriptionForm should re-emit the 'imported' event upward
+      const emitted = wrapper.emitted('imported')
+      expect(emitted).toBeTruthy()
+      expect(emitted![0]).toEqual([3])
+    })
+
+    it('closes import modal after import success', async () => {
+      const wrapper = mountForm()
+      // Open the import modal
+      await wrapper.find('.import-link').trigger('click')
+      await nextTick()
+
+      const importComponent = wrapper.findComponent({ name: 'ImportPrescriptions' })
+      expect(importComponent.exists()).toBe(true)
+
+      // Simulate close event from ImportPrescriptions
+      importComponent.vm.$emit('close')
+      await nextTick()
+
+      // Modal should be closed
+      const importModal = wrapper.findComponent({ name: 'ImportPrescriptions' })
+      expect(importModal.exists()).toBe(false)
+    })
+  })
+
   describe('accessibility', () => {
     it('all inputs have matching label elements', () => {
       const wrapper = mountForm()

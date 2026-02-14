@@ -11,6 +11,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   submit: [prescription: Prescription]
+  imported: [count: number]
 }>()
 
 // Import modal state
@@ -77,8 +78,9 @@ function handleSubmit() {
   emit('submit', prescription.value)
 }
 
-function handleImportSuccess() {
+function handleImportSuccess(count: number) {
   showImportModal.value = false
+  emit('imported', count)
 }
 </script>
 

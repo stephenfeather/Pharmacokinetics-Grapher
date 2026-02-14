@@ -8,7 +8,7 @@
  * 3. Normalize final curve so peak = 1.0
  */
 
-import type { Prescription, TimeSeriesPoint } from '../models/prescription'
+import type { Prescription, TimeSeriesPoint, GraphDataset } from '../models/prescription'
 import { calculateConcentration } from './pkCalculator'
 
 /**
@@ -99,4 +99,37 @@ export function accumulateDoses(
   }
 
   return points
+}
+
+/**
+ * Format multiple prescriptions into graph-ready datasets
+ *
+ * Transforms an array of prescriptions into GraphDataset[] with:
+ * - Calculated concentration curves via accumulateDoses()
+ * - Assigned colors from predefined palette
+ * - Labels formatted as "name (frequency)"
+ *
+ * @param prescriptions - Array of prescriptions to visualize
+ * @param startHours - Simulation start time in hours
+ * @param endHours - Simulation end time in hours
+ * @returns Array of GraphDataset ready for Chart.js rendering
+ */
+export function getGraphData(
+  prescriptions: Prescription[],
+  startHours: number,
+  endHours: number,
+): GraphDataset[] {
+  const colors = [
+    '#3B82F6', // blue
+    '#EF4444', // red
+    '#10B981', // emerald
+    '#F59E0B', // amber
+    '#8B5CF6', // violet
+  ]
+
+  return prescriptions.map((rx, index) => ({
+    label: `${rx.name} (${rx.frequency})`,
+    data: accumulateDoses(rx, startHours, endHours),
+    color: colors[index % colors.length],
+  }))
 }

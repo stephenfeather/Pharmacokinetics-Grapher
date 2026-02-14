@@ -1,2 +1,6 @@
 // Pharmacokinetic calculation functions
-export {}
+export {
+  calculateConcentration,
+  getPeakTime,
+  ABSORPTION_CONSTANT,
+} from './pkCalculator'

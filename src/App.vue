@@ -16,6 +16,7 @@ const showGraph = ref(false)
 const showList = ref(false)
 const comparePrescriptions = ref<Prescription[]>([])
 const activeTab = ref<'form' | 'list' | 'graph'>('form')
+const statusMessage = ref('')
 
 // ---- Graph settings ----
 
@@ -42,6 +43,15 @@ function switchView(view: 'form' | 'list' | 'graph') {
   showList.value = view === 'list'
   showGraph.value = view === 'graph'
   activeTab.value = view
+
+  // Announce view change to screen readers
+  if (view === 'form') {
+    statusMessage.value = 'Switched to form view. Add or edit a prescription.'
+  } else if (view === 'list') {
+    statusMessage.value = `Switched to saved prescriptions. ${savedPrescriptions.value.length} prescriptions available.`
+  } else if (view === 'graph') {
+    statusMessage.value = `Switched to graph view. Displaying ${comparePrescriptions.value.length} prescription${comparePrescriptions.value.length !== 1 ? 's' : ''}.`
+  }
 
   // Focus management after next render
   nextTick(() => {
@@ -80,16 +90,19 @@ function newPrescription() {
 
 function handleViewPrescription(rx: Prescription) {
   comparePrescriptions.value = [rx]
+  statusMessage.value = `Viewing prescription: ${rx.name}`
   switchView('graph')
 }
 
 function handleEditPrescription(rx: Prescription) {
   currentPrescription.value = rx
+  statusMessage.value = `Editing prescription: ${rx.name}`
   switchView('form')
 }
 
 function handleComparePrescriptions(rxs: Prescription[]) {
   comparePrescriptions.value = rxs
+  statusMessage.value = `Comparing ${rxs.length} prescription${rxs.length !== 1 ? 's' : ''}: ${rxs.map((r) => r.name).join(', ')}`
   switchView('graph')
 }
 
@@ -126,6 +139,16 @@ function handleTabKeydown(event: KeyboardEvent) {
       ⚠️ This app is for educational purposes only. Not for medical decisions.
     </div>
 
+    <!-- ARIA live region for screen reader announcements -->
+    <div
+      class="sr-only"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      {{ statusMessage }}
+    </div>
+
     <!-- Tab Navigation -->
     <nav
       class="tab-navigation"
@@ -158,7 +181,7 @@ function handleTabKeydown(event: KeyboardEvent) {
     </nav>
 
     <main class="app-main">
-      <div v-if="showForm" ref="formRef">
+      <div v-if="showForm" ref="formRef" role="region" aria-label="Prescription form">
         <PrescriptionForm @submit="handleFormSubmit" />
       </div>
 

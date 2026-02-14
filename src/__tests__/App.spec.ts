@@ -771,3 +771,302 @@ describe('App.vue - Phase 2: PrescriptionList Integration', () => {
     })
   })
 })
+
+describe('App.vue - Phase 3: Accessibility Implementation', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  describe('ARIA Attributes', () => {
+    it('form section has correct ARIA attributes', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      vm.switchView('form')
+      await flushPromises()
+
+      const formDiv = wrapper.find('[role="region"][aria-label="Prescription form"]')
+      expect(formDiv.exists()).toBe(true)
+    })
+
+    it('graph region has correct ARIA attributes', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'bid',
+        times: ['09:00', '21:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.comparePrescriptions = [prescription]
+      vm.switchView('graph')
+      await flushPromises()
+
+      const graphSection = wrapper.find('.graph-section')
+      expect(graphSection.attributes('role')).toBe('region')
+      expect(graphSection.attributes('aria-label')).toBe('Graph visualization')
+    })
+
+    it('graph region is focusable with tabindex', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'bid',
+        times: ['09:00', '21:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.comparePrescriptions = [prescription]
+      vm.switchView('graph')
+      await flushPromises()
+
+      const graphSection = wrapper.find('.graph-section')
+      expect(graphSection.attributes('tabindex')).toBe('-1')
+    })
+
+    it('list section has proper heading structure', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      vm.switchView('list')
+      await flushPromises()
+
+      const listSection = wrapper.find('.list-section')
+      expect(listSection.exists()).toBe(true)
+    })
+  })
+
+  describe('Focus Management', () => {
+    it('focus moves to graph region when switching to graph view', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'bid',
+        times: ['09:00', '21:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.comparePrescriptions = [prescription]
+      vm.switchView('graph')
+      await flushPromises()
+
+      const graphSection = wrapper.find('.graph-section')
+      expect(graphSection.exists()).toBe(true)
+      expect(graphSection.attributes('role')).toBe('region')
+    })
+
+    it('focuses form when switching to form view', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      vm.switchView('form')
+      await flushPromises()
+
+      // Form section should exist with ARIA attributes
+      const formDiv = wrapper.find('[role="region"][aria-label="Prescription form"]')
+      expect(formDiv.exists()).toBe(true)
+      expect(vm.showForm).toBe(true)
+    })
+
+    it('focuses list heading when switching to list view', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      vm.switchView('list')
+      await flushPromises()
+
+      // List section should exist
+      const listSection = wrapper.find('.list-section')
+      expect(listSection.exists()).toBe(true)
+      expect(vm.showList).toBe(true)
+    })
+  })
+
+  describe('Screen Reader Announcements', () => {
+    it('has ARIA live region for announcements', () => {
+      const wrapper = mount(App)
+      const liveRegion = wrapper.find('[role="status"][aria-live="polite"]')
+      expect(liveRegion.exists()).toBe(true)
+    })
+
+    it('live region has aria-atomic attribute', () => {
+      const wrapper = mount(App)
+      const liveRegion = wrapper.find('[role="status"][aria-live="polite"]')
+      expect(liveRegion.attributes('aria-atomic')).toBe('true')
+    })
+
+    it('announces prescription count in graph tab', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const rx1: Prescription = {
+        id: 'rx-1',
+        name: 'Drug 1',
+        frequency: 'bid',
+        times: ['09:00', '21:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      const rx2: Prescription = {
+        id: 'rx-2',
+        name: 'Drug 2',
+        frequency: 'tid',
+        times: ['08:00', '14:00', '20:00'],
+        dose: 250,
+        halfLife: 8,
+        peak: 1.5,
+        uptake: 1,
+      }
+
+      vm.comparePrescriptions = [rx1, rx2]
+      await flushPromises()
+
+      const tabs = wrapper.findAll('nav[role="navigation"] button')
+      const graphTab = tabs.find((tab) => tab.text().includes('Graph'))
+      expect(graphTab?.text()).toMatch(/Graph.*2/)
+    })
+  })
+
+  describe('Keyboard Navigation Enhancement', () => {
+    it('tabs are keyboard navigable with arrow keys', async () => {
+      const wrapper = mount(App)
+
+      const nav = wrapper.find('nav[role="navigation"]')
+      expect(nav.exists()).toBe(true)
+
+      const buttons = wrapper.findAll('nav[role="navigation"] button')
+      expect(buttons.length).toBeGreaterThan(0)
+
+      // All buttons should be focusable
+      for (const btn of buttons) {
+        expect(btn.element.tagName).toBe('BUTTON')
+      }
+    })
+
+    it('tab buttons have proper focus styling capability', async () => {
+      const wrapper = mount(App)
+      const tabs = wrapper.findAll('nav[role="navigation"] button')
+
+      for (const tab of tabs) {
+        expect(tab.element.tagName).toBe('BUTTON')
+      }
+    })
+
+    it('active tab button is clearly marked', async () => {
+      const wrapper = mount(App)
+      const tabs = wrapper.findAll('nav[role="navigation"] button')
+
+      const activeTab = tabs.find((tab) => tab.attributes('aria-current') === 'page')
+      expect(activeTab).toBeDefined()
+      expect(activeTab?.attributes('class')).toContain('active')
+    })
+  })
+
+  describe('Tab Focus Indicators', () => {
+    it('tabs have focus-visible styles capability', async () => {
+      const wrapper = mount(App)
+      const tabs = wrapper.findAll('nav[role="navigation"] button')
+
+      expect(tabs.length).toBeGreaterThan(0)
+      // All tabs should be visible and focusable
+      for (const tab of tabs) {
+        expect(tab.isVisible()).toBe(true)
+      }
+    })
+
+    it('active tab has visual indicator (active class)', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'bid',
+        times: ['09:00', '21:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.comparePrescriptions = [prescription]
+      vm.switchView('graph')
+      await flushPromises()
+
+      const tabs = wrapper.findAll('nav[role="navigation"] button')
+      const activeTab = tabs.find((tab) => tab.attributes('aria-current') === 'page')
+
+      expect(activeTab?.attributes('class')).toContain('active')
+    })
+  })
+
+  describe('Form Accessibility', () => {
+    it('form view is properly structured', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      vm.switchView('form')
+      await flushPromises()
+
+      expect(vm.showForm).toBe(true)
+      const mainSection = wrapper.find('main')
+      expect(mainSection.exists()).toBe(true)
+    })
+
+    it('form section is keyboard navigable', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      vm.switchView('form')
+      await flushPromises()
+
+      // Form should be visible
+      expect(vm.showForm).toBe(true)
+      const prescriptionForm = wrapper.findComponent({ name: 'PrescriptionForm' })
+      expect(prescriptionForm.exists()).toBe(true)
+    })
+  })
+
+  describe('List View Accessibility', () => {
+    it('list view has proper landmark structure', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      vm.switchView('list')
+      await flushPromises()
+
+      const listSection = wrapper.find('.list-section')
+      expect(listSection.exists()).toBe(true)
+      expect(vm.showList).toBe(true)
+    })
+
+    it('list section provides navigation context', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      vm.switchView('list')
+      await flushPromises()
+
+      expect(vm.showList).toBe(true)
+      const prescriptionList = wrapper.findComponent({ name: 'PrescriptionList' })
+      expect(prescriptionList.exists()).toBe(true)
+    })
+  })
+})

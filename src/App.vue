@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import type { Prescription, GraphDataset } from '@/core/models/prescription'
 import { getGraphData } from '@/core/calculations'
 import { savePrescription, getAllPrescriptions } from '@/core/storage/prescriptionStorage'
@@ -12,11 +12,20 @@ const currentPrescription = ref<Prescription | null>(null)
 const savedPrescriptions = ref<Prescription[]>(getAllPrescriptions())
 const showForm = ref(true)
 const showGraph = ref(false)
+const showList = ref(false)
+const comparePrescriptions = ref<Prescription[]>([])
+const activeTab = ref<'form' | 'list' | 'graph'>('form')
 
 // ---- Graph settings ----
 
 const startHours = ref(0)
 const endHours = ref(48)
+
+// ---- Refs for focus management ----
+
+const formRef = ref<HTMLElement | null>(null)
+const listContainerRef = ref<HTMLElement | null>(null)
+const graphContainerRef = ref<HTMLElement | null>(null)
 
 // ---- Computed graph data ----
 
@@ -25,12 +34,31 @@ const graphDatasets = computed<GraphDataset[]>(() => {
   return getGraphData([currentPrescription.value], startHours.value, endHours.value)
 })
 
+// ---- View switching ----
+
+function switchView(view: 'form' | 'list' | 'graph') {
+  showForm.value = view === 'form'
+  showList.value = view === 'list'
+  showGraph.value = view === 'graph'
+  activeTab.value = view
+
+  // Focus management after next render
+  nextTick(() => {
+    if (view === 'form') {
+      formRef.value?.querySelector('input')?.focus()
+    } else if (view === 'list' && listContainerRef.value) {
+      listContainerRef.value.querySelector('h2')?.focus()
+    } else if (view === 'graph' && graphContainerRef.value) {
+      graphContainerRef.value.focus()
+    }
+  })
+}
+
 // ---- Event handlers ----
 
 function handleFormSubmit(rx: Prescription) {
   currentPrescription.value = rx
-  showForm.value = false
-  showGraph.value = true
+  switchView('graph')
 }
 
 function saveCurrentPrescription() {
@@ -43,8 +71,28 @@ function saveCurrentPrescription() {
 
 function newPrescription() {
   currentPrescription.value = null
-  showForm.value = true
-  showGraph.value = false
+  switchView('form')
+}
+
+// ---- Tab keyboard navigation ----
+
+function handleTabKeydown(event: KeyboardEvent) {
+  const nav = event.currentTarget as HTMLElement
+  const buttons = Array.from(nav.querySelectorAll('button'))
+  const activeButton = nav.querySelector('[aria-current="page"]')
+  const activeIndex = buttons.indexOf(activeButton as HTMLButtonElement)
+
+  if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+    event.preventDefault()
+    const prevIndex = activeIndex - 1 < 0 ? buttons.length - 1 : activeIndex - 1
+    buttons[prevIndex]?.focus()
+    buttons[prevIndex]?.click()
+  } else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+    event.preventDefault()
+    const nextIndex = (activeIndex + 1) % buttons.length
+    buttons[nextIndex]?.focus()
+    buttons[nextIndex]?.click()
+  }
 }
 </script>
 
@@ -59,10 +107,50 @@ function newPrescription() {
       ⚠️ This app is for educational purposes only. Not for medical decisions.
     </div>
 
-    <main class="app-main">
-      <PrescriptionForm v-if="showForm" @submit="handleFormSubmit" />
+    <!-- Tab Navigation -->
+    <nav
+      class="tab-navigation"
+      role="navigation"
+      aria-label="Main navigation"
+      @keydown="handleTabKeydown"
+    >
+      <button
+        :class="{ active: activeTab === 'form' }"
+        :aria-current="activeTab === 'form' ? 'page' : undefined"
+        @click="switchView('form')"
+      >
+        Add New Prescription
+      </button>
+      <button
+        :class="{ active: activeTab === 'list' }"
+        :aria-current="activeTab === 'list' ? 'page' : undefined"
+        @click="switchView('list')"
+      >
+        Saved Prescriptions
+      </button>
+      <button
+        v-if="comparePrescriptions.length > 0"
+        :class="{ active: activeTab === 'graph' }"
+        :aria-current="activeTab === 'graph' ? 'page' : undefined"
+        @click="switchView('graph')"
+      >
+        Graph ({{ comparePrescriptions.length }})
+      </button>
+    </nav>
 
-      <div v-if="showGraph" class="graph-section">
+    <main class="app-main">
+      <div v-if="showForm" ref="formRef">
+        <PrescriptionForm @submit="handleFormSubmit" />
+      </div>
+
+      <div v-if="showList" class="list-section" ref="listContainerRef">
+        <h2>Saved Prescriptions ({{ savedPrescriptions.length }})</h2>
+        <p v-if="savedPrescriptions.length === 0" class="empty-state">
+          No prescriptions saved yet. Create one above to get started.
+        </p>
+      </div>
+
+      <div v-if="showGraph" class="graph-section" ref="graphContainerRef" role="region" aria-label="Graph visualization" tabindex="-1">
         <GraphViewer
           :datasets="graphDatasets"
           :start-hours="startHours"

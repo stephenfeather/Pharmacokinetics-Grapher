@@ -1,0 +1,464 @@
+import { describe, it, expect, beforeEach } from 'vitest'
+import { mount, flushPromises, VueWrapper } from '@vue/test-utils'
+import App from '@/App.vue'
+import type { Prescription } from '@/core/models/prescription'
+
+// Mock localStorage to avoid side effects
+const mockLocalStorage = (() => {
+  let store: Record<string, string> = {}
+  return {
+    getItem: (key: string) => store[key] || null,
+    setItem: (key: string, value: string) => {
+      store[key] = value.toString()
+    },
+    removeItem: (key: string) => {
+      delete store[key]
+    },
+    clear: () => {
+      store = {}
+    },
+  }
+})()
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+global.localStorage = mockLocalStorage as any
+
+// Helper to access component state
+interface AppComponentState {
+  currentPrescription: Prescription | null
+  savedPrescriptions: Prescription[]
+  showForm: boolean
+  showGraph: boolean
+  showList: boolean
+  comparePrescriptions: Prescription[]
+  activeTab: 'form' | 'list' | 'graph'
+  startHours: number
+  endHours: number
+  switchView: (view: 'form' | 'list' | 'graph') => void
+  handleFormSubmit: (rx: Prescription) => void
+  saveCurrentPrescription: () => void
+  newPrescription: () => void
+  handleTabKeydown: (event: KeyboardEvent) => void
+}
+
+function getComponentState(wrapper: VueWrapper): AppComponentState {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return wrapper.vm as any as AppComponentState
+}
+
+describe('App.vue - Phase 1: Tab Navigation and State Management', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  describe('Tab Navigation - Initial State', () => {
+    it('renders two tabs initially: "Add New" and "Saved Prescriptions"', () => {
+      const wrapper = mount(App)
+      const tabs = wrapper.findAll('nav[role="navigation"] button')
+      expect(tabs.length).toBe(2)
+      expect(tabs[0]?.text()).toContain('Add New')
+      expect(tabs[1]?.text()).toContain('Saved')
+    })
+
+    it('sets active tab to "form" initially', () => {
+      const wrapper = mount(App)
+      const firstTab = wrapper.find('nav[role="navigation"] button')
+      expect(firstTab.exists()).toBe(true)
+      expect(firstTab.attributes('aria-current')).toBe('page')
+    })
+
+    it('shows form section when activeTab is "form"', () => {
+      const wrapper = mount(App)
+      expect(wrapper.find('[v-if*="showForm"]').exists() || wrapper.findComponent({ name: 'PrescriptionForm' }).exists()).toBe(true)
+    })
+
+    it('hides list and graph initially', () => {
+      const wrapper = mount(App)
+      const listSection = wrapper.find('.list-section')
+      const graphSection = wrapper.find('.graph-section')
+      expect(listSection.exists()).toBe(false)
+      expect(graphSection.exists()).toBe(false)
+    })
+  })
+
+  describe('Graph Tab Visibility', () => {
+    it('does not render graph tab when comparePrescriptions is empty', () => {
+      const wrapper = mount(App)
+      const tabs = wrapper.findAll('nav[role="navigation"] button')
+      const graphTab = tabs.find((tab) => tab.text().includes('Graph'))
+      expect(graphTab).toBeUndefined()
+    })
+
+    it('renders graph tab when comparePrescriptions has items', async () => {
+      const wrapper = mount(App)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'bid',
+        times: ['09:00', '21:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      const vm = getComponentState(wrapper)
+      vm.comparePrescriptions = [prescription]
+      await flushPromises()
+
+      const tabs = wrapper.findAll('nav[role="navigation"] button')
+      const graphTab = tabs.find((tab) => tab.text().includes('Graph'))
+      expect(graphTab).toBeDefined()
+    })
+
+    it('shows prescription count in graph tab label', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'bid',
+        times: ['09:00', '21:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.comparePrescriptions = [prescription]
+      await flushPromises()
+
+      const tabs = wrapper.findAll('nav[role="navigation"] button')
+      const graphTab = tabs.find((tab) => tab.text().includes('Graph'))
+      expect(graphTab?.text()).toContain('Graph')
+      expect(graphTab?.text()).toContain('1')
+    })
+  })
+
+  describe('Tab Click Switching', () => {
+    it('switches to "list" view when list tab clicked', async () => {
+      const wrapper = mount(App)
+      const tabs = wrapper.findAll('nav[role="navigation"] button')
+      const listTab = tabs[1]
+
+      expect(listTab).toBeDefined()
+      await listTab!.trigger('click')
+      await flushPromises()
+
+      const vm = getComponentState(wrapper)
+      expect(vm.activeTab).toBe('list')
+      expect(vm.showList).toBe(true)
+      expect(vm.showForm).toBe(false)
+    })
+
+    it('switches to "form" view when form tab clicked', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      // Start in list view
+      vm.showList = true
+      vm.showForm = false
+      vm.activeTab = 'list'
+      await flushPromises()
+
+      const tabs = wrapper.findAll('nav[role="navigation"] button')
+      const formTab = tabs[0]
+
+      expect(formTab).toBeDefined()
+      await formTab!.trigger('click')
+      await flushPromises()
+
+      const updatedVm = getComponentState(wrapper)
+      expect(updatedVm.activeTab).toBe('form')
+      expect(updatedVm.showForm).toBe(true)
+      expect(updatedVm.showList).toBe(false)
+    })
+
+    it('switches to "graph" view when graph tab clicked', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'bid',
+        times: ['09:00', '21:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.comparePrescriptions = [prescription]
+      await flushPromises()
+
+      const tabs = wrapper.findAll('nav[role="navigation"] button')
+      const graphTab = tabs.find((tab) => tab.text().includes('Graph'))
+
+      expect(graphTab).toBeDefined()
+      await graphTab!.trigger('click')
+      await flushPromises()
+
+      const updatedVm = getComponentState(wrapper)
+      expect(updatedVm.activeTab).toBe('graph')
+      expect(updatedVm.showGraph).toBe(true)
+      expect(updatedVm.showForm).toBe(false)
+      expect(updatedVm.showList).toBe(false)
+    })
+  })
+
+  describe('aria-current Attribute on Active Tab', () => {
+    it('sets aria-current="page" on active tab only', async () => {
+      const wrapper = mount(App)
+      const tabs = wrapper.findAll('nav[role="navigation"] button')
+
+      // Form tab should be active initially
+      expect(tabs[0]?.attributes('aria-current')).toBe('page')
+      expect(tabs[1]?.attributes('aria-current')).toBeUndefined()
+
+      // Switch to list
+      await tabs[1]?.trigger('click')
+      await flushPromises()
+
+      const updatedTabs = wrapper.findAll('nav[role="navigation"] button')
+      expect(updatedTabs[0]?.attributes('aria-current')).toBeUndefined()
+      expect(updatedTabs[1]?.attributes('aria-current')).toBe('page')
+    })
+  })
+
+  describe('Existing Functionality - Regressions', () => {
+    it('form submit still switches to graph view', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'bid',
+        times: ['09:00', '21:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      // Simulate form submit
+      vm.handleFormSubmit(prescription)
+      await flushPromises()
+
+      expect(vm.activeTab).toBe('graph')
+      expect(vm.showGraph).toBe(true)
+      expect(vm.showForm).toBe(false)
+    })
+
+    it('new prescription button clears form and shows it', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      // Start in graph view
+      vm.showGraph = true
+      vm.showForm = false
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vm.currentPrescription = { name: 'Test' } as any
+      vm.activeTab = 'graph'
+      await flushPromises()
+
+      vm.newPrescription()
+      await flushPromises()
+
+      expect(vm.activeTab).toBe('form')
+      expect(vm.showForm).toBe(true)
+      expect(vm.showGraph).toBe(false)
+      expect(vm.currentPrescription).toBeNull()
+    })
+
+    it('graph renders when showGraph is true', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'bid',
+        times: ['09:00', '21:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.currentPrescription = prescription
+      vm.switchView('graph')
+      await flushPromises()
+
+      const graphViewer = wrapper.findComponent({ name: 'GraphViewer' })
+      expect(graphViewer.exists()).toBe(true)
+    })
+  })
+
+  describe('View State Consistency', () => {
+    it('switches to form view', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'bid',
+        times: ['09:00', '21:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.comparePrescriptions = [prescription]
+      await flushPromises()
+
+      const tabs = wrapper.findAll('nav[role="navigation"] button')
+      const formTab = tabs.find((tab) => tab.text().includes('Add New'))
+
+      expect(formTab).toBeDefined()
+      await formTab!.trigger('click')
+      await flushPromises()
+
+      const currentVm = getComponentState(wrapper)
+      expect(currentVm.activeTab).toBe('form')
+      expect(currentVm.showForm).toBe(true)
+      expect(currentVm.showList).toBe(false)
+      expect(currentVm.showGraph).toBe(false)
+    })
+
+    it('switches to list view', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'bid',
+        times: ['09:00', '21:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.comparePrescriptions = [prescription]
+      await flushPromises()
+
+      const tabs = wrapper.findAll('nav[role="navigation"] button')
+      const listTab = tabs.find((tab) => tab.text().includes('Saved'))
+
+      expect(listTab).toBeDefined()
+      await listTab!.trigger('click')
+      await flushPromises()
+
+      const currentVm = getComponentState(wrapper)
+      expect(currentVm.activeTab).toBe('list')
+      expect(currentVm.showForm).toBe(false)
+      expect(currentVm.showList).toBe(true)
+      expect(currentVm.showGraph).toBe(false)
+    })
+
+    it('switches to graph view', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'bid',
+        times: ['09:00', '21:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.comparePrescriptions = [prescription]
+      await flushPromises()
+
+      const tabs = wrapper.findAll('nav[role="navigation"] button')
+      const graphTab = tabs.find((tab) => tab.text().includes('Graph'))
+
+      expect(graphTab).toBeDefined()
+      await graphTab!.trigger('click')
+      await flushPromises()
+
+      const currentVm = getComponentState(wrapper)
+      expect(currentVm.activeTab).toBe('graph')
+      expect(currentVm.showForm).toBe(false)
+      expect(currentVm.showList).toBe(false)
+      expect(currentVm.showGraph).toBe(true)
+    })
+  })
+
+  describe('State Management - comparePrescriptions', () => {
+    it('initializes comparePrescriptions as empty array', () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+      expect(vm.comparePrescriptions).toEqual([])
+    })
+
+    it('allows adding prescriptions to comparePrescriptions', () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'bid',
+        times: ['09:00', '21:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.comparePrescriptions = [prescription]
+      expect(vm.comparePrescriptions.length).toBe(1)
+      expect(vm.comparePrescriptions[0]?.name).toBe('Test Drug')
+    })
+
+    it('allows replacing comparePrescriptions with multiple items', () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const rx1: Prescription = {
+        name: 'Drug 1',
+        frequency: 'bid',
+        times: ['09:00', '21:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      const rx2: Prescription = {
+        name: 'Drug 2',
+        frequency: 'tid',
+        times: ['08:00', '14:00', '20:00'],
+        dose: 250,
+        halfLife: 8,
+        peak: 1.5,
+        uptake: 1,
+      }
+
+      vm.comparePrescriptions = [rx1, rx2]
+      expect(vm.comparePrescriptions.length).toBe(2)
+    })
+  })
+
+  describe('Tab Navigation Accessibility', () => {
+    it('tab navigation has role="navigation" and aria-label', () => {
+      const wrapper = mount(App)
+      const nav = wrapper.find('nav[role="navigation"]')
+      expect(nav.exists()).toBe(true)
+      expect(nav.attributes('aria-label')).toBe('Main navigation')
+    })
+
+    it('each tab button is keyboard accessible', async () => {
+      const wrapper = mount(App)
+      const tabs = wrapper.findAll('nav[role="navigation"] button')
+
+      for (const tab of tabs) {
+        expect(tab.element.tagName).toBe('BUTTON')
+        expect(tab.attributes('type')).not.toBe('submit') // buttons should be interactive
+      }
+    })
+  })
+})

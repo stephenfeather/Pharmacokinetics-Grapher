@@ -1,0 +1,60 @@
+task: "Task 3: Single-Dose PK Calculator"
+status: COMPLETE
+completed: "2026-02-14T04:35:00Z"
+agent: kraken
+
+files_created:
+  - path: src/core/calculations/pkCalculator.ts
+    description: "Core PK calculation engine with calculateConcentration() and getPeakTime()"
+    lines: 107
+  - path: src/core/calculations/__tests__/pkCalculator.spec.ts
+    description: "58 test cases across 7 describe blocks"
+    lines: 450
+
+files_modified:
+  - path: src/core/calculations/index.ts
+    description: "Barrel exports for calculateConcentration, getPeakTime, ABSORPTION_CONSTANT"
+
+exports_available:
+  calculateConcentration:
+    signature: "(time: number, dose: number, halfLife: number, uptake: number) => number"
+    description: "Raw concentration at time t for a single dose (not normalized)"
+  getPeakTime:
+    signature: "(halfLife: number, uptake: number) => number"
+    description: "Time of peak concentration (Tmax) in hours"
+  ABSORPTION_CONSTANT:
+    type: "number"
+    value: "Math.LN2 (0.6931471805599453)"
+
+test_results:
+  new_tests: 58
+  total_tests: 168
+  all_passing: true
+
+quality_gates:
+  type_check: pass
+  lint: pass
+  build: pass
+  tests: pass
+
+golden_values_verified:
+  - fixture: SINGLE_DOSE_FIXTURE
+    tmax: 4.0
+    cmax: 314.980262
+  - fixture: IBUPROFEN_FIXTURE
+    tmax: 1.333333
+    cmax: 251.984210
+  - fixture: KA_APPROX_KE_FIXTURE
+    tmax: 5.770780
+    cmax: 91.969860
+  - fixture: MAX_BOUNDARY_FIXTURE
+    tmax: 88.584749
+    cmax: 7742.636827
+
+ready_for_task_4:
+  description: "Multi-dose accumulation (accumulateDoses)"
+  dependencies_met:
+    - calculateConcentration returns raw values (suitable for summing across doses)
+    - getPeakTime available for peak detection
+    - KA_KE_TOLERANCE shared with models
+    - All 6 fixtures verified

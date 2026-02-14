@@ -5,4 +5,4 @@ export {
   ABSORPTION_CONSTANT,
 } from './pkCalculator'
 
-export { accumulateDoses, getGraphData } from './multiDose'
+export { accumulateDoses, getGraphData, getLastDoseTime, expandDoseTimes } from './multiDose'

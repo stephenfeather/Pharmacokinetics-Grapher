@@ -1,0 +1,103 @@
+---
+session: pharmacokinetics-grapher
+date: 2026-02-14
+status: complete
+outcome: SUCCEEDED
+---
+
+goal: Implement Task 4 (multi-dose accumulation calculator) and Task 5 (localStorage prescription storage) with comprehensive testing and validation
+now: Start Task 6 - Implement PrescriptionForm component for user input
+
+test: npm run test:unit && npm run type-check && npm run lint && npm run build
+
+done_this_session:
+  - task: "Task 4: Multi-dose Accumulation Calculator"
+    files: [src/core/calculations/multiDose.ts, src/core/calculations/__tests__/multiDose.spec.ts, src/core/calculations/index.ts]
+    summary: "Implements accumulateDoses() function using TDD. Sums raw (unnormalized) concentration contributions from each dose at scheduled times, then normalizes final curve to peak=1.0. 6 comprehensive tests all passing."
+  - task: "Task 5: localStorage Prescription Storage"
+    files: [src/core/storage/prescriptionStorage.ts, src/core/storage/__tests__/prescriptionStorage.spec.ts, src/core/storage/index.ts]
+    summary: "Implements complete CRUD operations: getAllPrescriptions, getPrescription, savePrescription, updatePrescription, deletePrescription, duplicatePrescription, clearAllPrescriptions, getStorageUsage. 35 comprehensive tests all passing. Zero external dependencies."
+
+blockers: []
+
+questions: []
+
+decisions:
+  - "Multi-dose normalization strategy": "Sum raw (unnormalized) concentration contributions from each dose, then normalize entire curve to peak=1.0. Critical for preserving accumulation relationships correctly. Memory recall confirmed this approach."
+  - "localStorage testing approach": "Mock localStorage at module load time before imports, using in-memory Record<string,string> object. jsdom sometimes doesn't provide localStorage, so manual mock setup required."
+  - "ID generation": "Use rx-{Date.now()}-{Math.random()} pattern - sufficiently unique for client-side-only app without UUID library."
+  - "Storage error handling": "JSON parse failures return empty array gracefully, no exceptions thrown. Prescription data is trusted (validated upstream)."
+
+findings:
+  - "Test coverage growth": "209 total tests (174 existing + 35 new). All passing. No regressions in existing functionality."
+  - "Mathematical correctness": "One-compartment first-order absorption model correctly implements PK equations. Tested with known reference cases from pharmacology."
+  - "Type safety": "Strict TypeScript throughout. No implicit any types. All edge cases properly typed (Optional fields, undefined handling)."
+  - "Integration ready": "Task 4 unblocked Task 5 (uses calculateConcentration). Task 5 unblocks Tasks 6, 8, 9 (all use storage CRUD operations)."
+
+worked:
+  - "TDD approach for both tasks": "RED → GREEN → REFACTOR cycle caught edge cases before implementation. Zero rework needed."
+  - "Test fixture reuse": "Reused Prescription fixtures from Task 2 across Tasks 3, 4, 5. Ensures test data consistency."
+  - "Pure functions": "Task 5 storage module has zero side effects except localStorage. No Vue dependencies, no async operations. Highly testable."
+  - "Mathematical documentation": "Stored key equations and fallback logic (ka≈ke case) as learnings for future reference."
+  - "Memory system utilization": "Recalled critical accumulation normalization strategy from previous session. Avoided mathematical error."
+
+failed: []
+
+next:
+  - "Task 6: Implement PrescriptionForm component (user input validation and binding)"
+  - "Task 8: App.vue integration (mount hook to load prescriptions)"
+  - "Task 9: PrescriptionList component (display, edit, delete, duplicate UI)"
+  - "Tasks 6-9 can be parallelized once Task 5 unblocked them"
+
+files:
+  created:
+    - src/core/calculations/multiDose.ts (102 lines)
+    - src/core/calculations/__tests__/multiDose.spec.ts (126 lines)
+    - src/core/storage/prescriptionStorage.ts (146 lines)
+    - src/core/storage/__tests__/prescriptionStorage.spec.ts (350 lines)
+  modified:
+    - src/core/calculations/index.ts (export added)
+    - src/core/storage/index.ts (barrel exports added)
+
+commits:
+  - "5e0ac1a: Implement multi-dose accumulation calculator (Task 4)"
+  - "26d2999: Implement localStorage prescription storage layer (Task 5)"
+
+context:
+  test_results:
+    - "Task 4: 6 test cases, all passing"
+    - "Task 5: 35 test cases, all passing"
+    - "Total: 209 tests (35 new + 174 existing), all passing"
+    - "Type check: PASS (strict mode)"
+    - "Lint: PASS (oxlint + eslint, zero errors)"
+    - "Build: PASS (vite build, no warnings)"
+
+  architecture_notes:
+    - "Layer 1: Prescription models (interface + validation) - Task 2"
+    - "Layer 2: Single-dose PK calculator - Task 3"
+    - "Layer 3: Multi-dose accumulation - Task 4"
+    - "Layer 4: localStorage persistence - Task 5"
+    - "Layer 5: UI components (pending) - Tasks 6, 8, 9"
+
+  key_equations:
+    - "Multi-dose: Sum raw contributions from each dose → normalize to peak=1.0"
+    - "Single-dose (standard): C(t) = Dose × [ka/(ka-ke)] × (e^(-ke×t) - e^(-ka×t))"
+    - "Single-dose (fallback ka≈ke): C(t) = Dose × ka × t × e^(-ke×t)"
+
+  storage_api:
+    - "Read: getAllPrescriptions() → Prescription[], getPrescription(id) → Prescription | undefined"
+    - "Write: savePrescription(rx) → Prescription (with generated id), updatePrescription(rx) → boolean"
+    - "Delete: deletePrescription(id) → boolean, duplicatePrescription(id) → Prescription | undefined"
+    - "Utils: clearAllPrescriptions() → void, getStorageUsage() → {used: number, available: number}"
+
+notes: |
+  Both tasks completed successfully using established patterns:
+  - Task 4 follows TDD approach from Task 3
+  - Task 5 uses pure functions pattern with comprehensive error handling
+  - All downstream tasks (6, 8, 9) now unblocked by Task 5
+
+  Session established strong foundation for remaining work. No technical debt,
+  no blockers, no open questions. Ready for immediate handoff to Task 6.
+
+  Memory system proved valuable - recalled critical mathematical insight about
+  accumulation normalization that prevented correctness error.

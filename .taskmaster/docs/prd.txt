@@ -1,0 +1,1033 @@
+# Pharmacokinetics Grapher - Product Requirements Document
+
+## Overview
+
+**Pharmacokinetics Grapher** is a Vue 3 + TypeScript web application that visualizes medication levels over time using scientific pharmacokinetic models. Users input prescription details (drug name, dose, frequency, half-life, and absorption time) and the app generates line graphs showing peak and trough concentration patterns across a specified timeframe.
+
+### Problem Statement
+Patients and caregivers need an educational tool to understand medication concentration patterns—when drugs reach peak levels, how they decline over time, and how accumulation occurs with repeated dosing. Current resources often lack visual representation of these patterns.
+
+### Target Users
+- Patients interested in understanding their medication behavior
+- Caregivers managing medication schedules
+- Healthcare students learning pharmacokinetics concepts
+- Educators teaching drug absorption and elimination
+
+### Value Proposition
+Visualize real-world medication concentration curves based on pharmacy insert data (half-life, absorption time) without requiring complex medical calculations. The app makes abstract pharmacokinetic concepts tangible through interactive graphs.
+
+### Key Characteristics
+- **Frontend-only architecture** (no backend API required)
+- **Quality-focused development** (testing, linting, type safety)
+- **Single-page application** with local browser storage (localStorage)
+- **Accurate scientific visualization** using Chart.js for reliable PK curve rendering
+- **Educational disclaimer** prominent throughout (not for medical dosing decisions)
+- **Normalized relative concentrations** (0–1 scale) to prevent medical misuse
+
+
+## Core Features
+
+### 1. Prescription Input Form
+**What it does**: Allows users to enter prescription details from their medication's pharmacy insert.
+
+**Why it's important**: Users need an intuitive way to input PK parameters without understanding complex equations. Form validation prevents errors in calculations.
+
+**How it works**:
+- User enters: drug name, dose, dosing frequency (bid/tid/qid/q6h/q8h/q12h/once/custom), dosing times (HH:MM format)
+- User provides PK parameters from pharmacy insert: half-life (hours), peak time/Tmax (hours), absorption time/uptake (hours)
+- Form validates all inputs against defined rules (see Validation Rules section)
+- Number of dosing times must match frequency label (e.g., "bid" requires exactly 2 times)
+- Optional metabolite half-life field for future enhancements
+
+### 2. Pharmacokinetic Calculations
+**What it does**: Computes drug concentration over time using one-compartment first-order absorption/elimination model.
+
+**Why it's important**: Scientific accuracy is the foundation of the app's educational value. Wrong calculations mislead users.
+
+**How it works**:
+- Single-dose calculator: Computes concentration curve for one dose using the one-compartment equation
+- Multi-dose accumulator: Sums dose contributions at each time point, accounting for repeated dosing and steady-state patterns
+- Normalization: Final curve normalized to peak = 1.0 (all outputs on 0–1 scale)
+- Edge case handling: Special fallback formula when absorption ≈ elimination (ka ≈ ke)
+- Pure functions (no UI dependencies) allow reuse and easy testing
+
+### 3. Graph Visualization
+**What it does**: Renders interactive line charts showing concentration curves over time.
+
+**Why it's important**: Visual representation makes patterns intuitive; users instantly see peak/trough timing without reading numbers.
+
+**How it works**:
+- Chart.js integration for accurate scientific visualization
+- X-axis: Time in hours with clear labels
+- Y-axis: Relative concentration (0–1 scale) with peak reference
+- Multi-drug overlay: Each prescription displays as distinct line with unique color
+- Legend shows drug name and dosing frequency
+- Customizable timeframe (user specifies start/end simulation times)
+- Optional log scale for very long timeframes (weeks/months)
+
+### 4. Prescription Storage & Retrieval
+**What it does**: Persists prescriptions to browser localStorage for future access.
+
+**Why it's important**: Users don't want to re-enter prescriptions every session. Persistent storage enables workflow (save → modify → compare).
+
+**How it works**:
+- localStorage wrapper abstracts browser storage details
+- Prescriptions stored as JSON with unique IDs
+- Future migration path to IndexedDB if storage limits approached (5-10MB per domain)
+
+### 5. Prescription Management (CRUD)
+**What it does**: Allows users to manage saved prescriptions—view, edit, delete, duplicate, and compare.
+
+**Why it's important**: Users need full control over their prescription library; easy duplication enables "what-if" analysis.
+
+**How it works**:
+- **List view**: Shows all saved prescriptions with edit/delete/duplicate actions
+- **Edit**: Modify any prescription field and regenerate graph
+- **Delete**: Remove prescriptions with confirmation
+- **Duplicate**: Clone prescription for variant exploration
+- **Compare mode**: Multi-select prescriptions to overlay on same graph
+
+
+## User Experience
+
+### Primary User Personas
+
+**Persona 1: Health-Conscious Patient**
+- Goal: Understand medication timing (when to take next dose, peak concentration)
+- Workflow: Enter prescription → View graph → Save for reference
+- Pain points: Pharmacy inserts are dense and hard to visualize
+
+**Persona 2: Medication Manager (Caregiver)**
+- Goal: Visualize medication schedules for multiple drugs, check for overlapping peaks
+- Workflow: Enter multiple prescriptions → Compare graphs → Save plan
+- Pain points: Managing complex regimens across multiple drugs without visual aid
+
+**Persona 3: Healthcare Student/Educator**
+- Goal: Teach or learn pharmacokinetics concepts (absorption, elimination, accumulation)
+- Workflow: Adjust parameters → See curve change in real-time → Save examples
+- Pain points: Textbook examples are static; interactive visualization needed
+
+### Key User Flows
+
+**Flow 1: First-Time User (Add Single Prescription)**
+1. Open app → See welcome/disclaimer
+2. Click "Add Prescription"
+3. Enter drug name (e.g., "Ibuprofen")
+4. Select frequency (e.g., "q6h" = every 6 hours)
+5. Input times (e.g., 09:00, 15:00, 21:00, 03:00)
+6. Enter dose from prescription (e.g., 400 mg)
+7. Look up on pharmacy insert: half-life (5 hr), peak time (1.5 hr), uptake (1 hr)
+8. Form validates all entries
+9. Click "Generate Graph"
+10. See concentration curve with clear peak/trough markers
+11. Option to save prescription to browser storage
+12. Can modify times and regenerate graph immediately
+
+**Flow 2: Multi-Drug Comparison**
+1. User has 2+ prescriptions saved
+2. Select "Compare Mode"
+3. Check multiple prescriptions
+4. Click "Overlay"
+5. See all drugs on same timeline with distinct colors
+6. Can identify when peaks align (potential interaction education)
+7. Save comparison for future reference
+
+**Flow 3: Explore Parameter Impact (Educator)**
+1. Add prescription with typical parameters
+2. Modify half-life slider (or input) → Graph updates
+3. See how longer half-life affects curve shape
+4. Try different dosing frequencies → Compare accumulation
+5. Screenshot graph for teaching materials
+
+### UI/UX Considerations
+
+- **Clear visual hierarchy**: Form inputs prominent, graph takes main space
+- **Educational disclaimers**: Prominent on every screen ("Educational purposes only", "Not for medical decisions")
+- **Intuitive controls**: Frequency dropdown with explanations (bid = twice daily), time picker with validation feedback
+- **Real-time validation feedback**: "Times must match frequency" error only shows when needed
+- **Responsive design**: Works on desktop (primary) and tablet (secondary) — mobile support deferred
+- **Color consistency**: Each prescription has assigned color, consistent across views
+- **Axis labels**: Always show units and scale for clarity (hours, relative concentration)
+- **Accessibility**: High contrast, keyboard navigation, ARIA labels for chart elements
+
+## Technical Architecture
+
+### Tech Stack
+- **Framework**: Vue 3 (Composition API recommended for modern patterns)
+- **Language**: TypeScript (strict mode for type safety)
+- **Build Tool**: Vite (fast dev server, optimized production builds)
+- **Charting**: Chart.js (lightweight ~30KB, proven for scientific data)
+- **Testing**: Vitest + Vue Test Utils (fast unit/component tests)
+- **Linting**: ESLint + Prettier (code consistency)
+- **Package Manager**: npm or pnpm
+
+### System Components
+
+**1. Core Domain Layer** (`src/core/`)
+- **Models** (`models/prescription.ts`): Type definitions
+  - `Prescription` interface: All user input fields
+  - `TimeSeriesPoint`: Single time/concentration pair
+  - `GraphDataset`: Formatted data for charting
+  - Validation rules and constraints
+- **Calculations** (`calculations/`)
+  - `pkCalculator.ts`: Pure functions for PK math
+    - `calculateConcentration()`: Single-dose kinetics
+    - `accumulateDoses()`: Multi-dose accumulation
+    - `getGraphData()`: Format for charting
+  - `concentrationCurve.ts`: Curve generation for single dose
+  - `multiDoseProfile.ts`: Accumulation logic
+- **Storage** (`storage/prescriptionStorage.ts`): localStorage wrapper
+  - CRUD operations for prescriptions
+  - Abstraction layer for future IndexedDB migration
+
+**2. UI Layer** (`src/components/`)
+- **PrescriptionForm.vue**: Input form with validation
+  - Drug name text input
+  - Frequency selector (dropdown)
+  - Time picker (HH:MM inputs)
+  - Numeric inputs for dose, half-life, peak, uptake
+  - Form validation with error display
+  - Submit triggers calculation
+- **GraphViewer.vue**: Chart visualization
+  - Chart.js integration
+  - Multi-prescription overlay
+  - Custom timeframe selector
+  - Export options (future enhancement)
+- **PrescriptionList.vue**: Prescription management
+  - List of saved prescriptions
+  - Edit/Delete/Duplicate/Compare actions
+  - Quick preview thumbnails
+
+**3. Application Layer**
+- **App.vue**: Main component orchestrating state
+  - Routes between views (list, form, graph)
+  - State management coordination
+- **main.ts**: Entry point, Vue setup
+
+### Data Models
+
+```typescript
+type FrequencyLabel = 'once' | 'bid' | 'tid' | 'qid' | 'q6h' | 'q8h' | 'q12h' | 'custom';
+
+interface Prescription {
+  id?: string               // Unique identifier for storage
+  name: string              // Drug name
+  frequency: FrequencyLabel // Dosing frequency
+  times: string[]          // Dosing times as HH:MM
+  dose: number             // Amount per dose (mg, units, etc.)
+  halfLife: number         // Half-life in hours
+  metaboliteLife?: number  // Metabolite half-life (optional, informational)
+  peak: number             // Tmax in hours (stored for documentation)
+  uptake: number           // Absorption time in hours
+}
+
+interface TimeSeriesPoint {
+  time: number             // Time in hours from start
+  concentration: number    // Normalized concentration (0–1 scale)
+}
+
+interface GraphDataset {
+  label: string            // Prescription name for legend
+  data: TimeSeriesPoint[]  // Array of time/concentration points
+  color?: string           // Optional color for chart
+}
+```
+
+### Validation Rules
+
+**Field-level rules**:
+- `name`: 1-100 characters, required
+- `dose`: 0.001 – 10,000 (units), required
+- `halfLife`: 0.1 – 240 hours (very short to very long acting), required
+- `peak` (Tmax): 0.1 – 48 hours, required
+- `uptake`: 0.1 – 24 hours, required
+- `metaboliteLife`: optional, 0.1 – 1,000 hours if provided
+- `times`: HH:MM format, count must match frequency, required
+
+**Logical constraints**:
+- Number of dosing times must exactly match frequency (bid=2, tid=3, qid=4, q6h=4, q8h=3, q12h=2, once=1)
+- All times must be valid 24-hour format (00:00 to 23:59)
+- **Warn if uptake ≥ halfLife**: Indicates unusual absorption kinetics; allow but alert user
+- **Soft validation for ka ≈ ke**: If |uptake – halfLife| < 0.001 (absorption ≈ elimination), trigger fallback formula automatically
+
+**Validation location**: `src/core/models/prescription.ts::validatePrescription()`
+
+### Pharmacokinetic Model
+
+**Model Type**: One-compartment first-order absorption, first-order elimination
+
+**Single Dose Equation**:
+```
+C(t) = Dose × [ka/(ka - ke)] × (e^(-ke×t) - e^(-ka×t))
+```
+
+Where:
+- `ka` = absorption rate constant = 0.693 / uptake (hr⁻¹)
+- `ke` = elimination rate constant = 0.693 / halfLife (hr⁻¹)
+- `t` = time since dose (hours)
+- `e` = mathematical constant (~2.71828)
+- Outputs are relative concentrations (Vd normalized out)
+
+**Multi-Dose Accumulation**:
+1. For each scheduled dose, calculate contribution at each time point (shifted by dosing interval)
+2. Sum all dose contributions
+3. Normalize final total curve to peak = 1.0
+
+**Edge Case: ka ≈ ke** (uptake ≈ halfLife)
+When `|ka - ke| < 0.001`, denominator becomes unstable. Use fallback:
+```
+C(t) ≈ Dose × ka × t × e^(-ke×t)
+```
+This is the mathematical limit as ka → ke.
+
+**Assumptions**:
+- No drug-drug interactions
+- Linear kinetics (no saturation at high doses)
+- Complete absorption (F = 1.0)
+- Metabolites not active or negligible
+- Uniform drug distribution (one-compartment model adequate for MVP)
+
+### State Management Approach
+
+**Simple approach** (recommended for MVP):
+- Vue `ref` for reactive state
+- `provide/inject` for parent-child component communication
+- No centralized store needed initially
+
+**Scalable approach** (if complexity grows):
+- Migrate to Pinia store for global state
+- Separate concerns: prescriptions, calculations, UI state
+
+Start simple; refactor to Pinia only if component prop drilling becomes unmanageable.
+
+### Time Handling
+
+- **No timezone handling**: App uses local relative time (all times HH:MM in user's local zone)
+- **Day boundaries**: Conceptual only; if dose at 21:00 and simulation ends at 08:00 next day, treat as continuous time
+- **Time resolution**: 15-minute intervals for curve generation
+  - Fine enough for visual accuracy
+  - Efficient for computation (600 points over 10 days)
+  - Can adjust for shorter/longer timeframes
+
+### Chart Library Rationale
+
+**Chart.js chosen over Recharts**:
+- **Size**: Chart.js ~30KB vs Recharts ~100KB
+- **Accuracy**: Chart.js designed for precise scientific visualization
+- **Simplicity**: Simpler API for line charts, less boilerplate
+- **Browser support**: Broad compatibility with older browsers
+- **Medical/scientific use**: Mature and trusted in pharmacology/medical fields
+
+Recharts deferred for post-MVP if heavy interactivity (zoom, pan, animations) becomes critical.
+
+
+## Development Roadmap
+
+### Phase 1: Foundation & Core Calculations (MVP Ground Zero)
+
+**Objective**: Build the scientific core and get to a working calculation layer.
+
+**What to build**:
+- Initialize Vue 3 + TypeScript + Vite project
+- Set up linting (ESLint + Prettier) and testing (Vitest)
+- Implement data models (`src/core/models/prescription.ts`):
+  - `Prescription` interface with all fields
+  - `TimeSeriesPoint` and `GraphDataset` types
+  - `validatePrescription()` function with comprehensive rules
+- Implement calculation engine (`src/core/calculations/`):
+  - `calculateConcentration(time, dose, halfLife, uptake): number` for single dose
+  - Edge case detection and fallback formula for ka ≈ ke
+  - `accumulateDoses(prescription, startDateTime, endDateTime): TimeSeriesPoint[]` for multi-dose
+  - `getGraphData(prescriptions, timeRange): GraphDataset[]` for chart formatting
+- Implement localStorage wrapper (`src/core/storage/prescriptionStorage.ts`):
+  - Save/load prescriptions to browser storage
+  - Basic CRUD operations
+
+**Testing**:
+- Write unit tests for all calculation functions with known-value reference cases
+- Test edge cases: zero dose, extreme half-lives (0.1 to 240 hr), ka ≈ ke
+- Regression test suite: JSON snapshots of reference curves
+
+**Success criteria**:
+- All calculation tests pass with high coverage (>90%)
+- Type checking passes (no TypeScript errors)
+- Validation function catches all invalid inputs
+- Pure functions have no side effects
+
+**Deliverable**: Working calculation layer that can be used by UI (no UI yet)
+
+### Phase 2: Basic UI & First Working Experience (MVP)
+
+**Objective**: Get to a minimal but complete user experience—user can input prescription, see graph, save it.
+
+**What to build**:
+- Implement `PrescriptionForm.vue`:
+  - Text input for drug name
+  - Frequency dropdown (bid/tid/qid/q6h/q8h/q12h/once/custom)
+  - Time picker inputs (HH:MM validation)
+  - Numeric inputs for dose, half-life, peak, uptake
+  - Real-time validation with error messages
+  - Form submission triggers calculation
+- Implement `GraphViewer.vue`:
+  - Chart.js setup with line chart
+  - X-axis: Time in hours
+  - Y-axis: Relative concentration (0–1 scale)
+  - Single prescription rendering (no overlay yet)
+  - Clear axis labels with units
+- Implement minimal `App.vue`:
+  - Routes between form and graph views
+  - Passes data from form to graph
+  - Basic state management (ref + provide/inject)
+- Connect storage: Form submission saves prescription to localStorage
+
+**Testing**:
+- Component tests for form validation
+- Component tests for graph rendering
+- Integration test: form → calculation → graph pipeline
+
+**Success criteria**:
+- User can enter prescription and see graph immediately
+- Form validates all inputs before calculation
+- Graph displays correct shape (peaks at right time, decays at right rate)
+- Prescription saves to localStorage and can be retrieved
+- No console errors or type warnings
+
+**This is the MVP milestone**: Smallest usable product. Everything after this is enhancement.
+
+### Phase 3: Visualization Polish & Multi-Drug Support
+
+**Objective**: Make visualization production-quality and enable comparing multiple drugs.
+
+**What to build**:
+- Enhance `GraphViewer.vue`:
+  - Multi-prescription overlay with distinct colors
+  - Legend showing drug name and frequency
+  - Custom timeframe selector (user specifies start/end hours)
+  - Educational disclaimer display on graph
+  - Proper axis labels and scale handling
+  - Support for log scale on time axis if timeframe > 7 days
+- Add quick preview/thumbnail graphs in list view
+- Implement color assignment system (consistent across sessions)
+- Improve responsive design for tablet viewing
+
+**Testing**:
+- Component tests for multi-drug overlay
+- Visual regression tests (screenshot comparisons for graph shapes)
+- Test extreme timeframes (very short: hours, very long: months)
+
+**Success criteria**:
+- Multiple drugs display distinctly without overlap confusion
+- Legend clearly identifies each drug
+- Time and concentration axes always clearly labeled
+- Educational disclaimers visible without obscuring data
+- Graphs accurate across wide range of input parameters
+
+### Phase 4: Prescription Management & Compare Mode
+
+**Objective**: Full CRUD operations and prescription comparison workflows.
+
+**What to build**:
+- Implement `PrescriptionList.vue`:
+  - List all saved prescriptions from localStorage
+  - Edit action: load prescription into form, modify, save
+  - Delete action: remove with confirmation
+  - Duplicate action: create copy for parameter exploration
+  - Quick preview: show small graph thumbnail for each prescription
+- Implement Compare mode:
+  - Multi-select checkboxes for prescriptions
+  - "Overlay" button triggers multi-drug graph view
+  - Easy way to deselect and try different comparisons
+- Add prescription metadata (creation date, last modified)
+- Implement prescription search/filter (by drug name)
+
+**Testing**:
+- Component tests for CRUD operations
+- Integration tests: save → edit → verify changes
+- Test concurrent edits (user modifies prescription A while viewing B)
+
+**Success criteria**:
+- All CRUD operations work without data corruption
+- Deleted prescriptions fully removed from storage
+- Compare mode makes it easy to overlay and deselect prescriptions
+- No lost data or UI crashes from rapid interactions
+
+### Phase 5: Testing & Polish
+
+**Objective**: High-quality codebase ready for production use.
+
+**What to build**:
+- Complete unit test coverage for all calculation edge cases
+- Component tests for all Vue components (form validation, graph rendering, list operations)
+- Integration tests: form → storage → list → edit → graph pipeline
+- Visual regression test suite (JSON snapshots of curves, screenshot comparisons)
+- Type safety: full TypeScript coverage, no `any` types
+- Performance optimization: lazy render for large lists, chart optimization
+- Accessibility: ARIA labels, keyboard navigation, high contrast
+
+**Testing**:
+- Run full test suite: `npm run test`
+- Type checking: `npm run type-check`
+- Linting: `npm run lint`
+- Manual browser testing: desktop (Chrome, Firefox, Safari), tablet (iPad)
+- Performance: measure graph render time, localStorage access time
+
+**Success criteria**:
+- Test coverage >85% overall, >95% for calculations
+- All type warnings resolved
+- All linting rules pass
+- Manual testing finds no usability issues
+- App loads and renders in <2 seconds
+- Responsive on desktop and tablet
+- No console warnings or errors
+
+### Future Enhancements (Post-MVP)
+
+- **Metabolite visualization**: Two-compartment model for drugs with active metabolites
+- **Drug library**: Pre-filled PK parameters for common medications
+- **Export features**: Download graph as PNG/PDF, print-friendly view
+- **Share prescriptions**: URL sharing of prescription configurations
+- **IndexedDB migration**: Handle >100 prescriptions with better performance
+- **Mobile optimization**: Tablet and mobile-responsive design enhancements
+- **Real-time calculation plots**: Slider to adjust parameters and see graph update live
+- **Drug interaction warnings**: Educational alerts when overlapping peaks occur
+- **Time zone support**: If users want to coordinate across time zones
+
+
+## Logical Dependency Chain
+
+### Critical Path (Must Be Sequenced)
+
+**Stage 1: Foundation (Blocks all UI)**
+1. Data models (`prescription.ts`) - All other code depends on type definitions
+2. PK calculation engine (`pkCalculator.ts`) - Core scientific logic
+3. Calculation tests - Validates math before anything else uses it
+4. localStorage wrapper (`prescriptionStorage.ts`) - Minimal, but needed for Phase 2
+
+**Why this order**:
+- Types must exist before implementation
+- Calculations must be correct before UI trusts them
+- Tests verify correctness before integration
+- Cannot build UI without calculation layer ready
+
+**Stage 2: Parallel UI Components** (can build concurrently after Stage 1)
+- **Track A**: `PrescriptionForm.vue` + form validation
+- **Track B**: `GraphViewer.vue` + Chart.js setup
+- Both use calculation layer from Stage 1
+- Both read/write prescriptions via storage layer
+
+**Why parallel**:
+- Form and graph don't directly depend on each other
+- Form data flows to calculation layer
+- Calculation output flows to graph
+- Can test each in isolation with mock data
+
+**Stage 3: Integration** (after Stage 2)
+- Wire Form → Calculation → Graph → Storage pipeline
+- Implement `App.vue` orchestration
+- Test end-to-end user flow
+- Add educational disclaimers
+
+**Stage 4: Polish** (final)
+- Component tests (form validation, graph rendering)
+- Integration tests (form → graph → storage)
+- Performance optimization
+- Responsive design refinement
+
+### Phasing Strategy: Get to MVP Fast
+
+**At end of Phase 1**: Calculation layer complete, tested, ready for UI
+**At end of Phase 2**: User can add prescription, see graph, save it ← **MILESTONE: MVP achieved**
+**At end of Phase 3**: Multi-drug comparison works smoothly
+**At end of Phase 4**: Full CRUD and management features
+**At end of Phase 5**: Production-quality codebase
+
+**Why this phasing**:
+- Phase 1-2 gets to working product quickly (visible graph)
+- Phases 3-4 add features users asked for (comparison, editing)
+- Phase 5 polish ensures reliability and performance
+- Never get stuck on "perfect" — MVP ships after Phase 2
+
+### No Blocking Dependencies Between Features
+
+After foundation (Phase 1):
+- Form development doesn't block graph development
+- Multi-drug overlay doesn't block single-drug form
+- Comparison mode doesn't block basic CRUD
+- Polish tests don't block features
+
+**But**: All must complete Phase 1 foundation before starting Phase 2.
+
+### Atomic Task Breakdown
+
+Each component can be broken into atomic tasks:
+- PrescriptionForm: input validation → frequency selector → time picker → error display → submit
+- GraphViewer: Chart.js setup → single line → multi-line → legend → responsive
+- PrescriptionList: render → edit → delete → duplicate → compare
+- Storage: save → load → update → delete operations
+
+Tasks can be executed in parallel within each component if needed.
+
+
+## Risks and Mitigations
+
+### Technical Risks
+
+**Risk 1: PK Calculation Accuracy** (HIGH IMPACT, MODERATE PROBABILITY)
+
+**Problem**: Incorrect pharmacokinetic math produces misleading curves → user educational harm.
+
+**Why likely**: PK equations have edge cases (ka ≈ ke), numerical stability issues. Complex to implement correctly on first attempt.
+
+**Mitigation strategy**:
+1. Use known-value reference cases from published pharmacology sources
+   - Find real drug PK curves in pharmacology textbooks
+   - Replicate numerically and validate against published graphs
+2. Implement comprehensive edge case tests:
+   - Zero dose → concentration = 0 everywhere
+   - Very short half-lives (0.1 hr) → rapid decay
+   - Very long half-lives (240 hr) → slow accumulation
+   - ka ≈ ke → use fallback formula, test against limit
+3. Regression test suite:
+   - Store reference curves as JSON snapshots
+   - Any formula change regenerates and diffs against baseline
+   - Prevents silent math errors on refactoring
+4. Educational disclaimers:
+   - "Relative concentrations only, not absolute mg/L"
+   - "For educational purposes; not for medical decisions"
+   - Prominent on every screen
+
+**Verification before shipping**:
+- All calculation tests pass with >95% coverage
+- Curves match published pharmacology examples
+- Edge case tests all pass
+- No TypeScript errors in calculation module
+
+**Owner**: Core calculations phase (Phase 1)
+
+
+**Risk 2: Edge Case Instability (ka ≈ ke)** (MEDIUM IMPACT, HIGH PROBABILITY)
+
+**Problem**: When absorption rate (ka) ≈ elimination rate (ke), the equation denominator (ka - ke) approaches zero → division by near-zero → numerical instability or false infinities.
+
+**Why likely**: Users may input uptake ≈ halfLife intentionally or by chance (valid parameter combinations exist).
+
+**Mitigation strategy**:
+1. Detect when |ka - ke| < 0.001 (within numerical tolerance)
+2. Switch to fallback formula: `C(t) ≈ Dose × ka × t × e^(-ke×t)`
+   - This is the mathematical limit as ka → ke
+   - Avoids division-by-near-zero
+   - Well-defined and physically meaningful
+3. Warn user: "Absorption time ≈ half-life (unusual but allowed; using special calculation)"
+4. Test fallback formula:
+   - Compare limit formula output to standard formula as ka → ke
+   - Verify smooth transition at threshold
+   - Check edge cases (t=0, t→∞)
+
+**Verification before shipping**:
+- Detection logic correctly identifies ka ≈ ke cases
+- Fallback formula produces sensible curves
+- Warning displays to user clearly
+- Transition from standard to fallback is mathematically smooth
+
+**Owner**: PK calculation implementation (Phase 1)
+
+
+**Risk 3: Chart Rendering Performance** (LOW IMPACT, LOW PROBABILITY)
+
+**Problem**: Large datasets (weeks/months timeframe at 15-min intervals) may slow Chart.js rendering or cause jank.
+
+**Mitigation strategy**:
+1. Use reasonable time intervals:
+   - 15-minute intervals for up to ~2 weeks of simulation (reasonable)
+   - 30-minute intervals for 2-4 weeks (still good detail)
+   - Hourly intervals for >1 month (sufficient for pattern visualization)
+2. Lazy render multiple drugs:
+   - Only re-render chart when user adds/removes prescription
+   - Don't re-render on every parameter tweak (debounce updates)
+3. Test performance:
+   - Measure render time for 100-point curves (should be <100ms)
+   - Test with 3-5 overlapping drugs
+   - Profile in browser DevTools (Performance tab)
+4. Optimize if needed:
+   - Reduce dataset size (down-sample after peak)
+   - Use canvas rendering instead of SVG if available
+
+**Verification before shipping**:
+- Single prescription graph renders in <100ms
+- Multi-drug graph (5 drugs) renders in <500ms
+- No frame drops on interactions (smooth hover, tooltip display)
+- Works on mid-range mobile device without lag
+
+**Owner**: Graph visualization phase (Phase 3)
+
+
+**Risk 4: Browser Storage Limits** (LOW IMPACT, VERY LOW PROBABILITY)
+
+**Problem**: localStorage has ~5-10MB limit per domain. User saves 1000+ prescriptions → storage fills up → can't save new prescriptions.
+
+**Why unlikely**: Typical prescription JSON is ~300 bytes. 5MB supports ~15,000 prescriptions (well beyond realistic use).
+
+**Mitigation strategy**:
+1. Accept localStorage for MVP (sufficient for all realistic users)
+2. Implement clear storage path to IndexedDB for future:
+   - Abstract storage layer (already planned in `prescriptionStorage.ts`)
+   - Can swap implementation without changing rest of app
+3. Monitor storage usage:
+   - Show user "Storage: 2.3MB of 5MB used"
+   - Warn if >80% full
+4. Implement storage cleanup (optional, Phase 4+):
+   - Archive old prescriptions
+   - Delete unused prescriptions with confirmation
+
+**Verification before shipping**:
+- Test saving 100+ prescriptions without errors
+- Verify retrieval is fast even with large dataset
+- No data corruption or loss
+
+**Owner**: Storage implementation (Phase 1-2)
+
+
+### Scope & Complexity Risks
+
+**Risk 5: Feature Creep** (MEDIUM IMPACT, MEDIUM PROBABILITY)
+
+**Problem**: Adding out-of-scope features (metabolite visualization, drug interactions, real-time slider) delays MVP.
+
+**Why likely**: Feature requests feel "easy" but actually introduce complexity (two-compartment model, more validation, new UI).
+
+**Mitigation strategy**:
+1. Strict MVP definition:
+   - Single-drug, one-compartment model only
+   - No metabolite visualization
+   - No drug interaction engine
+   - No real-time slider updates
+   - These explicitly deferred to "Future Enhancements" section
+2. Get to Phase 2 MVP quickly (working graph):
+   - Forces prioritization
+   - If Phase 2 complete in reasonable time, revisit roadmap
+   - If blocked by complexity, features were out of scope
+3. Document "nice to have" features separately
+   - Don't confuse with MVP must-haves
+   - Explicitly greenlight for Phase 3+ if time permits
+
+**Verification before shipping**:
+- Phase 2 completed with core features only
+- No two-compartment model code
+- No drug interaction logic
+- No real-time update mechanism
+
+**Owner**: Product definition (before Phase 1)
+
+
+**Risk 6: Over-Engineering** (MEDIUM IMPACT, MEDIUM PROBABILITY)
+
+**Problem**: Building complex architecture (Pinia, complex state management) when simple Vue ref/inject suffices → wasted time, increased complexity.
+
+**Why likely**: Common pattern to "build for scale" from day one.
+
+**Mitigation strategy**:
+1. Start with simple approach:
+   - Use Vue `ref` for reactive state
+   - `provide/inject` for parent-child communication
+   - No global store needed yet
+2. Refactor to Pinia only if:
+   - Props drilling becomes unmanageable (>3 levels deep)
+   - Multiple components need same state
+   - Makes sense in context (don't auto-add complexity)
+3. Follow YAGNI principle:
+   - "You Aren't Gonna Need It"
+   - Don't build for hypothetical future requirements
+   - Add complexity only when current approach breaks
+
+**Verification before shipping**:
+- No unnecessary dependencies added
+- State management simple enough to understand in 5 min
+- Code prioritizes readability over "flexibility"
+
+**Owner**: Architecture decisions (Phase 1-2)
+
+
+### User Experience & Safety Risks
+
+**Risk 7: Misinterpretation as Medical Advice** (HIGH IMPACT, MEDIUM PROBABILITY)
+
+**Problem**: User makes dosing decisions based on app output → potential harm.
+
+**Why likely**: Medical apps are inherently tempting to users seeking guidance; disclaimer alone may not prevent misuse.
+
+**Mitigation strategy**:
+1. Educational disclaimer displayed prominently:
+   - On app load: "This app is for educational purposes only"
+   - On every graph: "Not for medical decisions. Always follow prescriptions from your doctor"
+   - On form: "Relative concentrations only; not absolute mg/L"
+   - Repeated warnings on save/share
+2. Use relative concentrations (0–1 scale), not absolute:
+   - Prevents app from looking like a dosing calculator
+   - Clear that user inputs are "representative values from insert ranges"
+   - Hard to misinterpret as medical dosing guidance
+3. Explicit language choices:
+   - Never say "recommended dose" or "safe dose"
+   - Say "relative concentration" not "drug level"
+   - Say "visualization" not "prediction"
+4. UI design:
+   - Educational theme (textbook look, not medical app look)
+   - Explain pharmacy insert concept upfront
+   - No dose calculations or recommendations
+
+**Verification before shipping**:
+- Disclaimers appear on 90%+ of user flows
+- Relative concentration (not absolute) throughout
+- No language that could be misinterpreted as medical advice
+- Color scheme and design clearly indicate "educational"
+
+**Owner**: UX/messaging (all phases, especially Phase 2-3)
+
+
+### Planning & Estimation Risks
+
+**Risk 8: Unclear MVP Scope** (MEDIUM IMPACT, MEDIUM PROBABILITY)
+
+**Problem**: Team disagreement on what constitutes MVP → scope creep or incomplete product.
+
+**Why likely**: "Minimum" is subjective; easy to disagree on what's essential.
+
+**Mitigation strategy**:
+1. Define MVP explicitly in this document:
+   - MVP milestone: User can enter prescription, see graph, save it
+   - Achieved at end of Phase 2
+   - Everything in Phase 1-2 is essential; Phase 3+ is enhancement
+2. Use phasing as scope control:
+   - Phase 1-2 = MVP (absolute minimum)
+   - Phase 3 = Quality of life (comparison, polish)
+   - Phase 4 = Management (CRUD, full feature set)
+   - Phase 5 = Polish (tests, performance, accessibility)
+3. Commit to MVP completion before expanding:
+   - No Phase 3 features in Phase 2
+   - No Phase 4 features in Phase 3
+   - Finish phases in order
+
+**Verification before shipping**:
+- Phase 2 complete and working
+- MVP feature set clearly defined in requirements
+- No scope creep into future phases
+
+**Owner**: Project management (all phases)
+
+
+### Data & Validation Risks
+
+**Risk 9: Invalid Input Crashes Graph** (MEDIUM IMPACT, MEDIUM PROBABILITY)
+
+**Problem**: Form accepts invalid prescription → calculation gets bad data → produces NaN/Infinity → graph breaks.
+
+**Why likely**: Validation rules complex; easy to miss edge cases (empty array, zero values, type mismatches).
+
+**Mitigation strategy**:
+1. Comprehensive input validation in form:
+   - All fields type-checked at form level
+   - All numeric ranges enforced (dose, half-life, uptake within bounds)
+   - Frequency-times matching enforced before submission
+   - Custom error messages for each rule
+2. Type safety with TypeScript:
+   - Prescription interface enforces correct types
+   - `validatePrescription()` function ensures valid data before calculations
+   - Return `{ valid: boolean; errors: string[] }`
+3. Defensive calculations:
+   - Handle zero and negative inputs gracefully
+   - Clamp negatives to zero in output (numerical artifact)
+   - Never divide by zero (ka ≈ ke fallback)
+4. Unit tests for validation:
+   - Invalid prescriptions → validation rejects with clear errors
+   - Valid prescriptions → calculations succeed
+   - Boundary values (min/max) tested
+
+**Verification before shipping**:
+- Form rejects invalid inputs with clear error messages
+- All calculations handle edge cases without crashing
+- No NaN/Infinity in graph output
+- User cannot submit invalid prescription
+
+**Owner**: Validation implementation (Phase 1-2)
+
+
+## Appendix
+
+### Key Technical Specifications
+
+**Pharmacokinetic Model**:
+- Type: One-compartment first-order absorption and elimination
+- Formula: `C(t) = Dose × [ka/(ka - ke)] × (e^(-ke×t) - e^(-ka×t))`
+- Rate constants: `ka = 0.693/uptake`, `ke = 0.693/halfLife`
+- Units: Relative concentrations (0–1 scale), time in hours
+- Steady-state: Stabilizes after ~5 half-lives
+
+**Validation Ranges**:
+| Field | Min | Max | Unit | Source |
+|-------|-----|-----|------|--------|
+| Dose | 0.001 | 10,000 | Variable (mg/units) | Prescription |
+| Half-life | 0.1 | 240 | hours | Pharmacy insert range |
+| Peak (Tmax) | 0.1 | 48 | hours | Pharmacy insert range |
+| Uptake | 0.1 | 24 | hours | Pharmacy insert range |
+| Drug Name | 1 | 100 | characters | User input |
+
+**Frequency Mapping**:
+| Frequency | Count | Example Times | Formula |
+|-----------|-------|---|----------|
+| once | 1 | 12:00 | Single daily dose |
+| bid | 2 | 09:00, 21:00 | Twice daily, 12 hours apart |
+| tid | 3 | 09:00, 14:00, 21:00 | Three times daily |
+| qid | 4 | 09:00, 12:00, 18:00, 21:00 | Four times daily |
+| q6h | 4 | Every 6 hours | 00:00, 06:00, 12:00, 18:00 |
+| q8h | 3 | Every 8 hours | 08:00, 16:00, 00:00 |
+| q12h | 2 | Every 12 hours | 08:00, 20:00 |
+| custom | User-defined | User enters | Custom dosing schedule |
+
+**File Structure** (final):
+```
+src/
+├── core/
+│   ├── models/
+│   │   ├── prescription.ts          # Type definitions, validatePrescription()
+│   │   └── __tests__/
+│   │       └── prescription.spec.ts
+│   ├── calculations/
+│   │   ├── pkCalculator.ts          # Main calculation functions
+│   │   ├── concentrationCurve.ts    # Single-dose curve generation
+│   │   ├── multiDoseProfile.ts      # Accumulation logic
+│   │   └── __tests__/
+│   │       ├── pkCalculator.spec.ts
+│   │       ├── concentrationCurve.spec.ts
+│   │       └── multiDoseProfile.spec.ts
+│   └── storage/
+│       └── prescriptionStorage.ts   # localStorage CRUD operations
+├── components/
+│   ├── PrescriptionForm.vue         # Input form
+│   ├── GraphViewer.vue              # Chart visualization
+│   ├── PrescriptionList.vue         # Prescription management
+│   └── __tests__/
+│       ├── PrescriptionForm.spec.ts
+│       ├── GraphViewer.spec.ts
+│       └── PrescriptionList.spec.ts
+├── App.vue                          # Main component, routing
+├── main.ts                          # Entry point
+└── style.css                        # Global styles
+
+tests/
+└── integration/                     # End-to-end workflows
+    ├── form-to-graph.spec.ts
+    ├── save-and-retrieve.spec.ts
+    └── multi-drug-compare.spec.ts
+```
+
+**Testing Strategy**:
+
+**Unit Tests** (highest priority):
+- Calculation functions: known-value reference cases
+- Validation function: valid/invalid inputs
+- Storage operations: save/load/update/delete
+- Component rendering: form inputs, graph display
+
+**Reference Test Fixtures** (golden values):
+```typescript
+// Single dose, simple case
+{
+  dose: 500,
+  halfLife: 6,
+  uptake: 1.5,
+  // Pre-computed golden values at key time points:
+  t: [0, 1, 2, 4, 6, 12, 24],
+  expected: [0, 0.65, 0.81, 0.72, 0.50, 0.25, 0.06]
+}
+
+// Multi-dose accumulation (bid)
+{
+  times: ["09:00", "21:00"],  // bid every 12 hours
+  dose: 500,
+  halfLife: 6,
+  // Expected curve shows peaks at 10:00 and 22:00,
+  // with steady-state ratio ~2:1 (second peak 2x first)
+}
+```
+
+**Test Coverage Targets**:
+- Calculation functions: >95%
+- Components: >80%
+- Overall: >85%
+- No untested edge cases
+
+**Integration Tests**:
+- Form input → validation passes → calculation succeeds → graph renders
+- Graph accurate with known reference prescription
+- Save → reload → graph still matches
+
+**Performance Baselines**:
+- Graph render: <100ms for single drug
+- Multi-drug (5): <500ms
+- Chart interaction (hover, tooltip): <50ms
+- localStorage operations: <10ms
+
+**Deployment Verification**:
+- Type check passes: `npm run type-check`
+- All tests pass: `npm run test`
+- Linting passes: `npm run lint`
+- Production build succeeds: `npm run build`
+- Production preview works: `npm run preview`
+
+### Development Commands Reference
+
+```bash
+# Setup
+npm install
+
+# Development
+npm run dev           # Start dev server
+npm run build         # Build for production
+npm run preview       # Preview production build
+
+# Testing
+npm run test          # Run all tests
+npm run test:watch   # Watch mode
+npm run test -- src/core/__tests__/pkCalculator.spec.ts  # Single test file
+
+# Quality
+npm run type-check    # TypeScript type checking
+npm run lint          # ESLint + Prettier checks
+npm run lint:fix     # Auto-fix linting issues
+```
+
+### Related Documentation
+
+- **CLAUDE.md**: Comprehensive development guidance with examples, code structure details, and debugging tips
+- **Preplanning Notes**: Historical context and decision rationale (archived in `Project-Preplanning-Notes.md`)
+- **Previous Sessions**: Context and learnings from specification review phases (in `.claude/` directory)
+
+### Browser Compatibility
+
+**Target Support**:
+- Chrome/Edge: Latest 2 versions
+- Firefox: Latest 2 versions
+- Safari: Latest 2 versions (including iOS Safari for tablet)
+- No IE11 support required
+
+**Graceful Degradation**:
+- localStorage not available: Show message, offer download instead
+- Chart.js rendering issue: Show data in table format
+- Very old browser: Redirect to browser upgrade page
+
+### Accessibility
+
+**WCAG 2.1 Level AA targets**:
+- Color contrast: 4.5:1 for text
+- Keyboard navigation: All controls accessible via Tab/Enter/Arrow keys
+- Screen readers: ARIA labels on form inputs, chart legend readable
+- Responsive: Works at 320px width (mobile) to 2560px (desktop)
+
+### Legal & Educational Disclaimers
+
+All users see on load and periodically:
+- "This application is for educational purposes only"
+- "Outputs show relative concentration curves, not absolute drug levels"
+- "Always follow prescriptions written by licensed healthcare providers"
+- "Do not use for medical dosing decisions"
+
+These disclaimers are non-removable and appear in footer, intro, and graph views.

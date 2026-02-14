@@ -1,0 +1,110 @@
+---
+session: pharmacokinetics-grapher
+date: 2026-02-13
+status: complete
+outcome: SUCCEEDED
+---
+
+goal: Complete Task 1 - Initialize Vue 3 + TypeScript project with Vite, establish core architecture, and verify development environment
+now: Start Task 2 - Implement Prescription Data Models and validation logic in src/core/models/
+
+test: npm run build && npm run type-check && npm run lint && npm run test:unit
+
+done_this_session:
+  - task: "Task 1.1: Scaffold Vue 3 + TypeScript project with Vite"
+    files: [package.json, vite.config.ts, vitest.config.ts, tsconfig.json, tsconfig.node.json, tsconfig.vitest.json, src/]
+  - task: "Task 1.2: Configure TypeScript strict mode"
+    files: [tsconfig.app.json]
+  - task: "Task 1.3: Install Chart.js for visualization"
+    files: [package.json, package-lock.json]
+  - task: "Task 1.4: Create core directory structure"
+    files: [src/core/models/index.ts, src/core/calculations/index.ts, src/core/storage/index.ts]
+  - task: "Task 1.5: Verify development environment"
+    files: [package.json]
+
+blockers: []
+
+questions: []
+
+decisions:
+  - "Chart.js selected": "Lightweight (~30KB), accurate for scientific visualization, well-tested for medical data. Chosen over Recharts for simplicity and minimal dependencies."
+  - "Oxlint configuration scope": "Changed from linting entire project to src/ only to avoid config file linting. Resolved 292 errors by targeting only application code."
+  - "Modular architecture": "Established src/core/ separation (models, calculations, storage) from UI components to enable independent testing and reuse across components."
+
+findings:
+  - "Vue 3 scaffolding": "create-vue@latest with feature flags produces well-configured project; all scripts work out of box after npm install"
+  - "TypeScript setup": "Strict mode enabled in tsconfig.app.json with noImplicitAny and strictNullChecks; compiles without errors"
+  - "Development workflow": "All npm scripts passing: dev, build, type-check, lint, test:unit"
+
+worked:
+  - "Using npm create vue@latest with --force flag to merge into existing directory"
+  - "Moving scaffolded files via rsync --ignore-existing to preserve project docs"
+  - "Targeting oxlint at src/ directory only to avoid config linting errors"
+
+failed:
+  - "Initial oxlint configuration tried to lint entire project including build/config files, resulting in 292 false errors"
+
+next:
+  - "Task 2: Implement Prescription Data Models - create interface with FrequencyLabel, dose, halfLife, peak, uptake fields"
+  - "Create validation function with VALIDATION_RULES for type/range checking"
+  - "Write reference test cases for known pharmacokinetic scenarios"
+  - "Task 3: Implement single-dose PK calculator using one-compartment first-order absorption model"
+  - "Task 4: Implement multi-dose accumulation logic for steady-state calculations"
+
+files:
+  created:
+    - tsconfig.app.json
+    - src/core/models/index.ts
+    - src/core/calculations/index.ts
+    - src/core/storage/index.ts
+    - package-lock.json
+    - .editorconfig
+    - .gitattributes
+    - .oxlintrc.json
+    - .prettierrc.json
+    - eslint.config.ts
+    - env.d.ts
+    - index.html
+    - public/favicon.ico
+    - src/App.vue
+    - src/main.ts
+    - src/assets/*.css
+    - src/assets/logo.svg
+    - src/components/*.vue
+    - src/components/__tests__/HelloWorld.spec.ts
+    - src/components/icons/*.vue
+    - vite.config.ts
+    - vitest.config.ts
+
+commits:
+  - "2cfe4dd: Initialize Vue 3 + TypeScript project with Vite, Vitest, ESLint, and Prettier"
+  - "05b0ae6: Configure TypeScript strict mode for enhanced type safety"
+  - "17a49cd: Install Chart.js for pharmacokinetic curve visualization"
+  - "3b55a2c: Create core application directory structure for pharmacokinetic logic"
+  - "ba45477: Configure oxlint to lint src/ directory only"
+
+context:
+  tech_stack:
+    - Vue 3 (Composition API)
+    - TypeScript with strict mode
+    - Vite (build tool)
+    - Vitest (unit testing)
+    - Chart.js (visualization)
+    - ESLint + Prettier (code quality)
+
+  project_structure:
+    src/core/models/: Prescription types and interfaces
+    src/core/calculations/: Pure PK calculation functions
+    src/core/storage/: localStorage persistence
+    src/components/: Vue UI components
+
+  key_equations:
+    single_dose: "C(t) = Dose × [ka/(ka - ke)] × (e^(-ke×t) - e^(-ka×t))"
+    ka: "0.693 / uptake"
+    ke: "0.693 / halfLife"
+    notes: "One-compartment first-order absorption model; normalized relative concentration (0-1 scale)"
+
+notes: |
+  Development environment fully verified. All quality checks pass. Ready to implement
+  core pharmacokinetic models. Task 2 will define Prescription interface and validation
+  logic, which are prerequisites for calculation tasks (3-4) and UI tasks (6-9).

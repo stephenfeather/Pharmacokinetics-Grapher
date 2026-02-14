@@ -1,0 +1,118 @@
+---
+session: pharmacokinetics-grapher
+date: 2026-02-13
+status: complete
+outcome: SUCCEEDED
+---
+
+goal: Complete Task 2 (Prescription Data Models) and Task 3 (Single-dose PK Calculator) with comprehensive validation and test coverage
+now: Start Task 4 - Implement multi-dose accumulation and steady-state calculations in src/core/calculations/
+
+test: npm run build && npm run type-check && npm run lint && npm run test
+
+done_this_session:
+  - task: "Task 2: Implement Prescription Data Models and validation logic"
+    files: [src/core/models/prescription.ts, src/core/models/__tests__/prescription.spec.ts, src/core/models/__tests__/fixtures.ts, src/core/models/index.ts]
+  - task: "Task 3: Implement single-dose PK calculator"
+    files: [src/core/calculations/pkCalculator.ts, src/core/calculations/__tests__/pkCalculator.spec.ts, src/core/calculations/index.ts]
+
+blockers: []
+
+questions: []
+
+decisions:
+  - "ValidationResult architecture": "Separate errors[] and warnings[] arrays to support both hard validation (errors) and soft validation (warnings for edge cases like uptake>=halfLife). Warnings don't affect valid status - allows UI to display warnings without blocking submission."
+  - "KA_KE_TOLERANCE exported constant": "Shared constant (0.001) between validation warnings (Task 2) and calculation formula switching (Task 3) - single source of truth prevents divergence."
+  - "Math.LN2 vs hardcoded 0.693": "Used Math.LN2 (0.693147...) instead of truncated hardcoded value for IEEE 754 double-precision, reducing floating-point error in PK calculations."
+  - "Fallback formula for ka≈ke": "When |ka-ke| < KA_KE_TOLERANCE, switch from standard formula to limit formula C(t) = Dose×ka×t×e^(-ke×t) to prevent numerical instability from near-zero denominator."
+  - "Raw concentration output": "calculateConcentration() returns raw (non-normalized) values for use as building block in multi-dose accumulation. Final normalization to peak=1.0 happens in Task 4's accumulateDoses()."
+
+findings:
+  - "Orchestration workflow effective": "Plan → Validate → TDD workflow (via /build brownfield --skip-discover tdd) produced high-quality implementations with no rework. Validation caught mathematical edge cases early."
+  - "Fixture reuse successful": "6 test fixtures created in Task 2 successfully reused in Task 3, ensuring consistent test data and enabling integration testing without duplicating reference values."
+  - "Golden values verified": "All 58 PK calculator tests use analytically verified golden values (not approximations), ensuring mathematical correctness of formulas against pharmacology standards."
+  - "Test coverage comprehensive": "168 total tests (110 from Task 2 + 58 from Task 3). Boundary value testing (min/max), edge cases, and mathematical properties all covered."
+  - "TypeScript strict mode": "Strict mode enabled throughout - no implicit any, proper null handling, function return types explicit. Zero type errors in both tasks."
+
+worked:
+  - "Plan-validate-implement chain": "Three-phase workflow (orchestrated by /build skill) prevented architectural rework and ensured solutions aligned with spec."
+  - "Fixtures-driven test design": "Creating fixtures first (Task 2) before calculators (Task 3) ensured test data was reusable and consistent."
+  - "Analytical golden values": "Pre-computing golden values from mathematical derivations ensured tests validated correct formulas, not just approximate values."
+  - "Separate field validators": "Creating individual validator functions (validateName, validateDose, etc.) before combining in validatePrescription() made bugs easier to isolate."
+  - "TDD discipline": "Writing failing tests first for each phase (RED) then minimal implementation (GREEN) prevented over-engineering and produced focused code."
+
+failed:
+  - "Initial commit had Claude attribution": "First commit included Co-Authored-By footer - amended to remove. Remember: commits are user's work, not Claude's."
+
+next:
+  - "Task 4: Implement multi-dose accumulation (accumulateDoses function) - sum raw concentrations across doses, normalize to peak=1.0, compute steady-state"
+  - "Task 5: Implement storage layer (prescriptionStorage.ts) for localStorage persistence"
+  - "Tasks 6-9: UI components (PrescriptionForm, GraphViewer, PrescriptionList, Compare features) - can parallelize after Task 4"
+
+files:
+  created:
+    - src/core/models/prescription.ts
+    - src/core/models/__tests__/prescription.spec.ts
+    - src/core/models/__tests__/fixtures.ts
+    - src/core/calculations/pkCalculator.ts
+    - src/core/calculations/__tests__/pkCalculator.spec.ts
+  modified:
+    - src/core/models/index.ts
+    - src/core/calculations/index.ts
+
+commits:
+  - "e20e119: Implement Prescription Data Models and validation logic (Task 2)"
+  - "4765c4f: Implement single-dose PK calculator (Task 3)"
+
+context:
+  tech_stack:
+    - Vue 3 + TypeScript (strict mode enabled)
+    - Vitest unit testing
+    - ESLint + Prettier linting
+    - Chart.js for visualization (not yet implemented)
+
+  test_results:
+    - "Total tests: 168 passing (110 from Task 2, 58 from Task 3)"
+    - "Type check: PASS (strict mode)"
+    - "Lint: PASS (0 errors)"
+    - "Build: PASS (vite build successful)"
+
+  key_equations:
+    single_dose: "C(t) = Dose × [ka/(ka-ke)] × (e^(-ke×t) - e^(-ka×t))"
+    fallback_ka_approx_ke: "C(t) = Dose × ka × t × e^(-ke×t)"
+    ka: "0.693 / uptake"
+    ke: "0.693 / halfLife"
+    tmax: "ln(ka/ke) / (ka - ke)"
+
+  validation_rules:
+    name: "required, 1-100 chars (trimmed)"
+    dose: "0.001-10000 units"
+    frequency: "once|bid|tid|qid|q6h|q8h|q12h|custom"
+    times: "HH:MM 24-hour format, count must match frequency"
+    halfLife: "0.1-240 hours"
+    peak: "0.1-48 hours (Tmax)"
+    uptake: "0.1-24 hours (absorption time)"
+    metaboliteLife: "optional, 0.1-1000 hours"
+
+  fixture_list:
+    - SINGLE_DOSE_FIXTURE
+    - BID_MULTI_DOSE_FIXTURE
+    - KA_APPROX_KE_FIXTURE
+    - MIN_BOUNDARY_FIXTURE
+    - MAX_BOUNDARY_FIXTURE
+    - IBUPROFEN_FIXTURE
+
+notes: |
+  Task 2 and Task 3 both complete with full test coverage. All npm scripts passing.
+  Ready to begin Task 4 (multi-dose accumulation). The single-dose calculator is ready
+  as a building block - it returns raw unnormalized concentrations for each dose, which
+  Task 4 will sum across a time range and normalize to peak=1.0.
+
+  For Task 4, the accumulateDoses() function will:
+  1. For each dose in the prescription at each scheduled time
+  2. Call calculateConcentration() for that dose at each timepoint
+  3. Sum all dose contributions to get total concentration
+  4. Normalize final curve so peak = 1.0
+  5. Return TimeSeriesPoint[] for charting
+
+  This will complete the core calculation engine. Tasks 5-9 then build storage and UI.

@@ -1,0 +1,77 @@
+---
+session: pharmacokinetics-grapher
+date: 2026-02-13
+status: complete
+outcome: SUCCEEDED
+---
+
+goal: Create comprehensive, reviewed CLAUDE.md specification for Pharmacokinetics Grapher (Vue 3 + TypeScript web app for visualizing drug concentration curves)
+now: Begin implementation of src/core/calculations/pkCalculator.ts with unit tests using reference fixtures and the one-compartment PK model
+
+test: After implementation, verify with `npm run test` on pkCalculator test suite
+
+done_this_session:
+  - task: Created initial CLAUDE.md from preplanning notes with project overview, tech stack, architecture, and PK model
+    files: [CLAUDE.md]
+  - task: Conducted dual-agent review (Gemini + Codex) of initial spec
+    files: [CLAUDE.md]
+  - task: "Resolved critical issues identified by Codex (4 major: Vd/F problem, ka>ke validation, pharmacy insert sourcing, TimeSeriesPoint definition)"
+    files: [CLAUDE.md]
+  - task: Fixed mathematical accuracy issues (normalization contract, function signatures, ka≈ke fallback formula)
+    files: [CLAUDE.md]
+  - task: Clarified soft validation philosophy (warn on atypical params, fallback on ka≈ke, allow all combinations)
+    files: [CLAUDE.md]
+  - task: Final verification by both agents; all issues resolved
+    files: [CLAUDE.md]
+
+blockers: []
+
+questions: []
+
+decisions:
+  - normalized_relative_only: Outputs are 0–1 scale (not absolute mg/L) to prevent medical misuse and match reality of pharmacy insert ranges
+  - sum_then_normalize: Multi-dose accumulation sums raw dose contributions first, then normalizes total curve to peak=1.0 (fixes math consistency)
+  - peak_informational: peak (Tmax) input stored for documentation only; uptake drives ka calculation
+  - ka_ne_ke_soft_validation: uptake ≈ halfLife triggers fallback formula (soft, not hard error) to handle edge case gracefully
+  - pharmacy_insert_ranges: All user inputs (halfLife, peak, uptake) selected from insert ranges (not absolute values); user picks representative value
+  - chart_js_over_recharts: Chart.js chosen for accuracy + simplicity over Recharts' interactivity
+
+findings:
+  - "pharmacy_inserts_are_ranges: Critical insight that pharmacy inserts provide ranges (e.g., 'half-life 4–6 hours'), not exact values. This justifies normalized 'rough range' visualization vs absolute concentrations"
+  - "one_compartment_sufficient_for_mvp: Simplified one-compartment model adequate for MVP; two-compartment (metabolites) deferred"
+  - "ka_equals_ke_edge_case_solvable: The mathematical singularity when ka=ke has well-known fallback (series expansion) for calculations"
+  - "function_normalization_contract_critical: Separating raw calculation (calculateConcentration) from normalized output (accumulateDoses) is essential for accumulation math correctness"
+
+worked:
+  - iterative_agent_review: Multiple rounds with Gemini + Codex caught 6+ issues before implementation
+  - clarity_through_examples: Reference test fixtures and concrete equations (not hand-wavy descriptions) reduced ambiguity
+  - soft_validation_approach: Permissive validation with warnings is more user-friendly and handles real-world data variance
+
+failed:
+  - initial_absolute_concentrations: Trying to output absolute mg/L values required Vd as input (unavailable); switching to normalized 0–1 scale solved this
+  - summing_normalized_curves: Initial approach of normalizing per-dose then summing was mathematically wrong; correct order is sum-then-normalize
+
+next:
+  - Implement src/core/models/prescription.ts with Prescription interface, FrequencyLabel type, validation rules, and validatePrescription() function
+  - Implement src/core/calculations/pkCalculator.ts with calculateConcentration(time, dose, halfLife, uptake) and accumulateDoses(prescription, startDateTime, endDateTime)
+  - Add ka≈ke fallback detection in pkCalculator with |ka-ke|<0.001 threshold
+  - Implement src/core/calculations/__tests__/pkCalculator.spec.ts with reference test fixtures (precomputed golden values from model)
+  - Test edge cases: zero dose, extreme half-lives, ka≈ke, multi-dose accumulation at steady-state
+  - Implement localStorage wrapper in src/core/storage/prescriptionStorage.ts
+  - Implement Vue components (PrescriptionForm, GraphViewer, PrescriptionList) once calculation layer passes tests
+
+files:
+  created:
+    - CLAUDE.md (comprehensive specification, 456 lines)
+  modified: []
+
+notes: |
+  CLAUDE.md is production-ready for implementation. All mathematical, architectural,
+  and domain-specific decisions documented and reviewed. Next session can begin
+  coding the calculation engine with high confidence in spec accuracy.
+
+  Key reference sections:
+  - Pharmacokinetic equations: CLAUDE.md:198–233
+  - Function signatures: CLAUDE.md:235–244
+  - Validation rules: CLAUDE.md:115–186
+  - Testing strategy: CLAUDE.md:310–354

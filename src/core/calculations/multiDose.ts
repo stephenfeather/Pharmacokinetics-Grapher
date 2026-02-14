@@ -29,7 +29,7 @@ function timeStringToHours(time: string): number {
  * @param numDays - Number of days to expand across
  * @returns Sorted array of dose times in hours from simulation start
  */
-function expandDoseTimes(times: string[], numDays: number): number[] {
+export function expandDoseTimes(times: string[], numDays: number): number[] {
   const doseTimes: number[] = []
   for (let day = 0; day < numDays; day++) {
     for (const t of times) {
@@ -37,6 +37,21 @@ function expandDoseTimes(times: string[], numDays: number): number[] {
     }
   }
   return doseTimes.sort((a, b) => a - b)
+}
+
+/**
+ * Calculate the last dose administration time for a prescription within a simulation window
+ * @param prescription - Prescription with dose times and frequency
+ * @param numDays - Number of days to expand across
+ * @returns Time in hours of the last scheduled dose, or 0 if numDays is 0
+ */
+export function getLastDoseTime(prescription: Prescription, numDays: number): number {
+  if (numDays <= 0) {
+    return 0
+  }
+
+  const doseTimes = expandDoseTimes(prescription.times, numDays)
+  return doseTimes.length > 0 ? Math.max(...doseTimes) : 0
 }
 
 /**

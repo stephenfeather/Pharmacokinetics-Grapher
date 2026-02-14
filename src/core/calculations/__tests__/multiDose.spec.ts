@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { accumulateDoses, getGraphData } from '../multiDose'
+import { accumulateDoses, getGraphData, getLastDoseTime } from '../multiDose'
 import { SINGLE_DOSE_FIXTURE, BID_MULTI_DOSE_FIXTURE, IBUPROFEN_FIXTURE } from '../../models/__tests__/fixtures'
 
 describe('accumulateDoses - Multi-dose Accumulation', () => {
@@ -170,6 +170,103 @@ describe('accumulateDoses - Multi-dose Accumulation', () => {
       expect(result[0]!.data.length).toBeGreaterThan(0)
       expect(result[0]!.data[0]).toHaveProperty('time')
       expect(result[0]!.data[0]).toHaveProperty('concentration')
+    })
+  })
+
+  describe('Phase 5: Get Last Dose Time - getLastDoseTime', () => {
+    it('calculates last dose time for single once-daily prescription over 1 day', () => {
+      // Given: SINGLE_DOSE_FIXTURE with times=['09:00'] (once daily at 9 AM)
+      // When: calculating last dose time for 1 day
+      // Then: should return 9 hours (09:00)
+      const rx = SINGLE_DOSE_FIXTURE
+      const result = getLastDoseTime(rx, 1)
+      expect(result).toBe(9)
+    })
+
+    it('calculates last dose time for single dose over 2 days', () => {
+      // Given: SINGLE_DOSE_FIXTURE with times=['09:00'] once daily
+      // When: calculating last dose time for 2 days
+      // Then: should return 24 + 9 = 33 hours (second day at 09:00)
+      const rx = SINGLE_DOSE_FIXTURE
+      const result = getLastDoseTime(rx, 2)
+      expect(result).toBe(33)
+    })
+
+    it('calculates last dose time for BID prescription over 1 day', () => {
+      // Given: BID_MULTI_DOSE_FIXTURE with times=['09:00', '21:00'] (twice daily)
+      // When: calculating last dose time for 1 day
+      // Then: should return 21 hours (09:00 dose is earlier)
+      const rx = BID_MULTI_DOSE_FIXTURE
+      const result = getLastDoseTime(rx, 1)
+      expect(result).toBe(21)
+    })
+
+    it('calculates last dose time for BID prescription over 2 days', () => {
+      // Given: BID_MULTI_DOSE_FIXTURE with times=['09:00', '21:00']
+      // When: calculating last dose time for 2 days
+      // Then: should return 24 + 21 = 45 hours (second day at 21:00)
+      const rx = BID_MULTI_DOSE_FIXTURE
+      const result = getLastDoseTime(rx, 2)
+      expect(result).toBe(45)
+    })
+
+    it('calculates last dose time with fractional hour times', () => {
+      // Given: prescription with times=['09:30'] (9:30 AM = 9.5 hours)
+      // When: calculating last dose time for 1 day
+      // Then: should return 9.5 hours
+      const rx = { ...SINGLE_DOSE_FIXTURE, times: ['09:30'] }
+      const result = getLastDoseTime(rx, 1)
+      expect(result).toBe(9.5)
+    })
+
+    it('calculates last dose time for longer simulation (5 days)', () => {
+      // Given: BID_MULTI_DOSE_FIXTURE with times=['09:00', '21:00']
+      // When: calculating last dose time for 5 days
+      // Then: should return (4*24) + 21 = 117 hours (5th day at 21:00)
+      const rx = BID_MULTI_DOSE_FIXTURE
+      const result = getLastDoseTime(rx, 5)
+      expect(result).toBe(117)
+    })
+
+    it('returns 0 for 0 days', () => {
+      // Given: any prescription
+      // When: calculating last dose time for 0 days
+      // Then: should return 0 (no doses scheduled)
+      const rx = SINGLE_DOSE_FIXTURE
+      const result = getLastDoseTime(rx, 0)
+      expect(result).toBe(0)
+    })
+
+    it('handles late evening dose times', () => {
+      // Given: prescription with times=['23:45'] (11:45 PM)
+      // When: calculating last dose time for 1 day
+      // Then: should return 23.75 hours (23 + 45/60)
+      const rx = { ...SINGLE_DOSE_FIXTURE, times: ['23:45'] }
+      const result = getLastDoseTime(rx, 1)
+      expect(result).toBeCloseTo(23.75, 2)
+    })
+
+    it('handles early morning dose times', () => {
+      // Given: prescription with times=['00:15'] (12:15 AM)
+      // When: calculating last dose time for 1 day
+      // Then: should return 0.25 hours (0 + 15/60)
+      const rx = { ...SINGLE_DOSE_FIXTURE, times: ['00:15'] }
+      const result = getLastDoseTime(rx, 1)
+      expect(result).toBeCloseTo(0.25, 2)
+    })
+
+    it('handles prescription with many daily doses (QID)', () => {
+      // Given: prescription with times=['06:00', '12:00', '18:00', '24:00'] (every 6 hours, 4x/day)
+      // When: calculating last dose time for 1 day
+      // Then: should return the maximum: 24 hours (midnight)
+      // Note: 24:00 is technically invalid HH:MM but we handle it by treating as edge case
+      const rx = {
+        ...SINGLE_DOSE_FIXTURE,
+        times: ['06:00', '12:00', '18:00', '23:00'],
+        frequency: 'qid' as const,
+      }
+      const result = getLastDoseTime(rx, 1)
+      expect(result).toBe(23)
     })
   })
 })

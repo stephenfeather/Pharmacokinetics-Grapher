@@ -1,0 +1,77 @@
+{
+	"meta": {
+		"generatedAt": "2026-02-14T18:25:17.246Z",
+		"tasksAnalyzed": 8,
+		"totalTasks": 16,
+		"analysisCount": 8,
+		"thresholdScore": 5,
+		"projectName": "Task Master",
+		"usedResearch": false
+	},
+	"complexityAnalysis": [
+		{
+			"taskId": 9,
+			"taskTitle": "Implement Prescription List and Management Component",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down into: (1) Create list display with empty state handling and prescription item rendering using getAllPrescriptions from existing storage module, (2) Implement CRUD action handlers (delete with window.confirm, duplicate via duplicatePrescription, edit/view emit events to parent), (3) Implement compare mode with Set-based selection state requiring full Set replacement for Vue reactivity. Include ~20 component tests mocking @/core/storage/prescriptionStorage module.",
+			"reasoning": "Task 9 has a detailed implementation plan already in thoughts/shared/plans/task9-prescription-list-component.md. The storage module (prescriptionStorage.ts) exports all needed functions (getAllPrescriptions, deletePrescription, duplicatePrescription). The main complexity is Vue 3 Set reactivity (must replace Set, not mutate in-place) and proper mocking strategy for tests. The existing 3 subtasks are well-scoped. Dependencies (Tasks 5-8) are marked done. Straightforward Vue component work with established patterns from PrescriptionForm.vue."
+		},
+		{
+			"taskId": 10,
+			"taskTitle": "Add Multi-Drug Comparison and Complete MVP Polish",
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Break down into: (1) Update App.vue with viewMode state (form/graph/list) and navigation tabs - add comparePrescriptions ref and multiGraphDatasets computed, (2) Wire PrescriptionList events (@edit, @view, @compare) to handlers that set state and switch views, GraphViewer already supports multiple datasets, (3) Add accessibility improvements (ARIA labels on form inputs, keyboard tab navigation, focus management), (4) Comprehensive testing pass with coverage >85%, integration tests for full flows (form→save→list→compare→graph), cross-browser verification.",
+			"reasoning": "Task 10 requires modifying App.vue which currently only has showForm/showGraph boolean state - needs refactoring to viewMode enum. GraphViewer.vue already supports multi-dataset rendering with DEFAULT_COLORS palette (8 colors). PrescriptionList doesn't exist yet (Task 9 dependency). The accessibility work is additive but touches multiple files. Testing integration flows requires all pieces working together. Moderate complexity due to state management refactor and multi-component integration."
+		},
+		{
+			"taskId": 11,
+			"taskTitle": "Add legend to graphs showing medication names",
+			"complexityScore": 3,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "GraphViewer.vue already has Chart.js legend configured at lines 116-120 (display: true, position: 'top', usePointStyle: true, padding: 16). Legend shows dataset labels which come from GraphDataset.label property. getGraphData in multiDose.ts line 131 already sets label to prescription name + frequency. Verify legend is working correctly and enhance if needed: add dose to label format, ensure colors match curves, add interactive click-to-toggle visibility. May only need minor label formatting changes.",
+			"reasoning": "VERIFIED: GraphViewer.vue already has legend implementation. Chart.js plugins.legend config at lines 116-120 shows display=true, position='top'. The label comes from GraphDataset.label which is set in multiDose.ts getGraphData(). The existing 10 subtasks are massively over-scoped - most functionality already exists. This is likely a verification/polish task, not greenfield implementation. Recommend 0 subtasks - just verify existing legend works and make minor formatting tweaks if needed."
+		},
+		{
+			"taskId": 12,
+			"taskTitle": "Make graph downloadable as image",
+			"complexityScore": 4,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Break down into: (1) Create image export utility module src/core/export/imageExport.ts with canvasToDataURL wrapper and downloadImage function using anchor element click pattern, (2) Expose Chart instance from GraphViewer via defineExpose - Chart.js has built-in toBase64Image() method, (3) Add Download PNG button to GraphViewer template with click handler calling export utility, (4) Add accessibility attributes and loading state during export. Chart.js toBase64Image is synchronous so loading state is simple.",
+			"reasoning": "Chart.js provides built-in toBase64Image() method on chart instances, making this relatively straightforward. Need to: expose chart instance from GraphViewer via defineExpose, create download utility that triggers anchor click, add button UI. The existing 10 subtasks include JPEG format, metadata overlay, and multiple integration points which are nice-to-haves. Core functionality (PNG download) is 4 focused subtasks. No complex state management required."
+		},
+		{
+			"taskId": 13,
+			"taskTitle": "Fix prescription import - JSON submission not working",
+			"complexityScore": 3,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Debug task - investigate ImportPrescriptions.vue component. The component exists at src/components/ImportPrescriptions.vue and is mounted by PrescriptionForm when showImportModal=true. handleImport() parses JSON, validates via validatePrescription(), calls savePrescription(). handleImportSuccess in PrescriptionForm just closes modal. Likely issues: (1) Event emission - @imported fires but parent doesn't refresh graph view, (2) Form doesn't reload to show imported data, (3) Possible validation errors silently failing. Need to trace event flow and add debugging.",
+			"reasoning": "VERIFIED: ImportPrescriptions.vue exists and has complete implementation. handleImport() at line 30 parses JSON, validates each prescription, and calls savePrescription(). It emits 'imported' event with count. PrescriptionForm handles this at line 80 (handleImportSuccess just sets showImportModal=false). The bug is likely: after import, user is returned to form but prescriptions were saved to storage - no feedback shown on form, and no way to view saved prescriptions (PrescriptionList not yet implemented). This is a debugging task, not implementation. Zero subtasks - needs investigation first."
+		},
+		{
+			"taskId": 14,
+			"taskTitle": "Add metabolite graphing capability",
+			"complexityScore": 7,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Break down into: (1) Research pharmacokinetic model for metabolite curves - typically requires parent-metabolite conversion rate and metabolite elimination rate, CLAUDE.md notes metaboliteLife is 'informational only' currently, (2) Extend Prescription interface with metabolite parameters (metaboliteConversionRate, metaboliteHalfLife), (3) Implement metabolite concentration calculation in pkCalculator.ts - standard approach is compartmental model where metabolite formation rate equals parent elimination, (4) Update multiDose.ts accumulateDoses to optionally return metabolite TimeSeriesPoint array, (5) Modify GraphViewer to plot metabolite curves with distinct styling (dashed line) alongside parent drug curves.",
+			"reasoning": "CLAUDE.md explicitly states metaboliteLife is 'informational only, not drawn' and active metabolites would 'need a two-compartment model' as future expansion. This requires: (1) scientific research on proper metabolite kinetics equations, (2) extending the data model with new parameters, (3) significant calculation logic changes, (4) UI changes to toggle metabolite display. The Prescription type already has optional metaboliteLife field but it's unused. This is the most complex task as it adds new scientific modeling not just UI work."
+		},
+		{
+			"taskId": 15,
+			"taskTitle": "Auto-extend graph timeframe past maximum medication time",
+			"complexityScore": 3,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Modify App.vue computed graphDatasets or add new computed that calculates max time across all prescriptions being graphed (max dose time + some multiple of longest half-life to show tail-off, e.g., 5× halfLife for 97% decay). Update endHours ref or create autoEndHours computed. GraphViewer already accepts endHours prop. May need to cap at reasonable maximum (e.g., 168 hours/1 week). Simple calculation: Math.max(...prescriptions.map(rx => lastDoseTime + 5*rx.halfLife)).",
+			"reasoning": "This is a straightforward calculation change. App.vue already has endHours ref (defaults to 48). Need to compute: (1) find latest dose time in current prescription(s), (2) add buffer based on half-life (5× half-life = 97% eliminated). The multiDose.ts expandDoseTimes already handles dose timing. This is a ~20 line change to App.vue adding a computed property. No new components or architectural changes needed. Zero subtasks recommended - single focused change."
+		},
+		{
+			"taskId": 16,
+			"taskTitle": "Add timeframe input for medication duration",
+			"complexityScore": 4,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down into: (1) Add duration input to PrescriptionForm with toggle for days/hours unit - extends form state with duration: number and durationUnit: 'days'|'hours', update Prescription interface, (2) Modify multiDose.ts accumulateDoses to use prescription duration instead of calculating from startHours/endHours - changes how numDays is computed in expandDoseTimes, (3) Update App.vue to pass duration-aware parameters to getGraphData, adjust timeframe slider to work with duration-based calculations. May need validation: duration must be positive, reasonable maximum.",
+			"reasoning": "This requires: extending Prescription type with duration fields, modifying PrescriptionForm.vue to add UI inputs, updating calculation logic in multiDose.ts. The expandDoseTimes function currently uses numDays derived from endHours/24 - would need to use prescription.duration instead. Moderate complexity due to model change propagating through multiple files. Not architecturally complex but touches form, model, and calculation layers."
+		}
+	]
+}

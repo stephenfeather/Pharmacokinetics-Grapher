@@ -1,0 +1,85 @@
+---
+session: pharmacokinetics-grapher
+date: 2026-02-14
+status: complete
+outcome: SUCCEEDED
+---
+
+goal: "Implement Task 7 (GraphViewer component) with Chart.js integration, comprehensive tests, and all quality checks passing"
+
+now: "Implement Task 8 (App.vue integration) to wire GraphViewer with PrescriptionForm and calculations"
+
+test: "npm run test:unit && npm run type-check && npm run lint"
+
+done_this_session:
+  - task: Implement Phase 1 (Canvas setup and component structure)
+    files: [src/components/GraphViewer.vue]
+  - task: Implement Phase 2 (renderChart function with Chart.js configuration)
+    files: [src/components/GraphViewer.vue]
+  - task: Implement Phase 3 (Lifecycle hooks and reactivity)
+    files: [src/components/GraphViewer.vue]
+  - task: Create comprehensive test suite (22 tests)
+    files: [src/components/__tests__/GraphViewer.spec.ts]
+  - task: Commit Task 7 implementation
+    files: [src/components/GraphViewer.vue, src/components/__tests__/GraphViewer.spec.ts]
+
+blockers: []
+
+questions: []
+
+decisions:
+  - "Chart.js instance as plain let variable": Non-reactive to prevent Vue proxy interference with Chart.js internals
+  - "Destroy-before-create pattern": Essential to prevent memory leaks and chart stacking on re-render
+  - "Combined watcher for all props": Single watcher [datasets, startHours, endHours] with deep:true more efficient than separate watchers
+  - "Chart.js mocking with vi.hoisted()": Solved Vitest hoisting issues and proper spy tracking
+  - "Constructor function spy pattern": vi.fn(function(this:any){...}) allows Chart instantiation while maintaining mock tracking
+
+findings:
+  - "Canvas API incompatibility": jsdom doesn't implement Canvas 2D context; test mocking required rather than native Chart.js
+  - "Deep watching for datasets": Shallow watch misses mutations to array elements; deep:true necessary for data point changes
+  - "Tick step adaptivity": "Adaptive formula: range<=24 yields 2h, range<=72 yields 6h, range<=168 yields 12h, else 24h for readable tick spacing"
+  - "TypeScript strict mode challenges": Tooltip callbacks required optional chaining (?.) and type narrowing for parsed values
+  - "Test coverage quality": Plan provided 20+ test cases; actual implementation needed 22 to cover all edge cases
+
+worked:
+  - "Plan-agent's three-phase structure": Clear separation of concerns enabled incremental implementation and testing
+  - "Chart.js configuration from plan": Exact config from plan worked without modification
+  - "Test cases from plan template": 80% of test structure reusable; only mock setup pattern needed adjustment
+  - "TypeScript strict mode discipline": Forced proper null checks and type safety; no runtime errors
+  - "ESLint disable decorator": Pragmatic solution for vi.hoisted() and 'any' type casts in test mocks
+
+failed:
+  - "Direct Chart.js mocking": Initial attempt with top-level vi.fn() failed due to hoisting; resolved with vi.hoisted()
+  - "Type assertions in tests": First approach (MockChart as unknown as Mock & {register:Mock}) overly complex; simplified with (MockChart as any)
+  - "Reactive chart instance": Wrapping chartInstance in ref() caused Vue proxy warnings; reverted to plain let
+
+next:
+  - Implement Task 8 (App.vue integration): Wire GraphViewer into template, connect to form/calculations, add timeframe slider
+  - Verify Task 7 GraphViewer renders correctly with sample data in dev server
+  - After Task 8 complete, implement Task 9 (PrescriptionList component with compare mode)
+
+files:
+  created:
+    - src/components/GraphViewer.vue
+    - src/components/__tests__/GraphViewer.spec.ts
+  modified: []
+
+details:
+  component_stats:
+    lines_of_code: 201
+    functions: 5 (renderChart, calculateTickStep, onMounted, watch, onUnmounted)
+    colors_in_palette: 8
+    default_timeframe: 0-48 hours
+  test_stats:
+    total_tests: 22
+    test_groups: 3 (structure, creation, lifecycle/edge cases)
+    mock_pattern: vi.hoisted() with constructor function spy
+  quality_metrics:
+    type_check: passing
+    lint_check: passing
+    test_coverage: 277/277 passing (including existing tests)
+    new_tests: 22 all green
+
+git:
+  commit: fdc40e8
+  message: "Implement GraphViewer component for pharmacokinetic curve visualization (Task 7)"

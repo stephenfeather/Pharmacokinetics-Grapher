@@ -1,0 +1,73 @@
+---
+task: "Task 2: Prescription Data Models and Validation Logic"
+status: COMPLETE
+completed: "2026-02-13T23:08:00Z"
+agent: kraken
+
+files_created:
+  - path: src/core/models/prescription.ts
+    description: "Core module: types (FrequencyLabel, Prescription, TimeSeriesPoint, GraphDataset, ValidationResult), constants (FREQUENCY_MAP, VALIDATION_RULES, KA_KE_TOLERANCE), and validatePrescription() function with 8 field validators + cross-field warning checker"
+    lines: 354
+
+  - path: src/core/models/__tests__/prescription.spec.ts
+    description: "Comprehensive test suite: 109 test cases covering type definitions, constants, field validation (boundaries, errors, edge cases), cross-field warnings, error accumulation, reference fixtures, and barrel exports"
+    lines: 502
+
+  - path: src/core/models/__tests__/fixtures.ts
+    description: "6 reusable prescription fixtures for downstream testing: SINGLE_DOSE_FIXTURE, BID_MULTI_DOSE_FIXTURE, KA_APPROX_KE_FIXTURE, MIN_BOUNDARY_FIXTURE, MAX_BOUNDARY_FIXTURE, IBUPROFEN_FIXTURE"
+    lines: 66
+
+files_modified:
+  - path: src/core/models/index.ts
+    description: "Replaced empty stub with barrel exports for all types and runtime values"
+    lines: 15
+
+test_results:
+  total: 110
+  passed: 110
+  failed: 0
+  command: "npx vitest run"
+
+verification:
+  type_check: PASS
+  lint: PASS
+  build: PASS
+  full_tests: PASS
+
+exports_available:
+  types:
+    - Prescription
+    - FrequencyLabel
+    - TimeSeriesPoint
+    - GraphDataset
+    - ValidationResult
+  constants:
+    - FREQUENCY_MAP
+    - VALIDATION_RULES
+    - KA_KE_TOLERANCE
+  functions:
+    - validatePrescription
+
+fixtures_available:
+  - SINGLE_DOSE_FIXTURE
+  - BID_MULTI_DOSE_FIXTURE
+  - KA_APPROX_KE_FIXTURE
+  - MIN_BOUNDARY_FIXTURE
+  - MAX_BOUNDARY_FIXTURE
+  - IBUPROFEN_FIXTURE
+
+decisions:
+  - "ValidationResult extended with warnings[] array for soft validation (uptake >= halfLife, ka ~ ke)"
+  - "String union type for FrequencyLabel (not enum) per CLAUDE.md spec"
+  - "KA_KE_TOLERANCE exported as shared constant (0.001) for both validation and calculations"
+  - "All validators run without short-circuit (accumulate all errors)"
+  - "Whitespace-only names treated as empty (trimmed before length check)"
+  - "Cross-field warnings skipped when individual fields invalid"
+
+ready_for:
+  - task: "Task 3: PK Calculator Implementation"
+    imports_needed:
+      - "Prescription, TimeSeriesPoint, GraphDataset from @/core/models"
+      - "FREQUENCY_MAP, KA_KE_TOLERANCE from @/core/models"
+      - "Fixtures from @/core/models/__tests__/fixtures"
+    notes: "Calculation engine should use KA_KE_TOLERANCE to switch between standard and fallback (ka ~ ke) formulas"

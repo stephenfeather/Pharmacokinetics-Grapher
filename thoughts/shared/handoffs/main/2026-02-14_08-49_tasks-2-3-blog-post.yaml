@@ -1,0 +1,118 @@
+---
+session: pharmacokinetics-grapher
+date: 2026-02-14
+status: complete
+outcome: SUCCEEDED
+---
+
+goal: Complete Task 2 (Prescription Models) + Task 3 (Single-dose PK Calculator) with validation, publish technical blog post
+now: Start Task 4 - Implement multi-dose accumulation and steady-state calculations in src/core/calculations/
+
+test: npm run build && npm run type-check && npm run lint && npm run test
+
+done_this_session:
+  - task: "Task 2: Prescription Data Models and validation logic"
+    files: [src/core/models/prescription.ts, src/core/models/__tests__/prescription.spec.ts, src/core/models/__tests__/fixtures.ts, src/core/models/index.ts]
+  - task: "Task 3: Single-dose PK calculator"
+    files: [src/core/calculations/pkCalculator.ts, src/core/calculations/__tests__/pkCalculator.spec.ts, src/core/calculations/index.ts]
+  - task: "Blog post: Building a Pharmacokinetic Calculator in Vue 3"
+    files: [published at https://stephenfeather.com/technical-log/building-a-pharmacokinetic-calculator-in-vue-3/]
+  - task: "Handoff: Tasks 2-3 completion (previous session)"
+    files: [thoughts/shared/handoffs/main/2026-02-13_23-39_task-2-3-models-calculator.yaml]
+
+blockers: []
+
+questions: []
+
+decisions:
+  - "Orchestrated workflow": "Used /build skill to delegate plan → validate → TDD implementation. Prevented rework by validating architecture before coding."
+  - "Blog post strategy": "Documented entire journey (planning, validation, TDD) not just final code. Shows troubleshooting process and decision-making."
+  - "Mathematical precision": "Used Math.LN2 vs hardcoded 0.693 for IEEE 754 double-precision in PK calculations."
+  - "Single source of truth": "KA_KE_TOLERANCE constant shared between validation (Task 2) and calculator (Task 3)."
+
+findings:
+  - "168 total tests": "110 from Task 2 validation + 58 from Task 3 calculator. All passing, comprehensive coverage."
+  - "Validation success": "Plan validation caught edge cases (ka≈ke fallback) before implementation. Zero rework needed."
+  - "Blog resonance": "Post captures value of orchestration + validation + TDD approach. Published immediately with featured image."
+  - "Fixture reuse": "6 test fixtures from Task 2 successfully reused in Task 3, ensuring test data consistency."
+
+worked:
+  - "Delegation to planning agents": "Plan agent created detailed 7-phase TDD strategy, validation agent caught edge cases early."
+  - "Fixtures-first approach": "Creating fixtures before calculators meant tests were consistent and reusable."
+  - "Analytical golden values": "Pre-computed expected concentrations from mathematical derivations ensures formulas are correct."
+  - "Error message clarity": "Validation messages include valid ranges, making them user-friendly for UI display."
+  - "Separation of concerns": "Models (Task 2) independent of Calculations (Task 3) allows independent testing and maintenance."
+
+failed: []
+
+next:
+  - "Task 4: Implement multi-dose accumulation (accumulateDoses) - sum raw concentrations, normalize to peak=1.0, compute steady-state"
+  - "Task 5: Implement storage layer (prescriptionStorage.ts) for localStorage persistence"
+  - "Tasks 6-9: UI components (PrescriptionForm, GraphViewer, PrescriptionList, Compare) - can parallelize after Task 4 complete"
+
+files:
+  created:
+    - src/core/models/prescription.ts
+    - src/core/models/__tests__/prescription.spec.ts
+    - src/core/models/__tests__/fixtures.ts
+    - src/core/calculations/pkCalculator.ts
+    - src/core/calculations/__tests__/pkCalculator.spec.ts
+    - Blog post (on stephenfeather.com, ID 98)
+  modified:
+    - src/core/models/index.ts
+    - src/core/calculations/index.ts
+
+commits:
+  - "e20e119: Implement Prescription Data Models and validation logic (Task 2)"
+  - "4765c4f: Implement single-dose PK calculator (Task 3)"
+
+context:
+  test_results:
+    - "Task 2: 109 test cases, all passing"
+    - "Task 3: 58 test cases, all passing"
+    - "Total: 168 tests passing"
+    - "Type check: PASS (strict mode)"
+    - "Lint: PASS (0 errors)"
+    - "Build: PASS (vite build)"
+
+  architecture_summary:
+    - "Layer 1: Prescription models (interface + validation)"
+    - "Layer 2: PK calculator (single-dose with fallback for ka≈ke)"
+    - "Layer 3: Test fixtures (6 reusable prescriptions)"
+
+  key_equations:
+    - "Standard: C(t) = Dose × [ka/(ka-ke)] × (e^(-ke×t) - e^(-ka×t))"
+    - "Fallback (ka≈ke): C(t) = Dose × ka × t × e^(-ke×t)"
+    - "Peak time: Tmax = ln(ka/ke) / (ka - ke)"
+
+  validation_rules:
+    - "name: 1-100 chars (trimmed)"
+    - "dose: 0.001-10000"
+    - "frequency: once|bid|tid|qid|q6h|q8h|q12h|custom"
+    - "halfLife: 0.1-240 hours"
+    - "peak: 0.1-48 hours"
+    - "uptake: 0.1-24 hours"
+
+  blog_post_details:
+    - "URL: https://stephenfeather.com/technical-log/building-a-pharmacokinetic-calculator-in-vue-3/"
+    - "Featured image: Pharmacokinetic curve visualization (media ID 97)"
+    - "Focus keyword: pharmacokinetic calculator"
+    - "Category: Technical Log"
+    - "Topics: Vue 3, TypeScript, TDD, Testing, Pharmacology, Mathematics"
+
+notes: |
+  Tasks 2 and 3 complete. All tests passing. Blog post published showcasing the orchestrated workflow.
+
+  The single-dose calculator is production-ready and thoroughly tested. It returns raw (non-normalized)
+  concentrations as building blocks for Task 4's multi-dose accumulation.
+
+  For Task 4, the accumulateDoses() function will:
+  1. For each dose at each scheduled time, call calculateConcentration()
+  2. Sum all contributions to get total concentration at each timepoint
+  3. Normalize final curve so peak = 1.0
+  4. Return TimeSeriesPoint[] for charting
+
+  After Task 4, Tasks 5-9 (storage + UI) can proceed in parallel or serial depending on dependencies.
+
+  Blog post documents the entire process including planning, validation, and TDD phases - good
+  for attracting developers interested in systematic software engineering approaches.

@@ -4,3 +4,5 @@ export {
   getPeakTime,
   ABSORPTION_CONSTANT,
 } from './pkCalculator'
+
+export { accumulateDoses } from './multiDose'

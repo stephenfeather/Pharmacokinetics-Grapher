@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import type { Prescription, FrequencyLabel, ValidationResult } from '@/core/models/prescription'
 import { FREQUENCY_MAP, validatePrescription } from '@/core/models/prescription'
+import ImportPrescriptions from './ImportPrescriptions.vue'
 
 // Props & Emits
 const props = defineProps<{
@@ -11,6 +12,9 @@ const props = defineProps<{
 const emit = defineEmits<{
   submit: [prescription: Prescription]
 }>()
+
+// Import modal state
+const showImportModal = ref(false)
 
 // Form state (individual refs)
 const name = ref(props.initial?.name ?? 'Test Drug')
@@ -71,6 +75,10 @@ const canSubmit = computed(() => validation.value.valid)
 function handleSubmit() {
   if (!canSubmit.value) return
   emit('submit', prescription.value)
+}
+
+function handleImportSuccess() {
+  showImportModal.value = false
 }
 </script>
 
@@ -252,7 +260,26 @@ function handleSubmit() {
       >
         Generate Graph
       </button>
+
+      <!-- Import link -->
+      <div class="import-link-container">
+        <button
+          type="button"
+          @click="showImportModal = true"
+          class="import-link"
+          aria-label="Import prescriptions from JSON"
+        >
+          or import prescriptions
+        </button>
+      </div>
     </form>
+
+    <!-- Import modal -->
+    <ImportPrescriptions
+      v-if="showImportModal"
+      @imported="handleImportSuccess"
+      @close="showImportModal = false"
+    />
   </div>
 </template>
 
@@ -450,6 +477,26 @@ button[type='submit']:disabled {
   background-color: var(--color-border);
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+.import-link-container {
+  text-align: center;
+  margin-top: 0.75rem;
+}
+
+.import-link {
+  background: none;
+  border: none;
+  color: var(--vt-c-text-light-2);
+  font-size: 0.875rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+  transition: color 0.2s ease;
+}
+
+.import-link:hover {
+  color: var(--color-text);
 }
 
 /* Dark mode adjustments */

@@ -462,3 +462,312 @@ describe('App.vue - Phase 1: Tab Navigation and State Management', () => {
     })
   })
 })
+
+describe('App.vue - Phase 2: PrescriptionList Integration', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  describe('PrescriptionList Component Integration', () => {
+    it('renders list section when list view is shown', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      vm.switchView('list')
+      await flushPromises()
+
+      const listSection = wrapper.find('.list-section')
+      expect(listSection.exists()).toBe(true)
+    })
+
+    it('does not render list section when list view is hidden', () => {
+      const wrapper = mount(App)
+      const listSection = wrapper.find('.list-section')
+      expect(listSection.exists()).toBe(false)
+    })
+
+    it('renders PrescriptionList component in list section', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      vm.switchView('list')
+      await flushPromises()
+
+      const prescriptionList = wrapper.findComponent({ name: 'PrescriptionList' })
+      expect(prescriptionList.exists()).toBe(true)
+    })
+  })
+
+  describe('PrescriptionList Events - View', () => {
+    it('switches to graph view when @view event emitted', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        id: 'rx-1',
+        name: 'Test Drug',
+        frequency: 'bid',
+        times: ['09:00', '21:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.switchView('list')
+      await flushPromises()
+
+      const prescriptionList = wrapper.findComponent({ name: 'PrescriptionList' })
+      prescriptionList.vm.$emit('view', prescription)
+      await flushPromises()
+
+      expect(vm.activeTab).toBe('graph')
+      expect(vm.showGraph).toBe(true)
+      expect(vm.comparePrescriptions).toEqual([prescription])
+    })
+
+    it('displays single prescription on graph after view', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        id: 'rx-1',
+        name: 'Test Drug',
+        frequency: 'bid',
+        times: ['09:00', '21:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.switchView('list')
+      await flushPromises()
+
+      const prescriptionList = wrapper.findComponent({ name: 'PrescriptionList' })
+      prescriptionList.vm.$emit('view', prescription)
+      await flushPromises()
+
+      expect(vm.comparePrescriptions.length).toBe(1)
+      expect(vm.comparePrescriptions[0]?.name).toBe('Test Drug')
+    })
+  })
+
+  describe('PrescriptionList Events - Edit', () => {
+    it('switches to form view when @edit event emitted', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        id: 'rx-1',
+        name: 'Test Drug',
+        frequency: 'bid',
+        times: ['09:00', '21:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.switchView('list')
+      await flushPromises()
+
+      const prescriptionList = wrapper.findComponent({ name: 'PrescriptionList' })
+      prescriptionList.vm.$emit('edit', prescription)
+      await flushPromises()
+
+      expect(vm.activeTab).toBe('form')
+      expect(vm.showForm).toBe(true)
+      expect(vm.currentPrescription).toEqual(prescription)
+    })
+
+    it('loads prescription into form for editing', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        id: 'rx-2',
+        name: 'Another Drug',
+        frequency: 'tid',
+        times: ['08:00', '14:00', '20:00'],
+        dose: 250,
+        halfLife: 8,
+        peak: 1.5,
+        uptake: 1,
+      }
+
+      vm.switchView('list')
+      await flushPromises()
+
+      const prescriptionList = wrapper.findComponent({ name: 'PrescriptionList' })
+      prescriptionList.vm.$emit('edit', prescription)
+      await flushPromises()
+
+      const updatedVm = getComponentState(wrapper)
+      expect(updatedVm.currentPrescription?.id).toBe('rx-2')
+      expect(updatedVm.currentPrescription?.name).toBe('Another Drug')
+    })
+  })
+
+  describe('PrescriptionList Events - Compare', () => {
+    it('switches to graph view when @compare event emitted', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const rx1: Prescription = {
+        id: 'rx-1',
+        name: 'Drug 1',
+        frequency: 'bid',
+        times: ['09:00', '21:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      const rx2: Prescription = {
+        id: 'rx-2',
+        name: 'Drug 2',
+        frequency: 'tid',
+        times: ['08:00', '14:00', '20:00'],
+        dose: 250,
+        halfLife: 8,
+        peak: 1.5,
+        uptake: 1,
+      }
+
+      vm.switchView('list')
+      await flushPromises()
+
+      const prescriptionList = wrapper.findComponent({ name: 'PrescriptionList' })
+      prescriptionList.vm.$emit('compare', [rx1, rx2])
+      await flushPromises()
+
+      const updatedVm = getComponentState(wrapper)
+      expect(updatedVm.activeTab).toBe('graph')
+      expect(updatedVm.showGraph).toBe(true)
+      expect(updatedVm.comparePrescriptions.length).toBe(2)
+    })
+
+    it('loads multiple prescriptions for comparison', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const rx1: Prescription = {
+        id: 'rx-1',
+        name: 'Drug 1',
+        frequency: 'bid',
+        times: ['09:00', '21:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      const rx2: Prescription = {
+        id: 'rx-2',
+        name: 'Drug 2',
+        frequency: 'tid',
+        times: ['08:00', '14:00', '20:00'],
+        dose: 250,
+        halfLife: 8,
+        peak: 1.5,
+        uptake: 1,
+      }
+
+      const rx3: Prescription = {
+        id: 'rx-3',
+        name: 'Drug 3',
+        frequency: 'qid',
+        times: ['07:00', '11:00', '15:00', '19:00'],
+        dose: 100,
+        halfLife: 4,
+        peak: 1,
+        uptake: 0.5,
+      }
+
+      vm.switchView('list')
+      await flushPromises()
+
+      const prescriptionList = wrapper.findComponent({ name: 'PrescriptionList' })
+      prescriptionList.vm.$emit('compare', [rx1, rx2, rx3])
+      await flushPromises()
+
+      const updatedVm = getComponentState(wrapper)
+      expect(updatedVm.comparePrescriptions.length).toBe(3)
+      expect(updatedVm.comparePrescriptions[0]?.name).toBe('Drug 1')
+      expect(updatedVm.comparePrescriptions[1]?.name).toBe('Drug 2')
+      expect(updatedVm.comparePrescriptions[2]?.name).toBe('Drug 3')
+    })
+  })
+
+  describe('Graph Data with Multiple Prescriptions', () => {
+    it('graph tab shows count of compared prescriptions', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const rx1: Prescription = {
+        id: 'rx-1',
+        name: 'Drug 1',
+        frequency: 'bid',
+        times: ['09:00', '21:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      const rx2: Prescription = {
+        id: 'rx-2',
+        name: 'Drug 2',
+        frequency: 'tid',
+        times: ['08:00', '14:00', '20:00'],
+        dose: 250,
+        halfLife: 8,
+        peak: 1.5,
+        uptake: 1,
+      }
+
+      vm.switchView('list')
+      await flushPromises()
+
+      const prescriptionList = wrapper.findComponent({ name: 'PrescriptionList' })
+      prescriptionList.vm.$emit('compare', [rx1, rx2])
+      await flushPromises()
+
+      const tabs = wrapper.findAll('nav[role="navigation"] button')
+      const graphTab = tabs.find((tab) => tab.text().includes('Graph'))
+      expect(graphTab?.text()).toContain('2')
+    })
+  })
+
+  describe('Edit Flow - Return to Form', () => {
+    it('returns to form tab when prescription is edited from list', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        id: 'rx-1',
+        name: 'Original Name',
+        frequency: 'bid',
+        times: ['09:00', '21:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      // Switch to list and emit edit
+      vm.switchView('list')
+      await flushPromises()
+
+      const prescriptionList = wrapper.findComponent({ name: 'PrescriptionList' })
+      prescriptionList.vm.$emit('edit', prescription)
+      await flushPromises()
+
+      const updatedVm = getComponentState(wrapper)
+      expect(updatedVm.activeTab).toBe('form')
+      expect(updatedVm.currentPrescription?.name).toBe('Original Name')
+    })
+  })
+})

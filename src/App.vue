@@ -5,6 +5,7 @@ import { getGraphData } from '@/core/calculations'
 import { savePrescription, getAllPrescriptions } from '@/core/storage/prescriptionStorage'
 import PrescriptionForm from '@/components/PrescriptionForm.vue'
 import GraphViewer from '@/components/GraphViewer.vue'
+import PrescriptionList from '@/components/PrescriptionList.vue'
 
 // ---- State ----
 
@@ -30,8 +31,8 @@ const graphContainerRef = ref<HTMLElement | null>(null)
 // ---- Computed graph data ----
 
 const graphDatasets = computed<GraphDataset[]>(() => {
-  if (!currentPrescription.value) return []
-  return getGraphData([currentPrescription.value], startHours.value, endHours.value)
+  if (comparePrescriptions.value.length === 0) return []
+  return getGraphData(comparePrescriptions.value, startHours.value, endHours.value)
 })
 
 // ---- View switching ----
@@ -58,6 +59,7 @@ function switchView(view: 'form' | 'list' | 'graph') {
 
 function handleFormSubmit(rx: Prescription) {
   currentPrescription.value = rx
+  comparePrescriptions.value = [rx]
   switchView('graph')
 }
 
@@ -72,6 +74,23 @@ function saveCurrentPrescription() {
 function newPrescription() {
   currentPrescription.value = null
   switchView('form')
+}
+
+// ---- PrescriptionList event handlers ----
+
+function handleViewPrescription(rx: Prescription) {
+  comparePrescriptions.value = [rx]
+  switchView('graph')
+}
+
+function handleEditPrescription(rx: Prescription) {
+  currentPrescription.value = rx
+  switchView('form')
+}
+
+function handleComparePrescriptions(rxs: Prescription[]) {
+  comparePrescriptions.value = rxs
+  switchView('graph')
 }
 
 // ---- Tab keyboard navigation ----
@@ -144,10 +163,11 @@ function handleTabKeydown(event: KeyboardEvent) {
       </div>
 
       <div v-if="showList" class="list-section" ref="listContainerRef">
-        <h2>Saved Prescriptions ({{ savedPrescriptions.length }})</h2>
-        <p v-if="savedPrescriptions.length === 0" class="empty-state">
-          No prescriptions saved yet. Create one above to get started.
-        </p>
+        <PrescriptionList
+          @view="handleViewPrescription"
+          @edit="handleEditPrescription"
+          @compare="handleComparePrescriptions"
+        />
       </div>
 
       <div v-if="showGraph" class="graph-section" ref="graphContainerRef" role="region" aria-label="Graph visualization" tabindex="-1">

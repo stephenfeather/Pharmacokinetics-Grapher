@@ -5,6 +5,8 @@ import a11yLegend from 'chartjs-plugin-a11y-legend'
 import type { GraphDataset } from '@/core/models/prescription'
 import { generateFilename, downloadImage } from '@/core/export'
 
+// Plugin lacks type definitions, but Chart.register accepts Plugin type
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 Chart.register(...registerables, a11yLegend as any)
 
 // ---- Props ----

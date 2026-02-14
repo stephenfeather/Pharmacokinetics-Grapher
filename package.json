@@ -16,6 +16,7 @@
     "format": "prettier --write --experimental-cli src/"
   },
   "dependencies": {
+    "chart.js": "^4.5.1",
     "vue": "^3.5.27"
   },
   "devDependencies": {

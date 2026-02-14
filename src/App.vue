@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, nextTick, watch } from 'vue'
 import type { Prescription, GraphDataset } from '@/core/models/prescription'
 import { getGraphData } from '@/core/calculations'
 import { savePrescription, getAllPrescriptions } from '@/core/storage/prescriptionStorage'
@@ -126,6 +126,14 @@ function handleTabKeydown(event: KeyboardEvent) {
     buttons[nextIndex]?.click()
   }
 }
+
+// ---- Edge Case Handling: Auto-switch from graph if prescriptions deleted ----
+
+watch(comparePrescriptions, (newVal) => {
+  if (newVal.length === 0 && activeTab.value === 'graph') {
+    switchView('list')
+  }
+})
 </script>
 
 <template>

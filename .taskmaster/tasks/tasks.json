@@ -1453,7 +1453,7 @@
         "description": "Users need to be able to graph associated metabolite information alongside medication curves to see how metabolite levels change over time.",
         "details": "",
         "testStrategy": "",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [],
         "priority": "medium",
         "subtasks": [
@@ -1581,7 +1581,7 @@
         "complexity": 7,
         "recommendedSubtasks": 5,
         "expansionPrompt": "Break down into: (1) Research pharmacokinetic model for metabolite curves - typically requires parent-metabolite conversion rate and metabolite elimination rate, CLAUDE.md notes metaboliteLife is 'informational only' currently, (2) Extend Prescription interface with metabolite parameters (metaboliteConversionRate, metaboliteHalfLife), (3) Implement metabolite concentration calculation in pkCalculator.ts - standard approach is compartmental model where metabolite formation rate equals parent elimination, (4) Update multiDose.ts accumulateDoses to optionally return metabolite TimeSeriesPoint array, (5) Modify GraphViewer to plot metabolite curves with distinct styling (dashed line) alongside parent drug curves.",
-        "updatedAt": "2026-02-15T11:20:46.856Z"
+        "updatedAt": "2026-02-15T11:34:20.079Z"
       },
       {
         "id": "15",
@@ -1960,18 +1960,43 @@
         "description": "When editing a saved medication, the medication duration field keeps prompting for a valid entry. If you enter a value, when submitting the form, it reverts to the existing value instead of saving the new value.",
         "details": "",
         "testStrategy": "",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-02-15T12:00:13.496Z"
+      },
+      {
+        "id": "22",
+        "title": "Package app as desktop application using Tauri v2",
+        "description": "Package the Pharmacokinetics Grapher as a downloadable desktop application for non-technical end users. Must work fully offline with no hosting infrastructure required.",
+        "details": "Implementation plan available at: plans/stateful-hatching-hippo.md\n\nFramework: Tauri v2 (3-5 MB installers vs 50-100 MB Electron)\nPlatforms: macOS (.dmg), Windows (.msi), Linux (.deb + .AppImage)\nDistribution: GitHub Releases\nKey features: Full offline capability, localStorage persistence, native window (1200x800 default)\n\nSteps:\n1. Install Rust toolchain\n2. Initialize Tauri project (npm run tauri init)\n3. Configure tauri.conf.json, update vite.config.ts and package.json\n4. Generate app icons from 512x512 source\n5. Test in dev mode (npm run tauri:dev)\n6. Build for all platforms (npm run tauri:build)\n7. Verify offline functionality\n8. Create GitHub Release with installers\n\nCritical files:\n- package.json (add Tauri scripts)\n- vite.config.ts (add Tauri config)\n- src-tauri/tauri.conf.json (window settings, bundle config)\n- index.html (update title)",
+        "testStrategy": "1. Dev mode testing: npm run tauri:dev - verify app window opens, all features work\n2. Offline test: Build production app, disconnect internet, verify full functionality\n3. Cross-platform install: Test .dmg (macOS), .msi (Windows), .deb/.AppImage (Linux)\n4. Bundle size verification: Confirm 3-6 MB (not 50+ MB)\n5. Data persistence: Create prescription, close app, reopen, verify data persists",
         "status": "in-progress",
         "dependencies": [],
         "priority": "high",
         "subtasks": [],
-        "updatedAt": "2026-02-15T11:18:29.065Z"
+        "updatedAt": "2026-02-15T11:40:43.317Z"
+      },
+      {
+        "id": "23",
+        "title": "Create GitHub Actions release workflow for cross-platform Tauri builds",
+        "description": "Create a GitHub Actions workflow that automatically builds Tauri desktop application binaries for macOS (universal), Windows (x64), and Linux (x64) platforms, then uploads them as release assets when a GitHub release is published.",
+        "details": "**Implementation: `.github/workflows/release.yml`**\n\nCreate a comprehensive GitHub Actions workflow that triggers on release publish events and builds platform-specific Tauri binaries using a matrix strategy.\n\n```yaml\nname: Release\n\non:\n  release:\n    types: [published]\n\njobs:\n  build-tauri:\n    strategy:\n      fail-fast: false\n      matrix:\n        include:\n          - platform: 'macos-latest'\n            args: '--target universal-apple-darwin'\n            artifact_name: 'macos'\n            rust_targets: 'aarch64-apple-darwin,x86_64-apple-darwin'\n          - platform: 'windows-latest'\n            args: '--target x86_64-pc-windows-msvc'\n            artifact_name: 'windows'\n            rust_targets: 'x86_64-pc-windows-msvc'\n          - platform: 'ubuntu-22.04'\n            args: '--target x86_64-unknown-linux-gnu'\n            artifact_name: 'linux'\n            rust_targets: 'x86_64-unknown-linux-gnu'\n\n    runs-on: ${{ matrix.platform }}\n    \n    permissions:\n      contents: write\n\n    steps:\n      - name: Checkout repository\n        uses: actions/checkout@v4\n\n      - name: Install Linux dependencies\n        if: matrix.platform == 'ubuntu-22.04'\n        run: |\n          sudo apt-get update\n          sudo apt-get install -y \\\n            libwebkit2gtk-4.1-dev \\\n            libappindicator3-dev \\\n            librsvg2-dev \\\n            patchelf \\\n            libgtk-3-dev \\\n            libsoup-3.0-dev \\\n            libjavascriptcoregtk-4.1-dev\n\n      - name: Setup Node.js\n        uses: actions/setup-node@v4\n        with:\n          node-version: '22'\n          cache: 'npm'\n\n      - name: Install Rust toolchain\n        uses: dtolnay/rust-action@stable\n        with:\n          targets: ${{ matrix.rust_targets }}\n\n      - name: Rust cache\n        uses: swatinem/rust-cache@v2\n        with:\n          workspaces: './src-tauri -> target'\n          shared-key: 'tauri-${{ matrix.platform }}'\n\n      - name: Install frontend dependencies\n        run: npm ci\n\n      - name: Build Tauri app\n        uses: tauri-apps/tauri-action@v0\n        env:\n          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}\n        with:\n          tagName: ${{ github.ref_name }}\n          releaseName: 'Pharmacokinetics Grapher v__VERSION__'\n          releaseBody: 'See the assets below to download for your platform.'\n          releaseDraft: false\n          prerelease: false\n          args: ${{ matrix.args }}\n\n      # Alternative manual upload step if tauri-action doesn't upload\n      - name: List built artifacts (debug)\n        if: always()\n        run: |\n          echo \"=== Build output ===\"\n          ls -la src-tauri/target/release/bundle/ || true\n          ls -la src-tauri/target/*/release/bundle/ || true\n```\n\n**Key Configuration Details from `src-tauri/tauri.conf.json`:**\n- `productName`: \"Pharmacokinetics Grapher\"\n- `version`: \"1.0.0\"\n- `identifier`: \"com.pkgrapher.app\"\n- `bundle.targets`: [\"dmg\", \"msi\", \"deb\", \"appimage\"]\n\n**Platform-Specific Build Outputs:**\n- **macOS (universal)**: `.dmg` in `src-tauri/target/universal-apple-darwin/release/bundle/dmg/`\n- **Windows (x64)**: `.msi` and `.exe` in `src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/` and `nsis/`\n- **Linux (x64)**: `.deb` and `.AppImage` in `src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/` and `appimage/`\n\n**Dependencies by Platform:**\n\n1. **macOS**: No additional system dependencies needed; universal binary requires both ARM64 and x86_64 Rust targets\n\n2. **Windows**: Uses MSVC toolchain (installed on windows-latest by default)\n\n3. **Linux (Ubuntu 22.04)**:\n   - `libwebkit2gtk-4.1-dev` - WebView rendering\n   - `libappindicator3-dev` - System tray support\n   - `librsvg2-dev` - SVG icon support\n   - `patchelf` - Binary patching for AppImage\n   - `libgtk-3-dev` - GTK3 UI framework\n   - `libsoup-3.0-dev` - HTTP client library\n   - `libjavascriptcoregtk-4.1-dev` - JavaScript engine\n\n**Package.json Scripts (already configured):**\n```json\n{\n  \"tauri:build\": \"tauri build\",\n  \"tauri:build:mac\": \"tauri build --target universal-apple-darwin\",\n  \"tauri:build:windows\": \"tauri build --target x86_64-pc-windows-msvc\",\n  \"tauri:build:linux\": \"tauri build --target x86_64-unknown-linux-gnu\"\n}\n```\n\n**Tauri Action Features:**\n- Automatically uploads built artifacts to the GitHub release\n- Handles signing on macOS (if certificates configured)\n- Builds frontend first via `beforeBuildCommand: \"npm run build\"` in tauri.conf.json\n\n**Additional Considerations:**\n1. **Code Signing (optional)**: Add `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY` secrets for macOS notarization\n2. **Windows Code Signing (optional)**: Add certificate secrets for trusted Windows installers\n3. **Version Sync**: Ensure `package.json`, `tauri.conf.json`, and `Cargo.toml` versions match\n4. **Artifact Naming**: tauri-action names artifacts with version and platform automatically",
+        "testStrategy": "**Pre-Release Verification:**\n\n1. **Workflow Syntax Validation:**\n   ```bash\n   # Install act for local GitHub Actions testing (optional)\n   act --list  # List available jobs\n   act -n release  # Dry run the release workflow\n   ```\n\n2. **Local Build Verification (before pushing workflow):**\n   ```bash\n   # Test each platform build locally where possible\n   npm run tauri:build:mac    # On macOS\n   npm run tauri:build:linux  # On Linux\n   # Windows requires actual Windows environment\n   \n   # Verify output artifacts exist\n   ls -la src-tauri/target/*/release/bundle/\n   ```\n\n3. **Workflow File Linting:**\n   ```bash\n   # Use actionlint to validate workflow syntax\n   actionlint .github/workflows/release.yml\n   ```\n\n**Release Workflow Testing:**\n\n4. **Test with Pre-release:**\n   - Create a draft release or pre-release on GitHub\n   - Tag format: `v1.0.0-beta.1`\n   - Monitor Actions tab for workflow execution\n   - Verify all three platform jobs start and run\n\n5. **Matrix Job Verification:**\n   - Each platform job should complete independently (fail-fast: false)\n   - Check job logs for:\n     - Node.js dependencies installed successfully\n     - Rust toolchain and targets installed\n     - Frontend build completed (`npm run build`)\n     - Tauri build completed without errors\n     - Artifacts uploaded to release\n\n6. **Artifact Validation:**\n   - Download each artifact from the release page\n   - **macOS (.dmg)**: Mount, verify app opens, check universal binary:\n     ```bash\n     lipo -info \"Pharmacokinetics Grapher.app/Contents/MacOS/Pharmacokinetics Grapher\"\n     # Should show: Architectures in the fat file: x86_64 arm64\n     ```\n   - **Windows (.msi)**: Install on Windows, verify app runs\n   - **Linux (.deb)**: Install with `sudo dpkg -i *.deb`, verify app runs\n   - **Linux (.AppImage)**: `chmod +x *.AppImage && ./Pharmacokinetics*.AppImage`\n\n7. **Size Verification:**\n   - Confirm bundle sizes are reasonable (3-8 MB per platform)\n   - Check for unexpected large files in bundles\n\n8. **End-to-End Release Flow:**\n   - Create actual release with tag `v1.0.0`\n   - Verify workflow triggers on `published` event\n   - Confirm all artifacts appear on release page within expected time\n   - Download and test one artifact from each platform\n\n**Error Handling Verification:**\n\n9. **Deliberate Failure Test:**\n   - Temporarily break frontend build\n   - Verify workflow fails gracefully with clear error\n   - Fix and verify retry works\n\n10. **Permissions Check:**\n    - Verify GITHUB_TOKEN has `contents: write` permission\n    - Check artifact upload doesn't fail with permission errors",
+        "status": "pending",
+        "dependencies": [
+          "22"
+        ],
+        "priority": "medium",
+        "subtasks": []
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-02-15T11:20:46.858Z",
-      "taskCount": 21,
-      "completedCount": 17,
+      "lastModified": "2026-02-15T12:00:13.497Z",
+      "taskCount": 23,
+      "completedCount": 18,
       "tags": [
         "master"
       ]

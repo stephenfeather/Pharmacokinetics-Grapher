@@ -279,7 +279,7 @@ function handleImportSuccess(count: number) {
             v-model.number="duration"
             type="number"
             min="0.1"
-            step="0.5"
+            step="0.1"
             aria-describedby="hint-duration"
           />
           <small id="hint-duration" class="field-hint">

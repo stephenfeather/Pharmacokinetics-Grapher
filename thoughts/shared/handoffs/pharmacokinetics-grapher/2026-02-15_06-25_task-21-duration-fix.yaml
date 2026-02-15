@@ -1,0 +1,74 @@
+---
+session: pharmacokinetics-grapher
+date: 2026-02-15
+status: complete
+outcome: SUCCEEDED
+---
+
+goal: Fix Task 21 - Form duration field reverts on edit submission
+now: Ready for next task (Task 22+) or continue Task 18 investigation if user provides reproduction case
+test: npm run test:unit (675 tests passing), npm run build (succeeds with no errors)
+
+done_this_session:
+  - task: Task 21 - Fix form duration field reverts on edit submission
+    files: [src/components/PrescriptionForm.vue, src/components/__tests__/PrescriptionForm.duration-edit.spec.ts]
+
+blockers: []
+
+questions: []
+
+decisions:
+  - "Watcher approach": "Used single comprehensive watcher on props.initial with deep: true rather than individual field watchers. Cleaner and ensures all fields stay in sync."
+  - "Initialization strategy": "Handler resets form to defaults when initial=null (new mode) and populates from initial prescription when provided (edit mode)."
+
+findings:
+  - "Root cause": "PrescriptionForm component had no watcher on initial prop. Refs were only initialized at mount time via prop defaults, never updated when prop changed."
+  - "Edit bug flow": "When editing prescription, parent passes new initial prop but form refs retained stale values from previous state, causing duration field to display old values and validation to fail."
+  - "Optional fields": "Duration and metaboliteLife fields require special handling (undefined vs populated) to avoid always including them in the emitted prescription."
+
+worked:
+  - "Test-driven reproduction": "Writing integration tests first revealed exact failure pattern and validated fix."
+  - "Comprehensive watcher": "Single watcher on props.initial handles all form fields at once, preventing partial updates or missed fields."
+  - "Deep tracking": "Using deep: true option ensures nested changes in initial prescription object are caught."
+
+failed:
+  - "Initial approach": "Form only initialized from props at mount time, never considered updating on prop change."
+
+next:
+  - "Continue task workflow": Ready to start Task 22 or investigate Task 18 if user provides specific reproduction case.
+  - "Future optimization": Consider adding localStorage persistence for xAxisMode preference (mentioned in Task 19 handoff).
+
+files:
+  created:
+    - src/components/__tests__/PrescriptionForm.duration-edit.spec.ts (2 integration tests for prop change handling)
+  modified:
+    - src/components/PrescriptionForm.vue (added watch on props.initial lines 35-70)
+
+commits:
+  - "4182b5c": "Fix: Form duration field reverts on edit submission (Task 21)"
+
+notes: |
+  Fixed critical bug in PrescriptionForm where editing saved prescriptions would cause duration field to revert and validation to fail.
+
+  Issue Analysis:
+  - Form's reactive refs (duration, durationUnit, etc.) were only set at component mount using prop defaults
+  - When editing a prescription: parent sets currentPrescription and passes via :initial prop
+  - But NO watcher existed to update form refs when prop changed
+  - Form continued showing stale default values (duration=7, durationUnit='days')
+  - User changes duration → mixes old state with new input → validation/submission fails
+
+  Solution:
+  - Added watcher on () => props.initial with deep: true tracking
+  - Handles two modes:
+    1. New prescription (initial=null): Reset all fields to sensible defaults
+    2. Edit prescription (initial=prescription): Sync all form fields from prescription object
+  - Properly handles optional fields (undefined/null) to avoid unnecessary props in emitted data
+
+  Testing:
+  - Created 2 integration tests in new file PrescriptionForm.duration-edit.spec.ts
+  - Test 1: Verify form updates when initial prop changes to different prescription
+  - Test 2: Verify new duration values are correctly submitted after prop update
+  - All 675 existing tests pass with no regressions
+  - Full build succeeds with TypeScript type checking
+
+  The fix is minimal, focused, and preserves all existing functionality while correctly handling the edit flow.

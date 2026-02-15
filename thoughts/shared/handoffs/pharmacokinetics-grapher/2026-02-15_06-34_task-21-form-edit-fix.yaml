@@ -1,0 +1,71 @@
+---
+session: pharmacokinetics-grapher
+date: 2026-02-15
+status: complete
+outcome: SUCCEEDED
+---
+
+goal: Fix Task #21 - Form reverts medication duration on edit submission; investigate root cause and implement comprehensive fix
+now: Ready for Task #22 - Package app as desktop application using Tauri v2 (plan available at plans/stateful-hatching-hippo.md)
+test: npm run test:unit && npm run type-check && npm run build
+
+done_this_session:
+  - task: Task #21 - Fix form edit/save workflow for prescriptions
+    files: [src/App.vue]
+  - task: Marked Task #14 (Metabolite Graphing) as done - was already complete from previous session
+    files: []
+
+blockers: []
+
+questions: []
+
+decisions:
+  - "Root cause was two-part bug": (1) Form never populated with :initial prop, (2) Save always created new IDs instead of updating existing
+  - "Solution used existing infrastructure": updatePrescription() existed in storage but was never imported or called; only needed to wire it into App.vue
+
+findings:
+  - "Primary issue: Missing :initial binding": PrescriptionForm accepts initial prop but App.vue never passes it when editing
+  - "Secondary issue: Save logic bypassed update()": saveCurrentPrescription() only called savePrescription() which generates new IDs; never called updatePrescription()
+  - "Tertiary issue: Missing import": updatePrescription() was not imported in App.vue despite existing in prescriptionStorage.ts
+  - "Edit workflow fix verified": All 673 tests pass, zero TypeScript errors, production build succeeds
+
+worked:
+  - "Sleuth agent investigation": Found both root causes efficiently through parallel analysis of form logic, storage layer, and git history
+  - "Minimal changes approach": Fixed via 4 targeted edits to App.vue - no new functions, only wired existing updatePrescription() into the flow
+  - "Immediate verification": Built and tested immediately - caught no regressions
+
+failed: []
+
+next:
+  - Start Task #22 - Tauri v2 desktop packaging (high priority)
+  - Option: Expand to other pending tasks if Tauri packaging completes quickly
+
+files:
+  created: []
+  modified:
+    - src/App.vue (5 lines added: import updatePrescription, handle edit mode in handleFormSubmit, distinguish save-new vs update-existing in saveCurrentPrescription, bind :initial prop on PrescriptionForm)
+
+notes: |
+  TASK #21 COMPLETE: Form edit/save workflow now functional
+
+  Root causes identified and fixed:
+  1. Line 5: Added updatePrescription to storage imports
+  2. Line 152-161: Updated handleFormSubmit() to detect edit mode (rx.id exists) and call updatePrescription()
+  3. Line 169-183: Updated saveCurrentPrescription() to distinguish new saves (generate ID) from updates (keep existing ID)
+  4. Line 294: Added :initial="currentPrescription ?? undefined" binding to PrescriptionForm
+
+  Edit workflow:
+  - User clicks "Edit" on saved prescription → handleEditPrescription() sets currentPrescription
+  - Form renders with :initial prop → PrescriptionForm initializes all fields from existing prescription data
+  - User modifies fields → Form state updates normally
+  - User submits form → handleFormSubmit() checks for rx.id (present because from existing prescription)
+  - updatePrescription() called to update storage instead of savePrescription() creating duplicate
+  - User clicks "Save Prescription" from graph view → saveCurrentPrescription() repeats same logic
+
+  All tests passing (673), zero TypeScript errors, production build succeeds.
+  Commit: 1cf298c - Fix Task 21 - Form reverts medication duration on edit submission
+
+  TASK #14 (Metabolite Graphing): Verified complete from previous session, marked as done in task list.
+  All deliverables confirmed: model, calculations, accumulation, visualization, UI, tests (673 passing).
+
+---

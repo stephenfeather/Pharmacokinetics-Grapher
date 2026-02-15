@@ -1,30 +1,14 @@
 {
   "permissions": {
     "allow": [
-      "mcp__gemini*",
-      "mcp__codex-cli*",
       "Bash(mkdir:*)",
-      "mcp__opc-memory*",
-      "mcp__task-master*",
       "Bash(npm create:*)",
       "Bash(npm run*)",
-      "mcp__opc-memory__index_artifacts",
-      "mcp__opc-memory__mark_handoff",
-      "mcp__opc-memory__recall_learnings",
-      "mcp__task-master-ai__get_task",
-      "mcp__task-master-ai__get_tasks",
       "Bash(python3:*)",
-      "mcp__gemini__gemini-generate-image",
-      "Bash(mcp__task-master-ai__get_tasks:*)",
-      "mcp__task-master-ai__set_task_status",
-      "mcp__task-master-ai__update_task",
-      "mcp__codex-cli__listSessions",
-      "mcp__task-master-ai__add_task",
-      "WebFetch(domain:www.npmjs.com)",
       "Skill(fix)",
       "Skill(premortem)",
-      "mcp__task-master-ai__add_dependency",
-      "mcp__task-master-ai__next_task"
+      "Bash(npm exec tauri init:*)",
+      "Bash(git add:*)"
     ]
   }
 }

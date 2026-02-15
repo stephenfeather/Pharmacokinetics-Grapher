@@ -1,6 +1,6 @@
 {
   "name": "pharmacokinetics-grapher",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,7 +13,12 @@
     "lint": "run-s lint:*",
     "lint:oxlint": "oxlint src/ --fix",
     "lint:eslint": "eslint . --fix --cache",
-    "format": "prettier --write --experimental-cli src/"
+    "format": "prettier --write --experimental-cli src/",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "tauri:build:mac": "tauri build --target universal-apple-darwin",
+    "tauri:build:windows": "tauri build --target x86_64-pc-windows-msvc",
+    "tauri:build:linux": "tauri build --target x86_64-unknown-linux-gnu"
   },
   "dependencies": {
     "chart.js": "^4.5.1",
@@ -21,6 +26,7 @@
     "vue": "^3.5.27"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.10.0",
     "@tsconfig/node24": "^24.0.4",
     "@types/jsdom": "^27.0.0",
     "@types/node": "^24.10.9",

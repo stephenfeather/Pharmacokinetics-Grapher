@@ -73,7 +73,7 @@ const autoEndHours = computed<number>(() => {
  * When useAutoTimeframe is true: returns autoEndHours (smart calculation)
  * When false: returns manual endHours (user slider control)
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 const effectiveEndHours = computed<number>(() => {
   return useAutoTimeframe.value ? autoEndHours.value : endHours.value
 })
@@ -253,19 +253,42 @@ watch(comparePrescriptions, (newVal) => {
         <GraphViewer
           :datasets="graphDatasets"
           :start-hours="startHours"
-          :end-hours="endHours"
+          :end-hours="effectiveEndHours"
         />
 
         <div class="graph-controls">
-          <label for="timeframe-slider">Timeframe: {{ startHours }}h to {{ endHours }}h</label>
-          <input
-            id="timeframe-slider"
-            v-model.number="endHours"
-            type="range"
-            min="12"
-            max="168"
-            step="12"
-          />
+          <!-- Auto-extend toggle -->
+          <div class="control-group">
+            <label for="auto-timeframe-toggle" class="toggle-label">
+              <input
+                id="auto-timeframe-toggle"
+                v-model="useAutoTimeframe"
+                type="checkbox"
+                class="toggle-checkbox"
+                aria-label="Enable auto-extend timeframe for intelligent graph sizing"
+              />
+              Auto-extend timeframe
+            </label>
+          </div>
+
+          <!-- Timeframe slider -->
+          <div class="control-group">
+            <label for="timeframe-slider">
+              Timeframe: {{ startHours }}h to {{ effectiveEndHours }}h
+              <span v-if="!useAutoTimeframe" class="mode-indicator">(manual)</span>
+              <span v-else class="mode-indicator">(auto)</span>
+            </label>
+            <input
+              id="timeframe-slider"
+              v-model.number="endHours"
+              type="range"
+              min="12"
+              max="168"
+              step="12"
+              :disabled="useAutoTimeframe"
+              aria-label="Manually adjust graph timeframe when auto-extend is disabled"
+            />
+          </div>
         </div>
 
         <div class="actions">
@@ -360,6 +383,31 @@ watch(comparePrescriptions, (newVal) => {
   border-top: 1px solid #e5e7eb;
 }
 
+.control-group {
+  margin-bottom: 1.5rem;
+}
+
+.control-group:last-child {
+  margin-bottom: 0;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+}
+
+.toggle-checkbox {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #3b82f6;
+}
+
 .graph-controls label {
   display: block;
   margin-bottom: 0.5rem;
@@ -367,11 +415,23 @@ watch(comparePrescriptions, (newVal) => {
   color: #374151;
 }
 
+.mode-indicator {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 400;
+}
+
 .graph-controls input[type="range"] {
   width: 100%;
   height: 6px;
   cursor: pointer;
   accent-color: #3b82f6;
+  transition: opacity 0.2s ease;
+}
+
+.graph-controls input[type="range"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .actions {

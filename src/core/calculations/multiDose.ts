@@ -46,7 +46,7 @@ export function expandDoseTimes(times: string[], numDays: number): number[] {
  * @returns Time in hours of the last scheduled dose, or 0 if numDays is 0
  */
 export function getLastDoseTime(prescription: Prescription, numDays: number): number {
-  if (numDays <= 0) {
+  if (numDays <= 0 || !prescription.times || prescription.times.length === 0) {
     return 0
   }
 

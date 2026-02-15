@@ -2131,4 +2131,294 @@ describe('App.vue - Phase 4: Styling and Polish', () => {
       expect(vm.effectiveEndHours).toBe(vm.autoEndHours)
     })
   })
+
+  describe('Graph Controls UI - Auto/Manual Toggle and Slider', () => {
+    it('renders auto-timeframe toggle checkbox in graph controls', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'once',
+        times: ['09:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.comparePrescriptions = [prescription]
+      vm.switchView('graph')
+      await flushPromises()
+
+      // Find graph controls section
+      const graphControls = wrapper.find('.graph-controls')
+      expect(graphControls.exists()).toBe(true)
+
+      // Find auto-timeframe toggle checkbox
+      const toggleCheckbox = graphControls.find('input[type="checkbox"]')
+      expect(toggleCheckbox.exists()).toBe(true)
+    })
+
+    it('toggle checkbox is bound to useAutoTimeframe', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'once',
+        times: ['09:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.comparePrescriptions = [prescription]
+      vm.switchView('graph')
+      await flushPromises()
+
+      const graphControls = wrapper.find('.graph-controls')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const toggleCheckbox = graphControls.find('input[type="checkbox"]') as any
+
+      // Initially checked (useAutoTimeframe is true)
+      expect(toggleCheckbox.element.checked).toBe(true)
+
+      // Toggle via state (reflects checkbox in template)
+      vm.useAutoTimeframe = false
+      await flushPromises()
+
+      // Verify state changed
+      expect(vm.useAutoTimeframe).toBe(false)
+
+      // Toggle back
+      vm.useAutoTimeframe = true
+      await flushPromises()
+
+      expect(vm.useAutoTimeframe).toBe(true)
+    })
+
+    it('slider is visible when in graph view', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'once',
+        times: ['09:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.comparePrescriptions = [prescription]
+      vm.switchView('graph')
+      await flushPromises()
+
+      const graphControls = wrapper.find('.graph-controls')
+      const slider = graphControls.find('input[type="range"]')
+      expect(slider.exists()).toBe(true)
+    })
+
+    it('slider label displays effectiveEndHours', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'once',
+        times: ['09:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.endHours = 24
+      vm.currentPrescription = prescription
+      vm.comparePrescriptions = [prescription]
+      vm.switchView('graph')
+      await flushPromises()
+
+      const graphControls = wrapper.find('.graph-controls')
+      const labels = graphControls.findAll('label')
+
+      // Find the slider label (not the toggle label)
+      const sliderLabel = labels.find((label) => label.text().includes('Timeframe:'))
+
+      // Label should show effectiveEndHours value
+      expect(sliderLabel?.text()).toContain(`${vm.effectiveEndHours}h`)
+    })
+
+    it('slider is disabled when useAutoTimeframe is true', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'once',
+        times: ['09:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.endHours = 24
+      vm.currentPrescription = prescription
+      vm.comparePrescriptions = [prescription]
+      vm.useAutoTimeframe = true
+      vm.switchView('graph')
+      await flushPromises()
+
+      const graphControls = wrapper.find('.graph-controls')
+      const slider = graphControls.find('input[type="range"]')
+
+      // Slider should be disabled
+      expect(slider.attributes('disabled')).toBeDefined()
+    })
+
+    it('slider is enabled when useAutoTimeframe is false', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'once',
+        times: ['09:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.endHours = 24
+      vm.currentPrescription = prescription
+      vm.comparePrescriptions = [prescription]
+      vm.useAutoTimeframe = false
+      vm.switchView('graph')
+      await flushPromises()
+
+      const graphControls = wrapper.find('.graph-controls')
+      const slider = graphControls.find('input[type="range"]')
+
+      // Slider should not be disabled
+      expect(slider.attributes('disabled')).toBeUndefined()
+    })
+
+    it('toggle has descriptive label', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'once',
+        times: ['09:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.comparePrescriptions = [prescription]
+      vm.switchView('graph')
+      await flushPromises()
+
+      const graphControls = wrapper.find('.graph-controls')
+
+      // Should have a label for the toggle
+      const labels = graphControls.findAll('label')
+      const toggleLabel = labels.find((label) => label.text().toLowerCase().includes('auto'))
+
+      expect(toggleLabel).toBeDefined()
+    })
+
+    it('slider updates effectiveEndHours when in manual mode', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'once',
+        times: ['09:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.endHours = 24
+      vm.currentPrescription = prescription
+      vm.comparePrescriptions = [prescription]
+      vm.useAutoTimeframe = false
+      vm.switchView('graph')
+      await flushPromises()
+
+      const graphControls = wrapper.find('.graph-controls')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const slider = graphControls.find('input[type="range"]') as any
+
+      // Change slider value
+      await slider.setValue(96)
+      await flushPromises()
+
+      // effectiveEndHours should update to new manual value
+      expect(vm.effectiveEndHours).toBe(96)
+    })
+
+    it('toggle has proper ARIA attributes', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'once',
+        times: ['09:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.comparePrescriptions = [prescription]
+      vm.switchView('graph')
+      await flushPromises()
+
+      const graphControls = wrapper.find('.graph-controls')
+      const toggleCheckbox = graphControls.find('input[type="checkbox"]')
+
+      // Should have aria-label for accessibility
+      expect(toggleCheckbox.attributes('aria-label')).toBeDefined()
+    })
+
+    it('slider has descriptive ARIA label', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'once',
+        times: ['09:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.comparePrescriptions = [prescription]
+      vm.switchView('graph')
+      await flushPromises()
+
+      const graphControls = wrapper.find('.graph-controls')
+      const slider = graphControls.find('input[type="range"]')
+
+      // Should have aria-label or be associated with label
+      expect(
+        slider.attributes('aria-label') ||
+        slider.attributes('id'),
+      ).toBeDefined()
+    })
+  })
 })

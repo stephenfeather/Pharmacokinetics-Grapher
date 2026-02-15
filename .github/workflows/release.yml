@@ -14,7 +14,7 @@ jobs:
             args: '--target universal-apple-darwin --bundles dmg'
             rust_targets: 'aarch64-apple-darwin,x86_64-apple-darwin'
           - platform: windows-latest
-            args: '--bundles msi,nsis'
+            args: '--bundles nsis'
             rust_targets: ''
           - platform: ubuntu-22.04
             args: '--bundles deb,appimage'

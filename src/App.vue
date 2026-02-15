@@ -602,26 +602,26 @@ watch(comparePrescriptions, (newVal) => {
 
 @media (prefers-color-scheme: dark) {
   .toggle-label {
-    color: #ffffff;
+    color: #374151;
   }
 
   .graph-controls label {
-    color: #ffffff;
+    color: #374151;
   }
 
   .mode-indicator {
-    color: #b0b0b0;
+    color: #6b7280;
   }
 
   .mode-button {
-    background: #222222;
-    border-color: #444444;
-    color: #ffffff;
+    background: #f3f4f6;
+    border-color: #d1d5db;
+    color: #374151;
   }
 
   .mode-button:hover:not(.active) {
-    background: #333333;
-    border-color: #555555;
+    background: #e5e7eb;
+    border-color: #9ca3af;
   }
 }
 

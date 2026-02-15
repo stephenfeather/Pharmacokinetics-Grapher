@@ -28,6 +28,7 @@ const halfLife = ref(props.initial?.halfLife ?? 6)
 const peak = ref(props.initial?.peak ?? 2)
 const uptake = ref(props.initial?.uptake ?? 1.5)
 const metaboliteLife = ref<number | undefined>(props.initial?.metaboliteLife)
+const metaboliteConversionFraction = ref<number | undefined>(props.initial?.metaboliteConversionFraction)
 const duration = ref<number | undefined>(props.initial?.duration ?? 7)
 const durationUnit = ref<DurationUnit>(props.initial?.durationUnit ?? 'days')
 
@@ -68,6 +69,9 @@ const prescription = computed<Prescription>(() => ({
   uptake: uptake.value,
   ...(metaboliteLife.value !== undefined && !isNaN(metaboliteLife.value)
     ? { metaboliteLife: metaboliteLife.value }
+    : {}),
+  ...(metaboliteConversionFraction.value !== undefined && !isNaN(metaboliteConversionFraction.value)
+    ? { metaboliteConversionFraction: metaboliteConversionFraction.value }
     : {}),
   ...(duration.value !== undefined && !isNaN(duration.value)
     ? { duration: duration.value, durationUnit: durationUnit.value }
@@ -209,6 +213,26 @@ function handleImportSuccess(count: number) {
         <small id="hint-metabolite" class="field-hint"
           >Optional. Range: 0.1 - 1,000 hours</small
         >
+      </div>
+
+      <!-- Metabolite Conversion Fraction (optional) -->
+      <div class="form-field">
+        <label for="rx-metabolite-fm">
+          Metabolite Conversion Fraction (optional)
+        </label>
+        <input
+          id="rx-metabolite-fm"
+          v-model.number="metaboliteConversionFraction"
+          type="number"
+          min="0.0"
+          max="1.0"
+          step="0.01"
+          aria-describedby="hint-metabolite-fm"
+        />
+        <small id="hint-metabolite-fm" class="field-hint">
+          Optional. Fraction of parent drug converted to metabolite (0.0 - 1.0).
+          Both half-life and fraction required for metabolite visualization.
+        </small>
       </div>
 
       <!-- Medication Duration -->
@@ -572,16 +596,24 @@ button[type='submit']:disabled {
 
 /* Dark mode adjustments */
 @media (prefers-color-scheme: dark) {
+  .prescription-form-container {
+    background-color: #1a1a1a;
+  }
+
   .form-field label {
-    color: var(--color-heading);
+    color: #ffffff;
   }
 
   .field-hint {
-    color: var(--vt-c-text-dark-2);
+    color: #b0b0b0;
   }
 
   fieldset legend {
-    color: var(--color-heading);
+    color: #ffffff;
+  }
+
+  .educational-disclaimer strong {
+    color: #fcd34d;
   }
 
   .validation-errors {

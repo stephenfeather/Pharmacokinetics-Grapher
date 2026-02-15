@@ -583,21 +583,21 @@ watch(comparePrescriptions, (newVal) => {
 
 @media (prefers-color-scheme: dark) {
   .toggle-label {
-    color: white;
+    color: #ffffff;
   }
 
   .graph-controls label {
-    color: white;
+    color: #ffffff;
   }
 
   .mode-indicator {
-    color: rgba(235, 235, 235, 0.64);
+    color: #b0b0b0;
   }
 
   .mode-button {
     background: #222222;
     border-color: #444444;
-    color: white;
+    color: #ffffff;
   }
 
   .mode-button:hover:not(.active) {

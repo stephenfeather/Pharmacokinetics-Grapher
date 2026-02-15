@@ -581,6 +581,31 @@ watch(comparePrescriptions, (newVal) => {
   background: #4b5563;
 }
 
+@media (prefers-color-scheme: dark) {
+  .toggle-label {
+    color: white;
+  }
+
+  .graph-controls label {
+    color: white;
+  }
+
+  .mode-indicator {
+    color: rgba(235, 235, 235, 0.64);
+  }
+
+  .mode-button {
+    background: #222222;
+    border-color: #444444;
+    color: white;
+  }
+
+  .mode-button:hover:not(.active) {
+    background: #333333;
+    border-color: #555555;
+  }
+}
+
 @media (max-width: 768px) {
   .app-header h1 {
     font-size: 1.75rem;

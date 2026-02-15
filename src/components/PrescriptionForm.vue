@@ -572,6 +572,18 @@ button[type='submit']:disabled {
 
 /* Dark mode adjustments */
 @media (prefers-color-scheme: dark) {
+  .form-field label {
+    color: var(--color-heading);
+  }
+
+  .field-hint {
+    color: var(--vt-c-text-dark-2);
+  }
+
+  fieldset legend {
+    color: var(--color-heading);
+  }
+
   .validation-errors {
     background-color: #450a0a;
     border-color: #991b1b;

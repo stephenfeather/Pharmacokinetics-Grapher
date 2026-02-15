@@ -2132,6 +2132,190 @@ describe('App.vue - Phase 4: Styling and Polish', () => {
     })
   })
 
+  describe('Edge Cases - Very Long/Short Half-Lives', () => {
+    it('caps autoEndHours at 168 hours (1 week) maximum for very long half-life', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Very Long Half-Life Drug',
+        frequency: 'once',
+        times: ['12:00'],
+        dose: 50,
+        halfLife: 240, // 10 days - would compute to very large value
+        peak: 4,
+        uptake: 2,
+      }
+
+      vm.endHours = 240
+      vm.currentPrescription = prescription
+      vm.comparePrescriptions = [prescription]
+      await flushPromises()
+
+      // Should be capped at 168 (1 week)
+      expect(vm.autoEndHours).toBeLessThanOrEqual(168)
+    })
+
+    it('enforces minimum floor of 24 hours for very short half-life', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Very Short Half-Life Drug',
+        frequency: 'once',
+        times: ['00:30'], // Very early morning
+        dose: 100,
+        halfLife: 0.1, // 6 minutes
+        peak: 0.05,
+        uptake: 0.05,
+      }
+
+      vm.endHours = 2 // Very short window
+      vm.currentPrescription = prescription
+      vm.comparePrescriptions = [prescription]
+      await flushPromises()
+
+      // Should respect minimum of 24 hours
+      expect(vm.autoEndHours).toBeGreaterThanOrEqual(24)
+    })
+
+    it('handles boundary case at exactly 168 hours', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Boundary Case Drug',
+        frequency: 'once',
+        times: ['12:00'],
+        dose: 100,
+        halfLife: 16.8, // Will compute to ~84 + some tail-off, close to 168
+        peak: 2,
+        uptake: 1,
+      }
+
+      vm.endHours = 96
+      vm.currentPrescription = prescription
+      vm.comparePrescriptions = [prescription]
+      await flushPromises()
+
+      // Should not exceed 168
+      expect(vm.autoEndHours).toBeLessThanOrEqual(168)
+    })
+
+    it('handles boundary case at exactly 24 hours minimum', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Short Drug',
+        frequency: 'once',
+        times: ['23:59'], // Just before midnight
+        dose: 100,
+        halfLife: 0.2, // 12 minutes
+        peak: 0.1,
+        uptake: 0.1,
+      }
+
+      vm.endHours = 1 // Very short window
+      vm.currentPrescription = prescription
+      vm.comparePrescriptions = [prescription]
+      await flushPromises()
+
+      // Should respect minimum of 24
+      expect(vm.autoEndHours).toBeGreaterThanOrEqual(24)
+    })
+
+    it('handles mid-range half-life without capping', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Normal Drug',
+        frequency: 'once',
+        times: ['09:00'],
+        dose: 500,
+        halfLife: 12, // 12 hours - normal case
+        peak: 2,
+        uptake: 1,
+      }
+
+      vm.endHours = 48
+      vm.currentPrescription = prescription
+      vm.comparePrescriptions = [prescription]
+      await flushPromises()
+
+      // Should be between bounds, calculated value
+      expect(vm.autoEndHours).toBeGreaterThan(24)
+      expect(vm.autoEndHours).toBeLessThan(168)
+    })
+
+    it('correctly handles multiple prescriptions with different half-lives', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const shortHalfLife: Prescription = {
+        name: 'Fast Drug',
+        frequency: 'once',
+        times: ['09:00'],
+        dose: 100,
+        halfLife: 2,
+        peak: 1,
+        uptake: 0.5,
+      }
+
+      vm.endHours = 24
+      vm.currentPrescription = shortHalfLife
+      vm.comparePrescriptions = [shortHalfLife]
+      await flushPromises()
+
+      const fastValue = vm.autoEndHours
+
+      // Switch to long half-life
+      const longHalfLife: Prescription = {
+        name: 'Slow Drug',
+        frequency: 'once',
+        times: ['09:00'],
+        dose: 100,
+        halfLife: 200,
+        peak: 3,
+        uptake: 2,
+      }
+
+      vm.currentPrescription = longHalfLife
+      vm.comparePrescriptions = [longHalfLife]
+      await flushPromises()
+
+      const slowValue = vm.autoEndHours
+
+      // Long half-life should result in higher end time (but still capped at 168)
+      expect(slowValue).toBeGreaterThanOrEqual(fastValue)
+      expect(slowValue).toBeLessThanOrEqual(168)
+    })
+
+    it('respects cap even with latest dose time', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Long Half-Life Evening Dose',
+        frequency: 'once',
+        times: ['23:59'], // Very late dose
+        dose: 50,
+        halfLife: 240, // 10 days
+        peak: 4,
+        uptake: 2,
+      }
+
+      vm.endHours = 240
+      vm.currentPrescription = prescription
+      vm.comparePrescriptions = [prescription]
+      await flushPromises()
+
+      // Even with late dose + long half-life, should cap at 168
+      expect(vm.autoEndHours).toBeLessThanOrEqual(168)
+    })
+  })
+
   describe('Graph Controls UI - Auto/Manual Toggle and Slider', () => {
     it('renders auto-timeframe toggle checkbox in graph controls', async () => {
       const wrapper = mount(App)

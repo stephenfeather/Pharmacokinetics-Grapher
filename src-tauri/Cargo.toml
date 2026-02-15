@@ -1,6 +1,6 @@
 [package]
 name = "app"
-version = "1.0.0"
+version = "0.5.0-alpha"
 description = "Pharmacokinetics Grapher - Visualize medication concentration levels over time"
 authors = ["Stephen Feather"]
 license = "MIT"

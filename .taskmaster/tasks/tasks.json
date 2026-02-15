@@ -1960,11 +1960,11 @@
         "description": "When editing a saved medication, the medication duration field keeps prompting for a valid entry. If you enter a value, when submitting the form, it reverts to the existing value instead of saving the new value.",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "high",
         "subtasks": [],
-        "updatedAt": "2026-02-15T12:00:13.496Z"
+        "updatedAt": "2026-02-15T13:09:45.752Z"
       },
       {
         "id": "22",
@@ -2055,9 +2055,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-02-15T13:08:05.853Z",
+      "lastModified": "2026-02-15T13:09:45.752Z",
       "taskCount": 23,
-      "completedCount": 20,
+      "completedCount": 21,
       "tags": [
         "master"
       ]

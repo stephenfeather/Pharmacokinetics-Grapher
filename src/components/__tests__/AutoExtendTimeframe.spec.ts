@@ -59,7 +59,7 @@ describe('AutoExtendTimeframe Integration Tests', () => {
       const tailOffDuration = calculateTailOffDuration(prescription.halfLife)
       const expectedEndTime = Math.max(
         24,
-        Math.min(168, lastDoseTime + tailOffDuration),
+        Math.min(2520, lastDoseTime + tailOffDuration),
       )
 
       expect(vm.autoEndHours).toBe(expectedEndTime)
@@ -101,7 +101,7 @@ describe('AutoExtendTimeframe Integration Tests', () => {
       const drugBEndTime = Math.max(
         24,
         Math.min(
-          168,
+          2520,
           getLastDoseTime(medications[1]!, numDays) +
             calculateTailOffDuration(medications[1]!.halfLife),
         ),
@@ -111,7 +111,7 @@ describe('AutoExtendTimeframe Integration Tests', () => {
       expect(vm.effectiveEndHours).toBe(drugBEndTime)
     })
 
-    it('auto mode bounds endHours between 24 and 168 hours', async () => {
+    it('auto mode bounds endHours between 24 and 2520 hours', async () => {
       const wrapper = mount(App)
       const vm = getComponentState(wrapper)
 
@@ -147,7 +147,7 @@ describe('AutoExtendTimeframe Integration Tests', () => {
       vm.comparePrescriptions = [longRx]
       await flushPromises()
 
-      expect(vm.autoEndHours).toBeLessThanOrEqual(168)
+      expect(vm.autoEndHours).toBeLessThanOrEqual(2520)
     })
   })
 
@@ -332,7 +332,7 @@ describe('AutoExtendTimeframe Integration Tests', () => {
       expect(vm.autoEndHours).toBe(48) // Default value
     })
 
-    it('handles very long half-lives without exceeding 168 hour bound', async () => {
+    it('handles very long half-lives without exceeding 2520 hour bound', async () => {
       const wrapper = mount(App)
       const vm = getComponentState(wrapper)
 
@@ -351,7 +351,7 @@ describe('AutoExtendTimeframe Integration Tests', () => {
       vm.switchView('graph')
       await flushPromises()
 
-      expect(vm.autoEndHours).toBeLessThanOrEqual(168)
+      expect(vm.autoEndHours).toBeLessThanOrEqual(2520)
       expect(vm.autoEndHours).toBeGreaterThanOrEqual(24)
     })
 
@@ -511,7 +511,7 @@ describe('AutoExtendTimeframe Integration Tests', () => {
 
       // Graph should accommodate slowest drug
       expect(vm.effectiveEndHours).toBeGreaterThan(48)
-      expect(vm.effectiveEndHours).toBeLessThanOrEqual(168)
+      expect(vm.effectiveEndHours).toBeLessThanOrEqual(2520)
 
       const graphViewer = wrapper.findComponent({ name: 'GraphViewer' })
       expect(graphViewer.exists()).toBe(true)

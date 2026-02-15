@@ -41,16 +41,83 @@ function computeKe(halfLife: number): number {
 // ─── Exported Functions ───
 
 /**
+ * Derive absorption rate constant (ka) from desired peak time (Tmax)
+ * and elimination rate constant (ke).
+ *
+ * Solves: Tmax = ln(ka/ke) / (ka - ke) for ka
+ * Uses bisection method for guaranteed convergence.
+ *
+ * The relationship is monotonic: higher ka → lower Tmax (faster absorption → earlier peak).
+ * When ka = ke, Tmax = 1/ke (L'Hôpital limit).
+ *
+ * @param tmax - Desired time of peak concentration in hours (> 0)
+ * @param ke - Elimination rate constant in hr^-1 (> 0)
+ * @returns ka in hr^-1 that produces the desired Tmax
+ */
+export function deriveKaFromTmax(tmax: number, ke: number): number {
+  if (tmax <= 0) return ke * 100 // Near-instant absorption
+
+  const computeTmaxFromKa = (ka: number): number => {
+    if (Math.abs(ka - ke) < 1e-12) return 1 / ke
+    return Math.log(ka / ke) / (ka - ke)
+  }
+
+  // Critical tmax: when ka = ke, tmax = 1/ke
+  const criticalTmax = 1 / ke
+
+  // If tmax ≈ 1/ke, ka ≈ ke
+  if (Math.abs(tmax - criticalTmax) < 1e-10) {
+    return ke
+  }
+
+  let lo: number, hi: number
+
+  if (tmax < criticalTmax) {
+    // Need ka > ke (typical: fast absorption → early peak)
+    lo = ke * 1.001
+    hi = ke * 1000
+    while (computeTmaxFromKa(hi) > tmax && hi < 1e10) {
+      hi *= 10
+    }
+  } else {
+    // Need ka < ke (slow absorption → late peak)
+    lo = ke * 1e-6
+    hi = ke * 0.999
+  }
+
+  // Bisection: higher ka → lower tmax (monotonic in both regions)
+  for (let i = 0; i < 100; i++) {
+    const mid = (lo + hi) / 2
+    const midTmax = computeTmaxFromKa(mid)
+
+    if (Math.abs(midTmax - tmax) < 1e-10) return mid
+
+    if (midTmax > tmax) {
+      lo = mid // Need higher ka to reduce tmax
+    } else {
+      hi = mid // Need lower ka to increase tmax
+    }
+  }
+
+  return (lo + hi) / 2
+}
+
+/**
  * Calculate drug concentration at a given time using one-compartment
  * first-order absorption model.
  *
  * Standard formula: C(t) = Dose * [ka/(ka-ke)] * (e^(-ke*t) - e^(-ka*t))
  * Fallback (|ka-ke| < KA_KE_TOLERANCE): C(t) = Dose * ka * t * e^(-ke*t)
  *
+ * When `peak` (Tmax) is provided, ka is derived from it to ensure the
+ * concentration peak occurs at the user-specified time. Otherwise ka is
+ * derived from `uptake` (absorption half-life).
+ *
  * @param time - Time in hours since dose administration
  * @param dose - Dose amount in arbitrary units
  * @param halfLife - Elimination half-life in hours (> 0)
- * @param uptake - Absorption time in hours (> 0)
+ * @param uptake - Absorption time in hours (> 0); used to derive ka when peak is not provided
+ * @param peak - Optional: desired Tmax in hours; when provided, overrides uptake for ka derivation
  * @returns Raw relative concentration (not normalized, can be > 1.0)
  */
 export function calculateConcentration(
@@ -58,6 +125,7 @@ export function calculateConcentration(
   dose: number,
   halfLife: number,
   uptake: number,
+  peak?: number,
 ): number {
   // Guard: zero or negative dose
   if (dose <= 0) return 0
@@ -65,8 +133,8 @@ export function calculateConcentration(
   // Guard: negative or zero time (before dose administered)
   if (time <= 0) return 0
 
-  const ka = computeKa(uptake)
   const ke = computeKe(halfLife)
+  const ka = peak !== undefined ? deriveKaFromTmax(peak, ke) : computeKa(uptake)
 
   let concentration: number
 

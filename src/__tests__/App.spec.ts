@@ -1431,9 +1431,9 @@ describe('App.vue - Phase 4: Styling and Polish', () => {
 
       // Expected: numDays = ceil(24/24) + 1 = 2 days
       // lastDoseTime = 1*24 + 9 = 33 hours (second day at 09:00)
-      // tailOffDuration = 6 * 5 = 30 hours
-      // autoEndHours = 33 + 30 = 63 hours
-      expect(vm.autoEndHours).toBe(63)
+      // tailOffDuration = 6 * 10 = 60 hours
+      // autoEndHours = 33 + 60 = 93 hours
+      expect(vm.autoEndHours).toBe(93)
     })
 
     it('calculates auto end time for prescription with 24-hour half-life', async () => {
@@ -1459,8 +1459,8 @@ describe('App.vue - Phase 4: Styling and Polish', () => {
 
       // Expected: lastDoseTime = 8 + 24 = 32 hours (second day at 08:00)
       // tailOffDuration = 24 * 5 = 120 hours
-      // autoEndHours = 32 + 120 = 152 hours, but capped at 168 (1 week)
-      expect(vm.autoEndHours).toBeLessThanOrEqual(168)
+      // autoEndHours = lastDoseTime + tailOffDuration, capped at 2520 (105 days)
+      expect(vm.autoEndHours).toBeLessThanOrEqual(2520)
       expect(vm.autoEndHours).toBeGreaterThanOrEqual(24)
     })
 
@@ -1489,7 +1489,7 @@ describe('App.vue - Phase 4: Styling and Polish', () => {
       expect(vm.autoEndHours).toBeGreaterThanOrEqual(24)
     })
 
-    it('applies maximum cap of 168 hours (1 week)', async () => {
+    it('applies maximum cap of 2520 hours (105 days)', async () => {
       const wrapper = mount(App)
       const vm = getComponentState(wrapper)
 
@@ -1510,8 +1510,8 @@ describe('App.vue - Phase 4: Styling and Polish', () => {
 
       await flushPromises()
 
-      // Should be capped at 168 hours (1 week) to prevent unreasonable values
-      expect(vm.autoEndHours).toBeLessThanOrEqual(168)
+      // Should be capped at 2520 hours (105 days) to prevent unreasonable values
+      expect(vm.autoEndHours).toBeLessThanOrEqual(2520)
     })
 
     it('calculates correctly for BID prescription over 2 days', async () => {
@@ -1537,9 +1537,9 @@ describe('App.vue - Phase 4: Styling and Polish', () => {
 
       // Expected: numDays = ceil(48/24) + 1 = 3 days
       // lastDoseTime = 2*24 + 21 = 69 hours (third day at 21:00)
-      // tailOffDuration = 6 * 5 = 30 hours
-      // autoEndHours = 69 + 30 = 99 hours
-      expect(vm.autoEndHours).toBe(99)
+      // tailOffDuration = 6 * 10 = 60 hours
+      // autoEndHours = 69 + 60 = 129 hours
+      expect(vm.autoEndHours).toBe(129)
     })
 
     it('handles prescription with fractional hour dose times', async () => {
@@ -1564,9 +1564,9 @@ describe('App.vue - Phase 4: Styling and Polish', () => {
 
       // Expected: numDays = ceil(24/24) + 1 = 2 days
       // lastDoseTime = 1*24 + 9.5 = 33.5 hours (second day at 09:30)
-      // tailOffDuration = 6 * 5 = 30 hours
-      // autoEndHours = 33.5 + 30 = 63.5 hours
-      expect(vm.autoEndHours).toBe(63.5)
+      // tailOffDuration = 6 * 10 = 60 hours
+      // autoEndHours = 33.5 + 60 = 93.5 hours
+      expect(vm.autoEndHours).toBe(93.5)
     })
 
     it('recalculates when prescription changes', async () => {
@@ -2134,7 +2134,7 @@ describe('App.vue - Phase 4: Styling and Polish', () => {
   })
 
   describe('Edge Cases - Very Long/Short Half-Lives', () => {
-    it('caps autoEndHours at 168 hours (1 week) maximum for very long half-life', async () => {
+    it('caps autoEndHours at 2520 hours (105 days) maximum for very long half-life', async () => {
       const wrapper = mount(App)
       const vm = getComponentState(wrapper)
 
@@ -2153,8 +2153,8 @@ describe('App.vue - Phase 4: Styling and Polish', () => {
       vm.comparePrescriptions = [prescription]
       await flushPromises()
 
-      // Should be capped at 168 (1 week)
-      expect(vm.autoEndHours).toBeLessThanOrEqual(168)
+      // Should be capped at 2520 (105 days)
+      expect(vm.autoEndHours).toBeLessThanOrEqual(2520)
     })
 
     it('enforces minimum floor of 24 hours for very short half-life', async () => {
@@ -2180,7 +2180,7 @@ describe('App.vue - Phase 4: Styling and Polish', () => {
       expect(vm.autoEndHours).toBeGreaterThanOrEqual(24)
     })
 
-    it('handles boundary case at exactly 168 hours', async () => {
+    it('handles boundary case near upper bound', async () => {
       const wrapper = mount(App)
       const vm = getComponentState(wrapper)
 
@@ -2199,8 +2199,8 @@ describe('App.vue - Phase 4: Styling and Polish', () => {
       vm.comparePrescriptions = [prescription]
       await flushPromises()
 
-      // Should not exceed 168
-      expect(vm.autoEndHours).toBeLessThanOrEqual(168)
+      // Should not exceed 2520
+      expect(vm.autoEndHours).toBeLessThanOrEqual(2520)
     })
 
     it('handles boundary case at exactly 24 hours minimum', async () => {
@@ -2247,7 +2247,7 @@ describe('App.vue - Phase 4: Styling and Polish', () => {
 
       // Should be between bounds, calculated value
       expect(vm.autoEndHours).toBeGreaterThan(24)
-      expect(vm.autoEndHours).toBeLessThan(168)
+      expect(vm.autoEndHours).toBeLessThan(2520)
     })
 
     it('correctly handles multiple prescriptions with different half-lives', async () => {
@@ -2288,9 +2288,9 @@ describe('App.vue - Phase 4: Styling and Polish', () => {
 
       const slowValue = vm.autoEndHours
 
-      // Long half-life should result in higher end time (but still capped at 168)
+      // Long half-life should result in higher end time (but still capped at 2520)
       expect(slowValue).toBeGreaterThanOrEqual(fastValue)
-      expect(slowValue).toBeLessThanOrEqual(168)
+      expect(slowValue).toBeLessThanOrEqual(2520)
     })
 
     it('respects cap even with latest dose time', async () => {
@@ -2312,8 +2312,8 @@ describe('App.vue - Phase 4: Styling and Polish', () => {
       vm.comparePrescriptions = [prescription]
       await flushPromises()
 
-      // Even with late dose + long half-life, should cap at 168
-      expect(vm.autoEndHours).toBeLessThanOrEqual(168)
+      // Even with late dose + long half-life, should cap at 2520
+      expect(vm.autoEndHours).toBeLessThanOrEqual(2520)
     })
   })
 
@@ -2628,7 +2628,7 @@ describe('App.vue - Phase 4: Styling and Polish', () => {
 
       // With single prescription, autoEndHours should calculate normally
       expect(vm.autoEndHours).toBeGreaterThan(24)
-      expect(vm.autoEndHours).toBeLessThanOrEqual(168)
+      expect(vm.autoEndHours).toBeLessThanOrEqual(2520)
     })
 
     it('uses longest tail-off when comparing multiple prescriptions', async () => {
@@ -2665,7 +2665,7 @@ describe('App.vue - Phase 4: Styling and Polish', () => {
         Math.max(
           24,
           Math.min(
-            168,
+            2520,
             getLastDoseTime(fastDrug, Math.ceil(vm.endHours / 24) + 1) +
               calculateTailOffDuration(fastDrug.halfLife),
           ),
@@ -2712,7 +2712,7 @@ describe('App.vue - Phase 4: Styling and Polish', () => {
       await flushPromises()
 
       // autoEndHours should be determined by longest half-life drug
-      expect(vm.autoEndHours).toBeLessThanOrEqual(168)
+      expect(vm.autoEndHours).toBeLessThanOrEqual(2520)
       expect(vm.autoEndHours).toBeGreaterThanOrEqual(24)
     })
 
@@ -2744,8 +2744,8 @@ describe('App.vue - Phase 4: Styling and Polish', () => {
       vm.useAutoTimeframe = true
       await flushPromises()
 
-      // Even with very long drug, should cap at 168
-      expect(vm.autoEndHours).toBeLessThanOrEqual(168)
+      // Even with very long drug, should cap at 2520
+      expect(vm.autoEndHours).toBeLessThanOrEqual(2520)
       expect(vm.autoEndHours).toBeGreaterThanOrEqual(24)
     })
 

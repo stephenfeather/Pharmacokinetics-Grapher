@@ -27,16 +27,16 @@ describe('accumulateDoses - Multi-dose Accumulation', () => {
       expect(peakConc).toBeCloseTo(1.0, 5)
 
       // And: concentration curve is monotonic in regions (rises to peak, falls after)
-      // Check a point early (2 hours after first dose) - should be rising
-      const earlyPoint = result.find(p => p.time >= 11 && p.time <= 12)
+      // Check a point shortly after dose - should be rising
+      const earlyPoint = result.find(p => p.time >= 10 && p.time <= 10.5)
       expect(earlyPoint).toBeDefined()
       expect(earlyPoint!.concentration).toBeGreaterThan(0.5) // Rising toward peak
 
-      // And: around 15 hours (Tmax for this drug ≈ 6.95 hours from dose at 09:00)
-      // Peak should occur around hour 15-16 (09:00 + 6.95 hours ≈ 15.95)
-      const nearPeakPoint = result.find(p => p.time >= 15 && p.time <= 17)
+      // And: peak should occur around hour 11 (09:00 + 2h Tmax = 11:00)
+      // because SINGLE_DOSE_FIXTURE has peak=2, and ka is now derived from peak
+      const nearPeakPoint = result.find(p => p.time >= 10.5 && p.time <= 12)
       expect(nearPeakPoint).toBeDefined()
-      expect(nearPeakPoint!.concentration).toBeGreaterThan(0.8)
+      expect(nearPeakPoint!.concentration).toBeGreaterThan(0.9)
     })
   })
 
@@ -53,13 +53,13 @@ describe('accumulateDoses - Multi-dose Accumulation', () => {
       expect(peakConc).toBeCloseTo(1.0, 5)
 
       // And: there should be concentration peaks after each dose
-      // First peak around hour 15-16 (Tmax ≈ 6.95h after first dose at 09:00)
-      const firstPeakPoint = result.find(p => p.time >= 15 && p.time <= 17)
+      // First peak around hour 11 (Tmax ≈ 2h after first dose at 09:00)
+      const firstPeakPoint = result.find(p => p.time >= 10.5 && p.time <= 12)
       expect(firstPeakPoint).toBeDefined()
       expect(firstPeakPoint!.concentration).toBeGreaterThan(0.3) // Not trivial
 
-      // And: second peak around hour 27-29 (Tmax ≈ 6.95h after second dose at 21:00)
-      const secondPeakPoint = result.find(p => p.time >= 27 && p.time <= 29)
+      // And: second peak around hour 23 (Tmax ≈ 2h after second dose at 21:00)
+      const secondPeakPoint = result.find(p => p.time >= 22.5 && p.time <= 24)
       expect(secondPeakPoint).toBeDefined()
       expect(secondPeakPoint!.concentration).toBeGreaterThan(0.3)
 
@@ -398,17 +398,25 @@ describe('accumulateDoses - Multi-dose Accumulation', () => {
       expect(lateConcentration).toBeGreaterThan(0.8) // Should be substantial due to accumulation
     })
 
-    it('respects prescription duration when provided', () => {
+    it('respects prescription duration for dosing window but extends observation', () => {
       const rx = {
         ...METABOLITE_STANDARD_FIXTURE,
         duration: 2,
         durationUnit: 'days' as const,
       }
-      const result = accumulateMetaboliteDoses(rx, 0, 100, 1) // endHours=100, but duration override to 48h
+      const result = accumulateMetaboliteDoses(rx, 0, 100, 1) // endHours=100, duration limits dosing to 48h
 
-      // Result should contain timepoints up to 0 + 2*24 = 48
+      // Observation window extends to endHours (100), not clipped by duration
       const lastTime = result[result.length - 1]?.time
-      expect(lastTime).toBeLessThanOrEqual(50)
+      expect(lastTime).toBe(100)
+
+      // But concentration should be decaying after dosing stops (after 48h)
+      // since no more doses are administered after the duration window
+      const pointAt48 = result.find((p) => p.time === 48)
+      const pointAt80 = result.find((p) => p.time === 80)
+      expect(pointAt48).toBeDefined()
+      expect(pointAt80).toBeDefined()
+      expect(pointAt80!.concentration).toBeLessThan(pointAt48!.concentration)
     })
 
     it('never returns negative concentrations', () => {
@@ -422,21 +430,21 @@ describe('accumulateDoses - Multi-dose Accumulation', () => {
   })
 
   describe('Phase 6: Calculate Tail-Off Duration - calculateTailOffDuration', () => {
-    it('calculates tail-off duration with default decay factor (5)', () => {
+    it('calculates tail-off duration with default decay factor (10)', () => {
       // Given: halfLife = 6 hours with default decayFactor
       // When: calculating tail-off duration
-      // Then: should return 6 * 5 = 30 hours
-      // (5 half-lives = ~97% elimination, 3.125% remaining)
+      // Then: should return 6 * 10 = 60 hours
+      // (10 half-lives = ~99.9% elimination)
       const result = calculateTailOffDuration(6)
-      expect(result).toBe(30)
+      expect(result).toBe(60)
     })
 
     it('calculates tail-off duration for 24-hour half-life', () => {
       // Given: halfLife = 24 hours (e.g., warfarin) with default decayFactor
       // When: calculating tail-off duration
-      // Then: should return 24 * 5 = 120 hours (5 days)
+      // Then: should return 24 * 10 = 240 hours (10 days)
       const result = calculateTailOffDuration(24)
-      expect(result).toBe(120)
+      expect(result).toBe(240)
     })
 
     it('respects custom decay factor', () => {
@@ -458,25 +466,25 @@ describe('accumulateDoses - Multi-dose Accumulation', () => {
     it('handles very short half-life', () => {
       // Given: halfLife = 0.5 hours (30 minutes, e.g., nitroglycerin)
       // When: calculating tail-off duration with default decayFactor
-      // Then: should return 0.5 * 5 = 2.5 hours
+      // Then: should return 0.5 * 10 = 5 hours
       const result = calculateTailOffDuration(0.5)
-      expect(result).toBe(2.5)
+      expect(result).toBe(5)
     })
 
     it('handles very long half-life', () => {
       // Given: halfLife = 240 hours (10 days, e.g., amiodarone)
       // When: calculating tail-off duration with default decayFactor
-      // Then: should return 240 * 5 = 1200 hours (50 days)
+      // Then: should return 240 * 10 = 2400 hours (100 days)
       const result = calculateTailOffDuration(240)
-      expect(result).toBe(1200)
+      expect(result).toBe(2400)
     })
 
     it('handles fractional half-life values', () => {
       // Given: halfLife = 3.5 hours with default decayFactor
       // When: calculating tail-off duration
-      // Then: should return 3.5 * 5 = 17.5 hours
+      // Then: should return 3.5 * 10 = 35 hours
       const result = calculateTailOffDuration(3.5)
-      expect(result).toBe(17.5)
+      expect(result).toBe(35)
     })
 
     it('decay factor of 1 returns halfLife (minimal tail-off)', () => {
@@ -509,6 +517,30 @@ describe('accumulateDoses - Multi-dose Accumulation', () => {
       // Then: should return 6 * 2.5 = 15 hours
       const result = calculateTailOffDuration(6, 2.5)
       expect(result).toBe(15)
+    })
+  })
+
+  describe('Phase 7: Curve extends to near-zero concentration', () => {
+    it('single dose curve extends until concentration near zero', () => {
+      // Given: a prescription with very short half-life (1 hour) dosed once at 00:00
+      // accumulateDoses repeats "once daily" across the simulation window,
+      // so use endHours < 24 to ensure only 1 dose at t=0 contributes
+      // (second dose at t=24 is beyond endHours)
+      const rx = {
+        ...SINGLE_DOSE_FIXTURE,
+        times: ['00:00'],
+        halfLife: 1,
+        uptake: 0.25,
+        peak: 0.25, // Fast absorption, fast peak — drug decays quickly
+      }
+      // 14 hours = 14 half-lives after dose at t=0 → ~0.006% remaining
+      const result = accumulateDoses(rx, 0, 14, 15) // 15-min intervals
+
+      // Then: last few data points should have concentration < 0.001
+      const lastPoints = result.slice(-5)
+      for (const point of lastPoints) {
+        expect(point.concentration).toBeLessThan(0.001)
+      }
     })
   })
 })

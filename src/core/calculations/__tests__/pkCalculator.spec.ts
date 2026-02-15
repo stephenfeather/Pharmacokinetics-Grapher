@@ -3,6 +3,7 @@ import {
   ABSORPTION_CONSTANT,
   calculateConcentration,
   calculateMetaboliteConcentration,
+  deriveKaFromTmax,
   getPeakTime,
 } from '../pkCalculator'
 import {
@@ -761,7 +762,105 @@ describe('PK Calculator', () => {
     })
   })
 
-  // ─── Phase 7: Barrel Exports ───
+  // ─── Phase 7: deriveKaFromTmax ───
+
+  describe('deriveKaFromTmax', () => {
+    const ke = Math.LN2 / 6 // ke for halfLife=6
+
+    it('returns ka that produces the desired Tmax=2 for ke=LN2/6', () => {
+      const ka = deriveKaFromTmax(2, ke)
+      // Verify: ln(ka/ke) / (ka - ke) ≈ 2
+      const computedTmax = Math.log(ka / ke) / (ka - ke)
+      expect(computedTmax).toBeCloseTo(2, 6)
+    })
+
+    it('returns ka > ke when tmax < 1/ke (fast absorption → early peak)', () => {
+      const ka = deriveKaFromTmax(2, ke)
+      expect(ka).toBeGreaterThan(ke)
+    })
+
+    it('returns ka ≈ ke when tmax ≈ 1/ke', () => {
+      const criticalTmax = 1 / ke
+      const ka = deriveKaFromTmax(criticalTmax, ke)
+      expect(ka).toBeCloseTo(ke, 6)
+    })
+
+    it('returns ka < ke when tmax > 1/ke (slow absorption → late peak)', () => {
+      const lateTmax = 1 / ke + 5 // well past critical tmax
+      const ka = deriveKaFromTmax(lateTmax, ke)
+      expect(ka).toBeLessThan(ke)
+    })
+
+    it('returns large ka for tmax near 0 (near-instant peak)', () => {
+      const ka = deriveKaFromTmax(0.01, ke)
+      expect(ka).toBeGreaterThan(ke * 10)
+    })
+
+    it('returns ke * 100 for tmax <= 0', () => {
+      expect(deriveKaFromTmax(0, ke)).toBe(ke * 100)
+      expect(deriveKaFromTmax(-1, ke)).toBe(ke * 100)
+    })
+
+    it('works correctly across a range of tmax values', () => {
+      // None of these tmax values equal 1/ke ≈ 8.656, so ka != ke for all
+      const tmaxValues = [0.5, 1, 2, 4, 8]
+      for (const tmax of tmaxValues) {
+        const ka = deriveKaFromTmax(tmax, ke)
+        const computedTmax = Math.log(ka / ke) / (ka - ke)
+        expect(computedTmax).toBeCloseTo(tmax, 4)
+      }
+    })
+  })
+
+  // ─── Phase 7b: calculateConcentration with peak parameter ───
+
+  describe('calculateConcentration - with peak parameter', () => {
+    it('peaks at the specified Tmax when peak is provided', () => {
+      const dose = 500, halfLife = 6, uptake = 1.5, peak = 2
+      // Find concentration at peak time and slightly before/after
+      const cAtPeak = calculateConcentration(peak, dose, halfLife, uptake, peak)
+      const cBefore = calculateConcentration(peak - 0.1, dose, halfLife, uptake, peak)
+      const cAfter = calculateConcentration(peak + 0.1, dose, halfLife, uptake, peak)
+      expect(cAtPeak).toBeGreaterThan(cBefore)
+      expect(cAtPeak).toBeGreaterThan(cAfter)
+    })
+
+    it('without peak parameter, peaks later (at uptake-derived Tmax)', () => {
+      const dose = 500, halfLife = 6, uptake = 1.5
+      // Without peak: Tmax = ln(ka/ke)/(ka-ke) = 4.0 (uptake-derived)
+      const tmax = getPeakTime(halfLife, uptake)
+      expect(tmax).toBeCloseTo(4.0, 6)
+      const cAtTmax = calculateConcentration(tmax, dose, halfLife, uptake)
+      const cBefore = calculateConcentration(tmax - 0.1, dose, halfLife, uptake)
+      const cAfter = calculateConcentration(tmax + 0.1, dose, halfLife, uptake)
+      expect(cAtTmax).toBeGreaterThan(cBefore)
+      expect(cAtTmax).toBeGreaterThan(cAfter)
+    })
+
+    it('with peak=2, concentration at t=2 is higher than at t=4', () => {
+      const dose = 500, halfLife = 6, uptake = 1.5, peak = 2
+      const cAt2 = calculateConcentration(2, dose, halfLife, uptake, peak)
+      const cAt4 = calculateConcentration(4, dose, halfLife, uptake, peak)
+      expect(cAt2).toBeGreaterThan(cAt4)
+    })
+
+    it('dose linearity holds with peak parameter', () => {
+      const halfLife = 6, uptake = 1.5, peak = 2
+      const c1 = calculateConcentration(3, 500, halfLife, uptake, peak)
+      const c2 = calculateConcentration(3, 1000, halfLife, uptake, peak)
+      expect(c2).toBeCloseTo(2 * c1, 6)
+    })
+
+    it('returns 0 at time=0 with peak parameter', () => {
+      expect(calculateConcentration(0, 500, 6, 1.5, 2)).toBe(0)
+    })
+
+    it('returns 0 for zero dose with peak parameter', () => {
+      expect(calculateConcentration(2, 0, 6, 1.5, 2)).toBe(0)
+    })
+  })
+
+  // ─── Phase 8: Barrel Exports ───
 
   describe('barrel exports', () => {
     // These tests import from the barrel (index.ts) to verify re-exports
@@ -775,6 +874,11 @@ describe('PK Calculator', () => {
     it('exports calculateMetaboliteConcentration as a function', async () => {
       const barrel = await import('../../calculations/index')
       expect(typeof barrel.calculateMetaboliteConcentration).toBe('function')
+    })
+
+    it('exports deriveKaFromTmax as a function', async () => {
+      const barrel = await import('../../calculations/index')
+      expect(typeof barrel.deriveKaFromTmax).toBe('function')
     })
 
     it('exports getPeakTime as a function', async () => {

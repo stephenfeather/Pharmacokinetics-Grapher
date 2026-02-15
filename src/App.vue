@@ -56,7 +56,7 @@ const firstDoseTime = computed<string>(() => {
 
 /**
  * Calculate recommended end time based on prescription parameters and tail-off requirements.
- * Uses: lastDoseTime + tailOffDuration, with bounds [24, 168] hours
+ * Uses: lastDoseTime + tailOffDuration, with bounds [24, 2520] hours
  * Used to determine auto-extended graph timeframe.
  */
 const autoEndHours = computed<number>(() => {
@@ -74,22 +74,28 @@ const autoEndHours = computed<number>(() => {
     return 48
   }
 
-  // Calculate number of days to expand prescriptions across
-  // Add 1 to ensure we capture all doses in the window
-  const numDays = Math.ceil(endHours.value / 24) + 1
-
   // For each prescription, calculate its recommended end time
   // Use the maximum (longest tail-off)
+  // If a prescription has a duration, use it to limit the dosing window
+  const defaultNumDays = Math.ceil(endHours.value / 24) + 1
+
   const maxEndTime = Math.max(
     ...prescriptionsToConsider.map((rx) => {
-      const lastDoseTime = getLastDoseTime(rx, numDays)
+      let dosingNumDays = defaultNumDays
+      if (rx.duration !== undefined && rx.durationUnit !== undefined) {
+        const durationInHours =
+          rx.durationUnit === 'days' ? rx.duration * 24 : rx.duration
+        dosingNumDays = Math.ceil(durationInHours / 24)
+      }
+      const lastDoseTime = getLastDoseTime(rx, dosingNumDays)
       const tailOffDuration = calculateTailOffDuration(rx.halfLife)
       return lastDoseTime + tailOffDuration
     }),
   )
 
-  // Apply bounds: minimum 24 hours (at least 1 day), maximum 168 hours (1 week)
-  return Math.max(24, Math.min(168, maxEndTime))
+  // Apply bounds: minimum 24 hours (at least 1 day), maximum 2520 hours (105 days)
+  // Max half-life is 240h; at 10 half-lives tail-off = 2400h + last dose time
+  return Math.max(24, Math.min(2520, maxEndTime))
 })
 
 /**

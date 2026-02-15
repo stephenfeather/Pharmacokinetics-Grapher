@@ -2,6 +2,7 @@
 export {
   calculateConcentration,
   calculateMetaboliteConcentration,
+  deriveKaFromTmax,
   getPeakTime,
   ABSORPTION_CONSTANT,
 } from './pkCalculator'

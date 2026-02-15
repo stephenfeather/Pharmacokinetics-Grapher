@@ -59,7 +59,7 @@ export function getLastDoseTime(prescription: Prescription, numDays: number): nu
  * Shows adequate decay behavior after last dose to visualize pharmacokinetics
  *
  * @param halfLife - Drug half-life in hours
- * @param decayFactor - Number of half-lives to allow for tail-off (default: 5 for ~97% elimination)
+ * @param decayFactor - Number of half-lives to allow for tail-off (default: 10 for ~99.9% elimination)
  *                      Formula: tailOffDuration = halfLife * decayFactor
  *                      Examples:
  *                        - decayFactor=1 → ~50% elimination
@@ -68,7 +68,7 @@ export function getLastDoseTime(prescription: Prescription, numDays: number): nu
  *                        - decayFactor=10 → ~99.9% elimination
  * @returns Duration in hours to extend graph past last dose
  */
-export function calculateTailOffDuration(halfLife: number, decayFactor: number = 5): number {
+export function calculateTailOffDuration(halfLife: number, decayFactor: number = 10): number {
   return halfLife * decayFactor
 }
 
@@ -92,23 +92,26 @@ export function accumulateDoses(
   endHours: number,
   intervalMinutes: number = 15,
 ): TimeSeriesPoint[] {
-  // Use prescription duration if available, otherwise use endHours parameter
-  let effectiveEndHours = endHours
+  // Determine the dosing window (when doses are administered)
+  // Duration limits dosing only, NOT the observation window
+  let dosingEndHours = endHours
   if (prescription.duration !== undefined && prescription.durationUnit !== undefined) {
     const durationInHours =
       prescription.durationUnit === 'days'
         ? prescription.duration * 24
         : prescription.duration
-    effectiveEndHours = startHours + durationInHours
+    dosingEndHours = startHours + durationInHours
   }
 
-  // Expand prescription times across simulation window
-  const numDays = Math.ceil(effectiveEndHours / 24) + 1
-  const doseTimes = expandDoseTimes(prescription.times, numDays)
+  // Expand prescription times across the dosing window only
+  const numDays = Math.ceil(dosingEndHours / 24) + 1
+  const allDoseTimes = expandDoseTimes(prescription.times, numDays)
+  // Filter to doses within the dosing window
+  const doseTimes = allDoseTimes.filter((t) => t < dosingEndHours)
 
-  // Generate timepoints for simulation
+  // Generate timepoints for the full observation window (endHours)
   const points: TimeSeriesPoint[] = []
-  const steps = Math.ceil((effectiveEndHours - startHours) * 60 / intervalMinutes)
+  const steps = Math.ceil((endHours - startHours) * 60 / intervalMinutes)
   let maxConc = 0
 
   // For each timepoint, sum contributions from all prior doses
@@ -125,6 +128,7 @@ export function accumulateDoses(
           prescription.dose,
           prescription.halfLife,
           prescription.uptake,
+          prescription.peak,
         )
       }
     }
@@ -174,23 +178,26 @@ export function accumulateMetaboliteDoses(
     return []
   }
 
-  // Use prescription duration if available, otherwise use endHours parameter
-  let effectiveEndHours = endHours
+  // Determine the dosing window (when doses are administered)
+  // Duration limits dosing only, NOT the observation window
+  let dosingEndHours = endHours
   if (prescription.duration !== undefined && prescription.durationUnit !== undefined) {
     const durationInHours =
       prescription.durationUnit === 'days'
         ? prescription.duration * 24
         : prescription.duration
-    effectiveEndHours = startHours + durationInHours
+    dosingEndHours = startHours + durationInHours
   }
 
-  // Expand prescription times across simulation window
-  const numDays = Math.ceil(effectiveEndHours / 24) + 1
-  const doseTimes = expandDoseTimes(prescription.times, numDays)
+  // Expand prescription times across the dosing window only
+  const numDays = Math.ceil(dosingEndHours / 24) + 1
+  const allDoseTimes = expandDoseTimes(prescription.times, numDays)
+  // Filter to doses within the dosing window
+  const doseTimes = allDoseTimes.filter((t) => t < dosingEndHours)
 
-  // Generate timepoints for simulation
+  // Generate timepoints for the full observation window (endHours)
   const points: TimeSeriesPoint[] = []
-  const steps = Math.ceil((effectiveEndHours - startHours) * 60 / intervalMinutes)
+  const steps = Math.ceil((endHours - startHours) * 60 / intervalMinutes)
   let maxConc = 0
 
   // For each timepoint, sum contributions from all prior doses

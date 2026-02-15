@@ -36,6 +36,7 @@ interface AppComponentState {
   endHours: number
   autoEndHours: number
   useAutoTimeframe: boolean
+  effectiveEndHours: number
   switchView: (view: 'form' | 'list' | 'graph') => void
   handleFormSubmit: (rx: Prescription) => void
   saveCurrentPrescription: () => void
@@ -1845,6 +1846,289 @@ describe('App.vue - Phase 4: Styling and Polish', () => {
 
       expect(vm.useAutoTimeframe).toBe(false)
       expect(vm.endHours).toBe(100)
+    })
+  })
+
+  describe('Effective End Hours - effectiveEndHours Computed', () => {
+    it('returns autoEndHours when useAutoTimeframe is true', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'once',
+        times: ['09:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.endHours = 24
+      vm.currentPrescription = prescription
+      vm.comparePrescriptions = [prescription]
+      vm.useAutoTimeframe = true
+      await flushPromises()
+
+      // When: useAutoTimeframe is true
+      // Then: effectiveEndHours should equal autoEndHours
+      expect(vm.effectiveEndHours).toBe(vm.autoEndHours)
+    })
+
+    it('returns manual endHours when useAutoTimeframe is false', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      // Set manual mode
+      vm.useAutoTimeframe = false
+      vm.endHours = 72
+      await flushPromises()
+
+      // When: useAutoTimeframe is false
+      // Then: effectiveEndHours should equal endHours
+      expect(vm.effectiveEndHours).toBe(72)
+      expect(vm.effectiveEndHours).toBe(vm.endHours)
+    })
+
+    it('switches to autoEndHours when toggling useAutoTimeframe to true', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'once',
+        times: ['09:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.endHours = 24
+      vm.currentPrescription = prescription
+      vm.comparePrescriptions = [prescription]
+
+      // Start in manual mode with custom endHours
+      vm.useAutoTimeframe = false
+      vm.endHours = 100
+      await flushPromises()
+
+      const manualValue = vm.effectiveEndHours
+      expect(manualValue).toBe(100)
+
+      // Toggle to auto mode
+      vm.useAutoTimeframe = true
+      await flushPromises()
+
+      const autoValue = vm.effectiveEndHours
+      expect(autoValue).toBe(vm.autoEndHours)
+      expect(autoValue).not.toBe(manualValue)
+    })
+
+    it('switches to endHours when toggling useAutoTimeframe to false', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'once',
+        times: ['09:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.endHours = 24
+      vm.currentPrescription = prescription
+      vm.comparePrescriptions = [prescription]
+
+      // Start in auto mode
+      vm.useAutoTimeframe = true
+      await flushPromises()
+
+      const autoValue = vm.effectiveEndHours
+      expect(autoValue).toBe(vm.autoEndHours)
+
+      // Toggle to manual mode with custom endHours
+      vm.useAutoTimeframe = false
+      vm.endHours = 96
+      await flushPromises()
+
+      const manualValue = vm.effectiveEndHours
+      expect(manualValue).toBe(96)
+      expect(manualValue).not.toBe(autoValue)
+    })
+
+    it('reflects changes to endHours in manual mode', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      vm.useAutoTimeframe = false
+      vm.endHours = 48
+      await flushPromises()
+
+      expect(vm.effectiveEndHours).toBe(48)
+
+      // Change endHours slider
+      vm.endHours = 72
+      await flushPromises()
+
+      expect(vm.effectiveEndHours).toBe(72)
+    })
+
+    it('reflects changes to autoEndHours in auto mode', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription1: Prescription = {
+        name: 'Drug A',
+        frequency: 'once',
+        times: ['09:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.endHours = 24
+      vm.currentPrescription = prescription1
+      vm.comparePrescriptions = [prescription1]
+      vm.useAutoTimeframe = true
+      await flushPromises()
+
+      const firstValue = vm.effectiveEndHours
+
+      // Change to prescription with different half-life
+      const prescription2: Prescription = {
+        name: 'Drug B',
+        frequency: 'once',
+        times: ['09:00'],
+        dose: 500,
+        halfLife: 24,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.currentPrescription = prescription2
+      vm.comparePrescriptions = [prescription2]
+      await flushPromises()
+
+      const secondValue = vm.effectiveEndHours
+
+      // effectiveEndHours should reflect new autoEndHours
+      expect(secondValue).not.toBe(firstValue)
+    })
+
+    it('ignores endHours changes when in auto mode', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'once',
+        times: ['09:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.endHours = 24
+      vm.currentPrescription = prescription
+      vm.comparePrescriptions = [prescription]
+      vm.useAutoTimeframe = true
+      await flushPromises()
+
+      // Try to change endHours (should not affect effectiveEndHours)
+      vm.endHours = 200
+      await flushPromises()
+
+      const valueAfterChange = vm.effectiveEndHours
+
+      // effectiveEndHours should still follow autoEndHours, not endHours
+      expect(valueAfterChange).toBe(vm.autoEndHours)
+    })
+
+    it('ignores autoEndHours changes when in manual mode', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      vm.useAutoTimeframe = false
+      vm.endHours = 80
+      await flushPromises()
+
+      const manualValue = vm.effectiveEndHours
+      expect(manualValue).toBe(80)
+
+      // Change prescription/endHours for simulation (would normally change autoEndHours)
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'once',
+        times: ['09:00'],
+        dose: 500,
+        halfLife: 240,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.currentPrescription = prescription
+      vm.comparePrescriptions = [prescription]
+      vm.endHours = 48
+      await flushPromises()
+
+      // effectiveEndHours should still be manual value (48), not autoEndHours
+      expect(vm.effectiveEndHours).toBe(48)
+      expect(vm.useAutoTimeframe).toBe(false)
+    })
+
+    it('has correct initial value when component mounts', () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      // Initial: useAutoTimeframe is true, no prescription
+      // autoEndHours defaults to 48
+      // effectiveEndHours should equal autoEndHours initially
+      expect(vm.useAutoTimeframe).toBe(true)
+      expect(vm.effectiveEndHours).toBe(vm.autoEndHours)
+    })
+
+    it('handles rapid toggling between auto and manual modes', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'once',
+        times: ['09:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.endHours = 24
+      vm.currentPrescription = prescription
+      vm.comparePrescriptions = [prescription]
+
+      // Rapid toggles
+      vm.useAutoTimeframe = false
+      vm.endHours = 100
+      await flushPromises()
+      expect(vm.effectiveEndHours).toBe(100)
+
+      vm.useAutoTimeframe = true
+      await flushPromises()
+      expect(vm.effectiveEndHours).toBe(vm.autoEndHours)
+
+      vm.useAutoTimeframe = false
+      vm.endHours = 80
+      await flushPromises()
+      expect(vm.effectiveEndHours).toBe(80)
+
+      vm.useAutoTimeframe = true
+      await flushPromises()
+      expect(vm.effectiveEndHours).toBe(vm.autoEndHours)
     })
   })
 })

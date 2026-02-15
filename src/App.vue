@@ -22,7 +22,7 @@ const statusMessage = ref('')
 
 const startHours = ref(0)
 const endHours = ref(48)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 const useAutoTimeframe = ref(true)
 
 // ---- Refs for focus management ----
@@ -43,9 +43,8 @@ const graphDatasets = computed<GraphDataset[]>(() => {
 /**
  * Calculate recommended end time based on prescription parameters and tail-off requirements.
  * Uses: lastDoseTime + tailOffDuration, with bounds [24, 168] hours
- * Used in Subtask 5 to replace manual endHours when auto-mode is enabled.
+ * Used to determine auto-extended graph timeframe.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const autoEndHours = computed<number>(() => {
   // Default: if no prescription, return 48 hours
   if (!currentPrescription.value) {
@@ -67,6 +66,16 @@ const autoEndHours = computed<number>(() => {
 
   // Apply bounds: minimum 24 hours (at least 1 day), maximum 168 hours (1 week)
   return Math.max(24, Math.min(168, recommendedEnd))
+})
+
+/**
+ * Effective end time for graph: switches between auto and manual based on toggle.
+ * When useAutoTimeframe is true: returns autoEndHours (smart calculation)
+ * When false: returns manual endHours (user slider control)
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const effectiveEndHours = computed<number>(() => {
+  return useAutoTimeframe.value ? autoEndHours.value : endHours.value
 })
 
 // ---- View switching ----

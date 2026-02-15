@@ -1,0 +1,88 @@
+---
+session: pharmacokinetics-grapher
+date: 2026-02-15
+status: complete
+outcome: SUCCEEDED
+---
+
+goal: Complete Task 19 (clock time X-axis toggle) and Task 20 (dark mode label contrast)
+now: Ready for next task or continue with Task 18 investigation if reproduction case provided
+test: npm run test:unit && npm run build
+
+done_this_session:
+  - task: Task 19 - Clock Time X-Axis Display Mode Toggle (complete)
+    files: [src/core/utils/timeFormat.ts, src/core/utils/__tests__/timeFormat.spec.ts, src/components/GraphViewer.vue, src/components/__tests__/GraphViewer.clock-mode.spec.ts, src/App.vue]
+  - task: Task 20 - Dark mode label readability (complete)
+    files: [src/components/PrescriptionForm.vue, src/App.vue]
+  - task: Dark mode import link contrast (additional fix)
+    files: [src/components/PrescriptionForm.vue]
+
+blockers: []
+
+questions: []
+
+decisions:
+  - "Task 19 approach": Time formatting utilities with 39 unit tests, dynamic tick steps (1h-12h), multi-day tooltip indicators
+  - "Task 20 root cause": Safari dark mode not rendering semantic CSS variables correctly; switched to explicit color values
+  - "Import link color": Used bright blue (#60a5fa) for visibility on dark backgrounds vs default light grey
+
+findings:
+  - "Task 19 added 51 new tests (618→668), all passing with no TypeScript errors"
+  - "Dark mode contrast issues required explicit backgrounds + colors, not just semantic variables"
+  - "Safari renders CSS variables differently than Firefox/Chrome in dark mode"
+  - "Import link had no dark mode styling - discovered when user provided screenshots"
+  - "All components now use consistent color scheme: white labels, light grey hints, blue interactive elements"
+
+worked:
+  - "Test-driven development: Writing comprehensive tests first ensured correctness"
+  - "Semantic color variables work for most elements but need explicit overrides for consistency"
+  - "User feedback on screenshots revealed issues that automated testing couldn't catch"
+  - "Multiple small commits kept changes focused and traceable"
+
+failed:
+  - "Initial Task 20 fix using semantic --color-heading wasn't sufficient for Safari"
+  - "Relying only on semantic variables without explicit dark mode overrides left gaps"
+
+next:
+  - "Resume Task 18 investigation when user provides specific reproduction case"
+  - "Monitor for additional dark mode contrast issues in other components (PrescriptionList, ImportPrescriptions)"
+  - "Consider storing xAxisMode preference to localStorage for persistence"
+
+files:
+  created:
+    - src/core/utils/timeFormat.ts (7 functions for time formatting)
+    - src/core/utils/__tests__/timeFormat.spec.ts (39 unit tests)
+    - src/components/__tests__/GraphViewer.clock-mode.spec.ts (12 component tests)
+  modified:
+    - src/components/GraphViewer.vue (added xAxisMode/firstDoseTime props, clock time formatting)
+    - src/App.vue (added xAxisMode state, firstDoseTime computed, toggle UI, dark mode styles)
+    - src/components/PrescriptionForm.vue (dark mode colors for labels, hints, legends, import link)
+
+commits:
+  - "49cb183": Implement Task 19 - Clock Time X-Axis Display Mode Toggle
+  - "eaeac86": Fix Task 20 - Improve dark mode label readability
+  - "e7c8323": Fix Task 20 - Improve dark mode label contrast (Safari compatibility)
+  - "ce26deb": Fix import link contrast in dark mode
+
+notes: |
+  Session completed both Task 19 (clock time X-axis) and Task 20 (dark mode contrast).
+
+  Task 19 deliverables:
+  - Time formatting utilities with 39 passing unit tests
+  - Clock mode X-axis toggle in graph controls
+  - Dynamic tick step calculation (1h, 2h, 4h, 6h, 12h based on timeframe)
+  - Multi-day tooltips with day indicators ("08:00 (Day 2)")
+  - First dose time computed from earliest prescription time
+  - Full accessibility support (aria-labels, focus states)
+
+  Task 20 deliverables:
+  - Fixed all label contrast issues in PrescriptionForm (labels, hints, legends)
+  - Fixed all label contrast issues in App.vue (toggle labels, graph controls)
+  - Fixed import link visibility in dark mode
+  - Explicit dark backgrounds and colors ensure consistency across browsers
+  - All 673 tests passing, app builds successfully
+
+  Key insight: Safari's dark mode CSS variable rendering differs from other browsers,
+  requiring explicit color values rather than semantic variables for consistency.
+
+  Ready for next task or Task 18 investigation pending user reproduction case.

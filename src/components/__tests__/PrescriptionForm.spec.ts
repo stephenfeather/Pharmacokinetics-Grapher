@@ -473,6 +473,66 @@ describe('PrescriptionForm', () => {
       const prescription = (emitted?.[0]?.[0]) as Record<string, unknown>
       expect(prescription.metaboliteLife).toBe(12)
     })
+
+    it('renders metabolite conversion fraction input field', () => {
+      const wrapper = mountForm()
+      const input = wrapper.find('input#rx-metabolite-fm')
+      expect(input.exists()).toBe(true)
+      expect(input.attributes('type')).toBe('number')
+      // HTML renders min/max as string; 0.0 or 0 both valid
+      expect(['0', '0.0']).toContain(input.attributes('min'))
+      expect(['1', '1.0']).toContain(input.attributes('max'))
+      expect(input.attributes('step')).toBe('0.01')
+    })
+
+    it('emitted prescription excludes metaboliteConversionFraction when undefined', async () => {
+      const wrapper = mountForm()
+      await nextTick()
+      await wrapper.find('form').trigger('submit')
+      await nextTick()
+      const emitted = wrapper.emitted('submit')
+      expect(emitted).toBeTruthy()
+      const prescription = (emitted?.[0]?.[0]) as Record<string, unknown>
+      expect(prescription.metaboliteConversionFraction).toBeUndefined()
+    })
+
+    it('emitted prescription includes metaboliteConversionFraction when provided', async () => {
+      const wrapper = mountForm()
+      await nextTick()
+      await wrapper.find('input#rx-metabolite-fm').setValue(0.8)
+      await nextTick()
+      await wrapper.find('form').trigger('submit')
+      await nextTick()
+      const emitted = wrapper.emitted('submit')
+      expect(emitted).toBeTruthy()
+      const prescription = (emitted?.[0]?.[0]) as Record<string, unknown>
+      expect(prescription.metaboliteConversionFraction).toBe(0.8)
+    })
+
+    it('accepts metaboliteConversionFraction value of 0', async () => {
+      const wrapper = mountForm()
+      await nextTick()
+      await wrapper.find('input#rx-metabolite-fm').setValue(0)
+      await nextTick()
+      await wrapper.find('form').trigger('submit')
+      await nextTick()
+      const emitted = wrapper.emitted('submit')
+      const prescription = (emitted?.[0]?.[0]) as Record<string, unknown>
+      // Even though fm=0 is unusual, the form should accept it
+      expect(prescription.metaboliteConversionFraction).toBe(0)
+    })
+
+    it('accepts metaboliteConversionFraction value of 1.0', async () => {
+      const wrapper = mountForm()
+      await nextTick()
+      await wrapper.find('input#rx-metabolite-fm').setValue(1.0)
+      await nextTick()
+      await wrapper.find('form').trigger('submit')
+      await nextTick()
+      const emitted = wrapper.emitted('submit')
+      const prescription = (emitted?.[0]?.[0]) as Record<string, unknown>
+      expect(prescription.metaboliteConversionFraction).toBe(1.0)
+    })
   })
 
   describe('import event propagation (regression)', () => {

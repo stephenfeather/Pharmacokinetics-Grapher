@@ -20,6 +20,7 @@ export interface Prescription {
   dose: number
   halfLife: number
   metaboliteLife?: number
+  metaboliteConversionFraction?: number
   peak: number
   uptake: number
   duration?: number
@@ -37,6 +38,7 @@ export interface GraphDataset {
   label: string
   data: TimeSeriesPoint[]
   color?: string
+  isMetabolite?: boolean
 }
 
 export interface ValidationResult {
@@ -107,6 +109,11 @@ export const VALIDATION_RULES = {
     required: false,
     min: 0.1,
     max: 1000,
+  },
+  metaboliteConversionFraction: {
+    required: false,
+    min: 0.0,
+    max: 1.0,
   },
   duration: {
     required: false,
@@ -304,6 +311,33 @@ function validateMetaboliteLife(
   return errors
 }
 
+function validateMetaboliteConversionFraction(
+  fm: number | undefined,
+): string[] {
+  const errors: string[] = []
+
+  if (fm === undefined || fm === null) {
+    return errors
+  }
+
+  if (typeof fm !== 'number' || isNaN(fm)) {
+    errors.push('Metabolite conversion fraction must be a number when provided')
+    return errors
+  }
+
+  if (fm < VALIDATION_RULES.metaboliteConversionFraction.min) {
+    errors.push(
+      `Metabolite conversion fraction must be at least ${VALIDATION_RULES.metaboliteConversionFraction.min}`,
+    )
+  } else if (fm > VALIDATION_RULES.metaboliteConversionFraction.max) {
+    errors.push(
+      `Metabolite conversion fraction must be at most ${VALIDATION_RULES.metaboliteConversionFraction.max}`,
+    )
+  }
+
+  return errors
+}
+
 function validateDuration(
   duration: number | undefined,
   durationUnit: DurationUnit | undefined,
@@ -370,7 +404,24 @@ function validateDuration(
 function checkCrossFieldWarnings(rx: Prescription): string[] {
   const warnings: string[] = []
 
-  // Only check cross-field conditions when individual fields are valid numbers in range
+  // Check for partial metabolite data (one field provided, other missing)
+  const hasMetaboliteLife =
+    rx.metaboliteLife !== undefined && rx.metaboliteLife !== null
+  const hasMetaboliteConversionFraction =
+    rx.metaboliteConversionFraction !== undefined &&
+    rx.metaboliteConversionFraction !== null
+
+  if (hasMetaboliteLife && !hasMetaboliteConversionFraction) {
+    warnings.push(
+      'Metabolite half-life provided but conversion fraction missing. Both are required for metabolite visualization.',
+    )
+  } else if (!hasMetaboliteLife && hasMetaboliteConversionFraction) {
+    warnings.push(
+      'Metabolite conversion fraction provided but half-life missing. Both are required for metabolite visualization.',
+    )
+  }
+
+  // Only check uptake/halfLife cross-field conditions when individual fields are valid numbers in range
   if (
     typeof rx.uptake !== 'number' ||
     isNaN(rx.uptake) ||
@@ -414,6 +465,7 @@ export function validatePrescription(rx: Prescription): ValidationResult {
     ...validatePeak(rx.peak),
     ...validateUptake(rx.uptake),
     ...validateMetaboliteLife(rx.metaboliteLife),
+    ...validateMetaboliteConversionFraction(rx.metaboliteConversionFraction),
     ...validateDuration(rx.duration, rx.durationUnit),
   ]
 

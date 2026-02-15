@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   ABSORPTION_CONSTANT,
   calculateConcentration,
+  calculateMetaboliteConcentration,
   getPeakTime,
 } from '../pkCalculator'
 import {
@@ -11,6 +12,7 @@ import {
   MIN_BOUNDARY_FIXTURE,
   MAX_BOUNDARY_FIXTURE,
   IBUPROFEN_FIXTURE,
+  METABOLITE_STANDARD_FIXTURE,
 } from '../../models/__tests__/fixtures'
 
 describe('PK Calculator', () => {
@@ -453,6 +455,312 @@ describe('PK Calculator', () => {
     })
   })
 
+  // ─── Phase 6: calculateMetaboliteConcentration ───
+
+  describe('calculateMetaboliteConcentration - standard formula', () => {
+    const { dose, halfLife, metaboliteLife, metaboliteConversionFraction } = METABOLITE_STANDARD_FIXTURE
+
+    it('requires metaboliteLife and metaboliteConversionFraction to be defined', () => {
+      // This is a TypeScript requirement, but verify the function works with valid inputs
+      expect(metaboliteLife).toBeDefined()
+      expect(metaboliteConversionFraction).toBeDefined()
+    })
+
+    // --- Guard clause testing ---
+
+    it('returns 0 when time=0 (no metabolite at start)', () => {
+      const result = calculateMetaboliteConcentration(
+        0,
+        dose,
+        halfLife,
+        metaboliteLife!,
+        metaboliteConversionFraction!,
+      )
+      expect(result).toBe(0)
+    })
+
+    it('returns 0 when time is negative', () => {
+      const result = calculateMetaboliteConcentration(
+        -1,
+        dose,
+        halfLife,
+        metaboliteLife!,
+        metaboliteConversionFraction!,
+      )
+      expect(result).toBe(0)
+    })
+
+    it('returns 0 when dose=0', () => {
+      const result = calculateMetaboliteConcentration(
+        1,
+        0,
+        halfLife,
+        metaboliteLife!,
+        metaboliteConversionFraction!,
+      )
+      expect(result).toBe(0)
+    })
+
+    it('returns 0 when dose is negative', () => {
+      const result = calculateMetaboliteConcentration(
+        1,
+        -100,
+        halfLife,
+        metaboliteLife!,
+        metaboliteConversionFraction!,
+      )
+      expect(result).toBe(0)
+    })
+
+    it('returns 0 when fm=0 (no conversion)', () => {
+      const result = calculateMetaboliteConcentration(
+        1,
+        dose,
+        halfLife,
+        metaboliteLife!,
+        0,
+      )
+      expect(result).toBe(0)
+    })
+
+    it('returns 0 when fm is negative', () => {
+      const result = calculateMetaboliteConcentration(
+        1,
+        dose,
+        halfLife,
+        metaboliteLife!,
+        -0.5,
+      )
+      expect(result).toBe(0)
+    })
+
+    // --- Basic behavior ---
+
+    it('returns positive value at small positive time', () => {
+      const result = calculateMetaboliteConcentration(
+        0.5,
+        dose,
+        halfLife,
+        metaboliteLife!,
+        metaboliteConversionFraction!,
+      )
+      expect(result).toBeGreaterThan(0)
+    })
+
+    it('returns increasing concentration in early phase (t=0.5 < t=2)', () => {
+      const c1 = calculateMetaboliteConcentration(
+        0.5,
+        dose,
+        halfLife,
+        metaboliteLife!,
+        metaboliteConversionFraction!,
+      )
+      const c2 = calculateMetaboliteConcentration(
+        2,
+        dose,
+        halfLife,
+        metaboliteLife!,
+        metaboliteConversionFraction!,
+      )
+      expect(c2).toBeGreaterThan(c1)
+    })
+
+    it('returns decreasing concentration in late phase (metabolite clearance)', () => {
+      const c1 = calculateMetaboliteConcentration(
+        12,
+        dose,
+        halfLife,
+        metaboliteLife!,
+        metaboliteConversionFraction!,
+      )
+      const c2 = calculateMetaboliteConcentration(
+        24,
+        dose,
+        halfLife,
+        metaboliteLife!,
+        metaboliteConversionFraction!,
+      )
+      expect(c2).toBeLessThan(c1)
+    })
+
+    it('approaches 0 for very large time', () => {
+      // 240 hours = 40 half-lives of parent (6h), 20 half-lives of metabolite (12h)
+      const result = calculateMetaboliteConcentration(
+        240,
+        dose,
+        halfLife,
+        metaboliteLife!,
+        metaboliteConversionFraction!,
+      )
+      expect(result).toBeCloseTo(0, 0)
+      expect(result).toBeGreaterThanOrEqual(0)
+    })
+
+    // --- Scaling properties ---
+
+    it('doubles when dose doubles (linearity)', () => {
+      const c1 = calculateMetaboliteConcentration(
+        4,
+        500,
+        halfLife,
+        metaboliteLife!,
+        metaboliteConversionFraction!,
+      )
+      const c2 = calculateMetaboliteConcentration(
+        4,
+        1000,
+        halfLife,
+        metaboliteLife!,
+        metaboliteConversionFraction!,
+      )
+      expect(c2).toBeCloseTo(2 * c1, 6)
+    })
+
+    it('doubles when fm doubles (linearity)', () => {
+      const c1 = calculateMetaboliteConcentration(
+        4,
+        dose,
+        halfLife,
+        metaboliteLife!,
+        0.4,
+      )
+      const c2 = calculateMetaboliteConcentration(
+        4,
+        dose,
+        halfLife,
+        metaboliteLife!,
+        0.8,
+      )
+      expect(c2).toBeCloseTo(2 * c1, 6)
+    })
+
+    // --- Metabolite properties ---
+
+    it('slower metabolite (longer half-life) shows higher accumulation at late times', () => {
+      // Same parent, slow metabolite
+      const slowMetabolite = calculateMetaboliteConcentration(
+        48,
+        dose,
+        halfLife,
+        100, // Very slow metabolite
+        metaboliteConversionFraction!,
+      )
+      // Same parent, fast metabolite
+      const fastMetabolite = calculateMetaboliteConcentration(
+        48,
+        dose,
+        halfLife,
+        2, // Very fast metabolite
+        metaboliteConversionFraction!,
+      )
+      expect(slowMetabolite).toBeGreaterThan(fastMetabolite)
+    })
+
+    it('metabolite with fm=1.0 produces more than fm=0.5', () => {
+      const full = calculateMetaboliteConcentration(
+        8,
+        dose,
+        halfLife,
+        metaboliteLife!,
+        1.0,
+      )
+      const half = calculateMetaboliteConcentration(
+        8,
+        dose,
+        halfLife,
+        metaboliteLife!,
+        0.5,
+      )
+      expect(full).toBeCloseTo(2 * half, 6)
+    })
+  })
+
+  describe('calculateMetaboliteConcentration - fallback formula (ke_metabolite ≈ ke_parent)', () => {
+    // When ke_metabolite ≈ ke_parent, use fallback formula
+    // C_metabolite(t) = Dose * fm * ke_parent * t * e^(-ke_parent*t)
+
+    it('uses fallback formula when metabolite half-life equals parent half-life', () => {
+      const halfLife = 6
+      const dose = 500
+      const fm = 0.8
+
+      // ke_parent = 0.693 / 6 ≈ 0.1155
+      // ke_metabolite = 0.693 / 6 ≈ 0.1155
+      // |ke_metabolite - ke_parent| ≈ 0, so fallback applies
+
+      const result = calculateMetaboliteConcentration(
+        4,
+        dose,
+        halfLife,
+        halfLife, // Same half-life
+        fm,
+      )
+      expect(result).toBeGreaterThan(0)
+      expect(result).toBeLessThan(dose) // Should be reasonable
+    })
+
+    it('produces non-zero concentration in fallback case', () => {
+      const result = calculateMetaboliteConcentration(
+        2,
+        500,
+        6,
+        6, // ke_metabolite ≈ ke_parent
+        0.8,
+      )
+      expect(result).toBeGreaterThan(0)
+    })
+
+    it('approaches 0 at very large time even in fallback', () => {
+      const result = calculateMetaboliteConcentration(
+        100,
+        500,
+        6,
+        6,
+        0.8,
+      )
+      expect(result).toBeCloseTo(0, 0)
+    })
+  })
+
+  describe('calculateMetaboliteConcentration - edge cases', () => {
+    it('handles minimum boundary values', () => {
+      const result = calculateMetaboliteConcentration(
+        0.1,
+        0.001,
+        0.1,
+        0.1,
+        0.0,
+      )
+      expect(result).toBe(0) // fm=0 guard
+    })
+
+    it('handles maximum boundary values (non-zero fm)', () => {
+      const result = calculateMetaboliteConcentration(
+        48,
+        10000,
+        240,
+        240,
+        1.0,
+      )
+      expect(result).toBeGreaterThanOrEqual(0)
+      expect(isFinite(result)).toBe(true)
+    })
+
+    it('never returns negative concentration (guards against numerical artifacts)', () => {
+      const times = [0.01, 0.1, 0.5, 1, 2, 4, 8, 16, 32, 64, 128]
+      for (const t of times) {
+        const result = calculateMetaboliteConcentration(
+          t,
+          500,
+          6,
+          12,
+          0.8,
+        )
+        expect(result).toBeGreaterThanOrEqual(0)
+      }
+    })
+  })
+
   // ─── Phase 7: Barrel Exports ───
 
   describe('barrel exports', () => {
@@ -462,6 +770,11 @@ describe('PK Calculator', () => {
     it('exports calculateConcentration as a function', async () => {
       const barrel = await import('../../calculations/index')
       expect(typeof barrel.calculateConcentration).toBe('function')
+    })
+
+    it('exports calculateMetaboliteConcentration as a function', async () => {
+      const barrel = await import('../../calculations/index')
+      expect(typeof barrel.calculateMetaboliteConcentration).toBe('function')
     })
 
     it('exports getPeakTime as a function', async () => {

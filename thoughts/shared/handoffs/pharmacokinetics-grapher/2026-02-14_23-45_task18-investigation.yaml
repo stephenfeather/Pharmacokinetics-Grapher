@@ -1,0 +1,66 @@
+---
+session: pharmacokinetics-grapher
+date: 2026-02-14
+status: blocked
+outcome: PARTIAL_MINUS
+---
+
+goal: Investigate and fix Task 18 - multi-dose accumulation math bug in pharmacokinetics graph display
+now: Wait for user to provide specific reproduction case (prescription parameters + expected vs actual behavior) to identify the bug
+test: npm run test:unit
+
+done_this_session:
+  - task: Comprehensive investigation of Task 18 (multi-dose accumulation math)
+    files: [src/core/calculations/multiDose.ts, src/core/calculations/pkCalculator.ts, src/core/calculations/__tests__/multiDose.spec.ts]
+  - task: Manual mathematical verification of accumulation formula
+    files: []
+  - task: Updated Task 18 with investigation findings and blocked status
+    files: [.taskmaster/tasks/tasks.json]
+
+blockers:
+  - No specific reproduction case provided - cannot identify bug without knowing which prescription produces wrong output
+  - Need clarification on whether issue is mathematical or display/visual
+
+questions:
+  - What prescription parameters produce incorrect graph output?
+  - What should the graph show vs what does it actually show?
+  - Is there a pharmacology reference dataset to compare against?
+  - Is this a calculation issue or a display/rendering issue?
+
+decisions:
+  - "Investigation approach: Verify all tests pass (473 pass), review math logic, manually calculate expected values"
+  - "Conclusion: No bug found in 473 passing tests, manual calculation confirms correct accumulation factor"
+
+findings:
+  - "All 473 unit tests pass including 13 multiDose accumulation tests"
+  - "BID accumulation math verified: accumulation factor 1.332 actual vs 1.333 theoretical (matches)"
+  - "Single-dose formula C(t) = Dose × [ka/(ka-ke)] × (e^(-ke×t) - e^(-ka×t)) appears correct"
+  - "expandDoseTimes() correctly expands daily doses; accumulateDoses() correctly sums all prior doses; normalization correctly scales peak to 1.0"
+  - "Code review shows no obvious mathematical errors in multiDose.ts or pkCalculator.ts"
+
+worked:
+  - "Mathematical verification using reference formula provided confidence in implementation correctness"
+  - "Manual calculation of steady-state accumulation factor matched theoretical value exactly"
+
+failed:
+  - "Cannot identify bug without reproduction case - all automated and manual tests indicate correct implementation"
+
+next:
+  - "Request from user: specific prescription parameters that produce wrong output"
+  - "Get expected vs actual behavior description"
+  - "Identify if issue is mathematical or visual"
+  - "Once reproduction case provided: create failing test, implement fix, verify all tests pass"
+
+files:
+  created: []
+  modified:
+    - .taskmaster/tasks/tasks.json
+
+notes: |
+  Task 18 appears to have no reproducible bug based on available evidence. All 473 unit tests pass.
+  Mathematical verification for BID 500mg halfLife=6h uptake=1.5h showed:
+  - First peak (t=13h): 314.98 concentration
+  - Second peak (t=25h): 419.56 concentration
+  - Accumulation factor: 1.332 (theoretical: 1.333) ✓
+
+  Investigation blocked pending specific failing scenario from user.

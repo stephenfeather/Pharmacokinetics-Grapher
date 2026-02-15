@@ -1,0 +1,62 @@
+{
+  "edges": [
+    {
+      "from_file": "multiDose.ts",
+      "from_func": "accumulateDoses",
+      "to_file": "pkCalculator.ts",
+      "to_func": "calculateConcentration"
+    },
+    {
+      "from_file": "multiDose.ts",
+      "from_func": "getGraphData",
+      "to_file": "multiDose.ts",
+      "to_func": "accumulateDoses"
+    },
+    {
+      "from_file": "pkCalculator.ts",
+      "from_func": "calculateConcentration",
+      "to_file": "pkCalculator.ts",
+      "to_func": "computeKe"
+    },
+    {
+      "from_file": "pkCalculator.ts",
+      "from_func": "getPeakTime",
+      "to_file": "pkCalculator.ts",
+      "to_func": "computeKa"
+    },
+    {
+      "from_file": "multiDose.ts",
+      "from_func": "getLastDoseTime",
+      "to_file": "multiDose.ts",
+      "to_func": "expandDoseTimes"
+    },
+    {
+      "from_file": "pkCalculator.ts",
+      "from_func": "calculateConcentration",
+      "to_file": "pkCalculator.ts",
+      "to_func": "computeKa"
+    },
+    {
+      "from_file": "multiDose.ts",
+      "from_func": "accumulateDoses",
+      "to_file": "multiDose.ts",
+      "to_func": "expandDoseTimes"
+    },
+    {
+      "from_file": "multiDose.ts",
+      "from_func": "expandDoseTimes",
+      "to_file": "multiDose.ts",
+      "to_func": "timeStringToHours"
+    },
+    {
+      "from_file": "pkCalculator.ts",
+      "from_func": "getPeakTime",
+      "to_file": "pkCalculator.ts",
+      "to_func": "computeKe"
+    }
+  ],
+  "languages": [
+    "typescript"
+  ],
+  "timestamp": 1771117017.938209
+}

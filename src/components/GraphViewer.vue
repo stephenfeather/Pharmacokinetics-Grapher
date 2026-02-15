@@ -92,19 +92,30 @@ function renderChart(): void {
 
   if (props.datasets.length === 0) return
 
-  const chartDatasets = props.datasets.map((ds, index) => ({
-    label: ds.label,
-    data: ds.data.map((point) => ({
-      x: point.time,
-      y: point.concentration,
-    })),
-    borderColor: ds.color || DEFAULT_COLORS[index % DEFAULT_COLORS.length],
-    backgroundColor: 'transparent',
-    tension: 0.1,
-    pointRadius: 0,
-    borderWidth: 2,
-    fill: false,
-  }))
+  const chartDatasets = props.datasets.map((ds, index) => {
+    const isMetabolite = ds.isMetabolite === true
+
+    // For metabolites, use same color as previous dataset (parent drug)
+    let colorIndex = index
+    if (isMetabolite && index > 0) {
+      colorIndex = index - 1
+    }
+
+    return {
+      label: ds.label,
+      data: ds.data.map((point) => ({
+        x: point.time,
+        y: point.concentration,
+      })),
+      borderColor: ds.color || DEFAULT_COLORS[colorIndex % DEFAULT_COLORS.length],
+      backgroundColor: 'transparent',
+      tension: 0.1,
+      pointRadius: 0,
+      borderWidth: 2,
+      fill: false,
+      ...(isMetabolite ? { borderDash: [5, 5] } : {}),
+    }
+  })
 
   chartInstance = new Chart(canvasRef.value, {
     type: 'line',

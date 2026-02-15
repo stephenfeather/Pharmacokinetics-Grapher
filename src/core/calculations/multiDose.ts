@@ -9,7 +9,7 @@
  */
 
 import type { Prescription, TimeSeriesPoint, GraphDataset } from '../models/prescription'
-import { calculateConcentration } from './pkCalculator'
+import { calculateConcentration, calculateMetaboliteConcentration } from './pkCalculator'
 
 /**
  * Convert HH:MM time string to hours from midnight
@@ -145,19 +145,103 @@ export function accumulateDoses(
 }
 
 /**
+ * Calculate accumulated metabolite concentration over time from repeated parent doses
+ *
+ * Strategy:
+ * 1. Expand prescription times across simulation window
+ * 2. For each timepoint in the simulation, sum raw contributions from all prior parent doses
+ * 3. Normalize final curve so peak = 1.0
+ * 4. Returns empty array if either metaboliteLife or metaboliteConversionFraction is missing
+ *
+ * @param prescription - Prescription with metaboliteLife and metaboliteConversionFraction (both required)
+ * @param startHours - Simulation start time in hours from midnight
+ * @param endHours - Simulation end time in hours from midnight (overridden by prescription.duration if present)
+ * @param intervalMinutes - Time step resolution (default 15 min)
+ * @returns Array of TimeSeriesPoint with normalized metabolite concentrations (peak = 1.0), or empty if data incomplete
+ */
+export function accumulateMetaboliteDoses(
+  prescription: Prescription,
+  startHours: number,
+  endHours: number,
+  intervalMinutes: number = 15,
+): TimeSeriesPoint[] {
+  // Guard: require both metaboliteLife and metaboliteConversionFraction
+  if (
+    !prescription.metaboliteLife ||
+    prescription.metaboliteConversionFraction === undefined ||
+    prescription.metaboliteConversionFraction === null
+  ) {
+    return []
+  }
+
+  // Use prescription duration if available, otherwise use endHours parameter
+  let effectiveEndHours = endHours
+  if (prescription.duration !== undefined && prescription.durationUnit !== undefined) {
+    const durationInHours =
+      prescription.durationUnit === 'days'
+        ? prescription.duration * 24
+        : prescription.duration
+    effectiveEndHours = startHours + durationInHours
+  }
+
+  // Expand prescription times across simulation window
+  const numDays = Math.ceil(effectiveEndHours / 24) + 1
+  const doseTimes = expandDoseTimes(prescription.times, numDays)
+
+  // Generate timepoints for simulation
+  const points: TimeSeriesPoint[] = []
+  const steps = Math.ceil((effectiveEndHours - startHours) * 60 / intervalMinutes)
+  let maxConc = 0
+
+  // For each timepoint, sum contributions from all prior doses
+  for (let i = 0; i <= steps; i++) {
+    const time = startHours + i * intervalMinutes / 60
+    let totalConc = 0
+
+    // Sum raw (unnormalized) contributions from each dose
+    for (const doseTime of doseTimes) {
+      if (doseTime <= time) {
+        const elapsed = time - doseTime
+        totalConc += calculateMetaboliteConcentration(
+          elapsed,
+          prescription.dose,
+          prescription.halfLife,
+          prescription.metaboliteLife,
+          prescription.metaboliteConversionFraction,
+        )
+      }
+    }
+
+    // Store point and track maximum
+    points.push({ time, concentration: Math.max(0, totalConc) })
+    maxConc = Math.max(maxConc, totalConc)
+  }
+
+  // Normalize to peak = 1.0
+  if (maxConc > 0) {
+    for (const p of points) {
+      p.concentration /= maxConc
+    }
+  }
+
+  return points
+}
+
+/**
  * Format multiple prescriptions into graph-ready datasets
  *
  * Transforms an array of prescriptions into GraphDataset[] with:
  * - Calculated concentration curves via accumulateDoses()
- * - Assigned colors from predefined palette
- * - Labels formatted as "name (frequency)"
+ * - Metabolite curves via accumulateMetaboliteDoses() when both fields present
+ * - isMetabolite flag to distinguish dashed lines
+ * - Labels formatted as "name (frequency)" for parent, "name - Metabolite (frequency)" for metabolite
  *
  * When prescriptions have duration fields, the graph timeframe accommodates the longest duration.
  *
  * @param prescriptions - Array of prescriptions to visualize
  * @param startHours - Simulation start time in hours
  * @param endHours - Simulation end time in hours (may be extended by prescription durations)
- * @returns Array of GraphDataset ready for Chart.js rendering
+ * @returns Array of GraphDataset ready for Chart.js rendering (includes metabolite curves if data complete)
  */
 export function getGraphData(
   prescriptions: Prescription[],
@@ -177,8 +261,25 @@ export function getGraphData(
     }
   }
 
-  return prescriptions.map((rx) => ({
-    label: `${rx.name} ${rx.dose}mg (${rx.frequency})`,
-    data: accumulateDoses(rx, startHours, effectiveEndHours),
-  }))
+  const datasets: GraphDataset[] = []
+
+  for (const rx of prescriptions) {
+    // Parent drug (always)
+    datasets.push({
+      label: `${rx.name} ${rx.dose}mg (${rx.frequency})`,
+      data: accumulateDoses(rx, startHours, effectiveEndHours),
+      isMetabolite: false,
+    })
+
+    // Metabolite (if both fields present)
+    if (rx.metaboliteLife && rx.metaboliteConversionFraction !== undefined && rx.metaboliteConversionFraction !== null) {
+      datasets.push({
+        label: `${rx.name} - Metabolite (${rx.frequency})`,
+        data: accumulateMetaboliteDoses(rx, startHours, effectiveEndHours),
+        isMetabolite: true,
+      })
+    }
+  }
+
+  return datasets
 }

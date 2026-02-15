@@ -4,19 +4,23 @@ import GraphViewer from '../GraphViewer.vue'
 import type { GraphDataset } from '@/core/models/prescription'
 
 // Setup mocks with vi.hoisted() for proper hoisting
-const { mockDestroy, MockChart, mockDownloadImage } = vi.hoisted(() => {
+ 
+const { MockChart, mockDownloadImage } = vi.hoisted(() => {
   const mockDestroy = vi.fn()
   const mockToBase64Image = vi.fn().mockReturnValue('data:image/png;base64,mock-image-data')
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const MockChart = vi.fn(function (this: any) {
     this.destroy = mockDestroy
     this.toBase64Image = mockToBase64Image
   })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ;(MockChart as any).register = vi.fn()
 
   const mockDownloadImage = vi.fn().mockReturnValue(true)
 
-  return { mockDestroy, MockChart: MockChart as any, mockDownloadImage }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return { MockChart: MockChart as any, mockDownloadImage }
 })
 
 vi.mock('chart.js', () => ({

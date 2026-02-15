@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { accumulateDoses, getGraphData, getLastDoseTime, calculateTailOffDuration } from '../multiDose'
-import { SINGLE_DOSE_FIXTURE, BID_MULTI_DOSE_FIXTURE, IBUPROFEN_FIXTURE } from '../../models/__tests__/fixtures'
+import { accumulateDoses, accumulateMetaboliteDoses, getGraphData, getLastDoseTime, calculateTailOffDuration } from '../multiDose'
+import { SINGLE_DOSE_FIXTURE, BID_MULTI_DOSE_FIXTURE, IBUPROFEN_FIXTURE, METABOLITE_STANDARD_FIXTURE } from '../../models/__tests__/fixtures'
 
 describe('accumulateDoses - Multi-dose Accumulation', () => {
   describe('Phase 1: Single dose (once daily)', () => {
@@ -171,6 +171,54 @@ describe('accumulateDoses - Multi-dose Accumulation', () => {
       expect(result[0]!.data[0]).toHaveProperty('time')
       expect(result[0]!.data[0]).toHaveProperty('concentration')
     })
+
+    it('includes metabolite dataset when both metaboliteLife and metaboliteConversionFraction are present', () => {
+      const result = getGraphData([METABOLITE_STANDARD_FIXTURE], 0, 48)
+      expect(result.length).toBe(2)
+      expect(result[0]!.label).toBe('Test Metabolite Drug 500mg (bid)')
+      expect(result[1]!.label).toBe('Test Metabolite Drug - Metabolite (bid)')
+    })
+
+    it('marks metabolite dataset with isMetabolite=true flag', () => {
+      const result = getGraphData([METABOLITE_STANDARD_FIXTURE], 0, 48)
+      expect(result[0]!.isMetabolite).toBe(false)
+      expect(result[1]!.isMetabolite).toBe(true)
+    })
+
+    it('does not generate metabolite dataset when metaboliteLife is missing', () => {
+      const rx = { ...METABOLITE_STANDARD_FIXTURE, metaboliteLife: undefined }
+      const result = getGraphData([rx], 0, 48)
+      expect(result.length).toBe(1)
+      expect(result[0]!.label).toBe('Test Metabolite Drug 500mg (bid)')
+      expect(result[0]!.isMetabolite).toBe(false)
+    })
+
+    it('does not generate metabolite dataset when metaboliteConversionFraction is missing', () => {
+      const rx = { ...METABOLITE_STANDARD_FIXTURE, metaboliteConversionFraction: undefined }
+      const result = getGraphData([rx], 0, 48)
+      expect(result.length).toBe(1)
+      expect(result[0]!.isMetabolite).toBe(false)
+    })
+
+    it('generates parent and metabolite curves for multiple prescriptions with metabolites', () => {
+      const rx1 = METABOLITE_STANDARD_FIXTURE
+      const rx2 = { ...METABOLITE_STANDARD_FIXTURE, name: 'Drug 2' }
+      const result = getGraphData([rx1, rx2], 0, 48)
+      expect(result.length).toBe(4) // 2 parent + 2 metabolite
+      expect(result[0]!.isMetabolite).toBe(false)
+      expect(result[1]!.isMetabolite).toBe(true)
+      expect(result[2]!.isMetabolite).toBe(false)
+      expect(result[3]!.isMetabolite).toBe(true)
+    })
+
+    it('metabolite dataset has valid concentration data', () => {
+      const result = getGraphData([METABOLITE_STANDARD_FIXTURE], 0, 48)
+      const metaboliteDataset = result[1]!
+      expect(metaboliteDataset.data.length).toBeGreaterThan(0)
+      expect(metaboliteDataset.data[0]).toHaveProperty('time')
+      expect(metaboliteDataset.data[0]).toHaveProperty('concentration')
+      expect(metaboliteDataset.data[0]!.concentration).toBeGreaterThanOrEqual(0)
+    })
   })
 
   describe('Phase 5: Get Last Dose Time - getLastDoseTime', () => {
@@ -267,6 +315,109 @@ describe('accumulateDoses - Multi-dose Accumulation', () => {
       }
       const result = getLastDoseTime(rx, 1)
       expect(result).toBe(23)
+    })
+  })
+
+  describe('Phase 5b: Metabolite Accumulation - accumulateMetaboliteDoses', () => {
+    it('returns empty array when metaboliteLife is missing', () => {
+      const rx = { ...BID_MULTI_DOSE_FIXTURE, metaboliteLife: undefined, metaboliteConversionFraction: 0.8 }
+      const result = accumulateMetaboliteDoses(rx, 0, 48)
+      expect(result).toEqual([])
+    })
+
+    it('returns empty array when metaboliteConversionFraction is missing', () => {
+      const rx = { ...BID_MULTI_DOSE_FIXTURE, metaboliteLife: 12, metaboliteConversionFraction: undefined }
+      const result = accumulateMetaboliteDoses(rx, 0, 48)
+      expect(result).toEqual([])
+    })
+
+    it('returns empty array when metaboliteConversionFraction is null', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rx = { ...BID_MULTI_DOSE_FIXTURE, metaboliteLife: 12, metaboliteConversionFraction: null } as any
+      const result = accumulateMetaboliteDoses(rx, 0, 48)
+      expect(result).toEqual([])
+    })
+
+    it('generates metabolite curve when both fields present', () => {
+      const rx = METABOLITE_STANDARD_FIXTURE
+      const result = accumulateMetaboliteDoses(rx, 0, 48, 1)
+
+      expect(result).toBeDefined()
+      expect(Array.isArray(result)).toBe(true)
+      expect(result.length).toBeGreaterThan(0)
+    })
+
+    it('normalizes metabolite curve to peak=1.0', () => {
+      const rx = METABOLITE_STANDARD_FIXTURE
+      const result = accumulateMetaboliteDoses(rx, 0, 48, 1)
+
+      const peakConc = Math.max(...result.map(p => p.concentration))
+      expect(peakConc).toBeCloseTo(1.0, 5)
+    })
+
+    it('returns zero concentration before first dose', () => {
+      const rx = METABOLITE_STANDARD_FIXTURE // first dose at 09:00
+      const result = accumulateMetaboliteDoses(rx, 0, 48, 1)
+
+      // At t=0 (midnight), before any dose at 09:00
+      const firstPoint = result[0]
+      expect(firstPoint).toBeDefined()
+      expect(firstPoint!.time).toBe(0)
+      expect(firstPoint!.concentration).toBe(0)
+    })
+
+    it('shows metabolite accumulation with multi-dose (bid)', () => {
+      const rx = METABOLITE_STANDARD_FIXTURE
+      const result = accumulateMetaboliteDoses(rx, 0, 48, 1)
+
+      // At t=48 (end of 2 days with doses at 09:00 and 21:00), metabolite should have accumulated
+      const lastPoint = result[result.length - 1]
+      expect(lastPoint).toBeDefined()
+      expect(lastPoint!.concentration).toBeGreaterThan(0)
+    })
+
+    it('metabolite concentration increases in early phase', () => {
+      const rx = METABOLITE_STANDARD_FIXTURE
+      const result = accumulateMetaboliteDoses(rx, 0, 48, 1)
+
+      // Find points around dose time (09:00 = 9 hours)
+      // Metabolite forms after parent dose, so concentration should increase
+      const beforeSecondDose = result.filter(p => p.time >= 9 && p.time <= 12)
+      expect(beforeSecondDose.length).toBeGreaterThanOrEqual(2)
+      const early = beforeSecondDose[0]!.concentration
+      const late = beforeSecondDose[beforeSecondDose.length - 1]!.concentration
+      expect(late).toBeGreaterThanOrEqual(early)
+    })
+
+    it('metabolite concentration accumulates significantly over time with repeated doses', () => {
+      const rx = METABOLITE_STANDARD_FIXTURE
+      const result = accumulateMetaboliteDoses(rx, 0, 96, 1)
+
+      // Metabolite accumulates with repeated dosing (bid), so concentration at late times should be substantial
+      const lateConcentration = result[result.length - 1]!.concentration
+      expect(lateConcentration).toBeGreaterThan(0.8) // Should be substantial due to accumulation
+    })
+
+    it('respects prescription duration when provided', () => {
+      const rx = {
+        ...METABOLITE_STANDARD_FIXTURE,
+        duration: 2,
+        durationUnit: 'days' as const,
+      }
+      const result = accumulateMetaboliteDoses(rx, 0, 100, 1) // endHours=100, but duration override to 48h
+
+      // Result should contain timepoints up to 0 + 2*24 = 48
+      const lastTime = result[result.length - 1]?.time
+      expect(lastTime).toBeLessThanOrEqual(50)
+    })
+
+    it('never returns negative concentrations', () => {
+      const rx = METABOLITE_STANDARD_FIXTURE
+      const result = accumulateMetaboliteDoses(rx, 0, 96, 1)
+
+      for (const point of result) {
+        expect(point.concentration).toBeGreaterThanOrEqual(0)
+      }
     })
   })
 

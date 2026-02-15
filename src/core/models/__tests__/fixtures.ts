@@ -65,3 +65,16 @@ export const IBUPROFEN_FIXTURE: Prescription = {
   peak: 1.5,
   uptake: 0.5,
 }
+
+/** Drug with active metabolite for metabolite graphing testing */
+export const METABOLITE_STANDARD_FIXTURE: Prescription = {
+  name: 'Test Metabolite Drug',
+  frequency: 'bid',
+  times: ['09:00', '21:00'],
+  dose: 500,
+  halfLife: 6,
+  metaboliteLife: 12,
+  metaboliteConversionFraction: 0.8,
+  peak: 2,
+  uptake: 1.5,
+}

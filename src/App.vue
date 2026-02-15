@@ -2,7 +2,7 @@
 import { ref, computed, nextTick, watch } from 'vue'
 import type { Prescription, GraphDataset } from '@/core/models/prescription'
 import { getGraphData, getLastDoseTime, calculateTailOffDuration } from '@/core/calculations'
-import { savePrescription, getAllPrescriptions } from '@/core/storage/prescriptionStorage'
+import { savePrescription, updatePrescription, getAllPrescriptions } from '@/core/storage/prescriptionStorage'
 import PrescriptionForm from '@/components/PrescriptionForm.vue'
 import GraphViewer from '@/components/GraphViewer.vue'
 import PrescriptionList from '@/components/PrescriptionList.vue'
@@ -150,6 +150,11 @@ function switchView(view: 'form' | 'list' | 'graph') {
 // ---- Event handlers ----
 
 function handleFormSubmit(rx: Prescription) {
+  // For edit mode: update existing prescription
+  if (rx.id) {
+    updatePrescription(rx)
+    savedPrescriptions.value = getAllPrescriptions()
+  }
   currentPrescription.value = rx
   comparePrescriptions.value = [rx]
   switchView('graph')
@@ -163,7 +168,15 @@ function handleImportSuccess(count: number) {
 
 function saveCurrentPrescription() {
   if (currentPrescription.value) {
-    const saved = savePrescription(currentPrescription.value)
+    let saved: Prescription
+    if (currentPrescription.value.id) {
+      // Edit mode: update existing
+      updatePrescription(currentPrescription.value)
+      saved = currentPrescription.value
+    } else {
+      // New mode: save as new
+      saved = savePrescription(currentPrescription.value)
+    }
     savedPrescriptions.value = getAllPrescriptions()
     currentPrescription.value = saved
   }
@@ -278,7 +291,7 @@ watch(comparePrescriptions, (newVal) => {
 
     <main class="app-main">
       <div v-if="showForm" ref="formRef" role="region" aria-label="Prescription form">
-        <PrescriptionForm @submit="handleFormSubmit" @imported="handleImportSuccess" />
+        <PrescriptionForm :initial="currentPrescription ?? undefined" @submit="handleFormSubmit" @imported="handleImportSuccess" />
       </div>
 
       <div v-if="showList" class="list-section" ref="listContainerRef">

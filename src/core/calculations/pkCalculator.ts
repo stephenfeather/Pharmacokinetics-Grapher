@@ -83,6 +83,56 @@ export function calculateConcentration(
 }
 
 /**
+ * Calculate metabolite concentration at a given time using one-compartment
+ * sequential metabolism model.
+ *
+ * Standard formula: C_metabolite(t) = Dose * fm * ke_parent / (ke_metabolite - ke_parent) *
+ *                                     (e^(-ke_parent*t) - e^(-ke_metabolite*t))
+ * Fallback (|ke_metabolite - ke_parent| < KA_KE_TOLERANCE):
+ *   C_metabolite(t) = Dose * fm * ke_parent * t * e^(-ke_parent*t)
+ *
+ * @param time - Time in hours since parent dose administration
+ * @param dose - Parent dose amount in arbitrary units
+ * @param parentHalfLife - Parent drug elimination half-life in hours (> 0)
+ * @param metaboliteHalfLife - Metabolite elimination half-life in hours (> 0)
+ * @param fm - Metabolite conversion fraction (0 to 1); fraction of parent converted
+ * @returns Raw relative metabolite concentration (not normalized, can be > 1.0)
+ */
+export function calculateMetaboliteConcentration(
+  time: number,
+  dose: number,
+  parentHalfLife: number,
+  metaboliteHalfLife: number,
+  fm: number,
+): number {
+  // Guard: zero or negative dose
+  if (dose <= 0) return 0
+
+  // Guard: zero or negative conversion fraction
+  if (fm <= 0) return 0
+
+  // Guard: negative or zero time (before dose administered)
+  if (time <= 0) return 0
+
+  const ke_parent = computeKe(parentHalfLife)
+  const ke_metabolite = computeKe(metaboliteHalfLife)
+
+  let concentration: number
+
+  if (Math.abs(ke_metabolite - ke_parent) < KA_KE_TOLERANCE) {
+    // Fallback formula: limit as ke_metabolite -> ke_parent
+    concentration = dose * fm * ke_parent * time * Math.exp(-ke_parent * time)
+  } else {
+    // Standard one-compartment sequential metabolism
+    concentration = dose * fm * (ke_parent / (ke_metabolite - ke_parent)) *
+                    (Math.exp(-ke_parent * time) - Math.exp(-ke_metabolite * time))
+  }
+
+  // Clamp numerical artifacts to zero
+  return Math.max(0, concentration)
+}
+
+/**
  * Calculate the time of peak concentration (Tmax) for a single dose.
  *
  * Standard: Tmax = ln(ka/ke) / (ka - ke)

@@ -197,6 +197,14 @@ describe('Prescription Models', () => {
         max: 1000,
       })
     })
+
+    it('defines metaboliteConversionFraction rules as optional with min 0.0 and max 1.0', () => {
+      expect(VALIDATION_RULES.metaboliteConversionFraction).toMatchObject({
+        required: false,
+        min: 0.0,
+        max: 1.0,
+      })
+    })
   })
 
   describe('KA_KE_TOLERANCE', () => {
@@ -680,6 +688,50 @@ describe('Prescription Models', () => {
       })
     })
 
+    // ─── Phase 11b: Metabolite Conversion Fraction Validation ───
+
+    describe('metaboliteConversionFraction validation', () => {
+      it('accepts undefined metaboliteConversionFraction (optional field)', () => {
+        const rx = makeValid()
+        delete (rx as Partial<Prescription>).metaboliteConversionFraction
+        const result = validatePrescription(rx)
+        expect(result.valid).toBe(true)
+      })
+
+      it('accepts metaboliteConversionFraction not present on object', () => {
+        // makeValid() does not include metaboliteConversionFraction by default
+        const result = validatePrescription(makeValid())
+        expect(result.valid).toBe(true)
+      })
+
+      it('rejects metaboliteConversionFraction below 0 (-0.1)', () => {
+        const result = validatePrescription(makeValid({ metaboliteConversionFraction: -0.1 }))
+        expect(result.valid).toBe(false)
+        expect(result.errors.some((e) => /metabolite.*conversion/i.test(e))).toBe(true)
+      })
+
+      it('rejects metaboliteConversionFraction above 1.0 (1.5)', () => {
+        const result = validatePrescription(makeValid({ metaboliteConversionFraction: 1.5 }))
+        expect(result.valid).toBe(false)
+        expect(result.errors.some((e) => /metabolite.*conversion/i.test(e))).toBe(true)
+      })
+
+      it('accepts metaboliteConversionFraction at minimum boundary (0.0)', () => {
+        const result = validatePrescription(makeValid({ metaboliteConversionFraction: 0.0 }))
+        expect(result.valid).toBe(true)
+      })
+
+      it('accepts metaboliteConversionFraction at maximum boundary (1.0)', () => {
+        const result = validatePrescription(makeValid({ metaboliteConversionFraction: 1.0 }))
+        expect(result.valid).toBe(true)
+      })
+
+      it('accepts typical metaboliteConversionFraction (0.8)', () => {
+        const result = validatePrescription(makeValid({ metaboliteConversionFraction: 0.8 }))
+        expect(result.valid).toBe(true)
+      })
+    })
+
     // ─── Phase 12: Cross-Field Warnings ───
 
     describe('cross-field warnings', () => {
@@ -712,6 +764,25 @@ describe('Prescription Models', () => {
         const result = validatePrescription(makeValid({ uptake: 1.5, halfLife: 6 }))
         expect(result.valid).toBe(true)
         expect(result.warnings).toEqual([])
+      })
+
+      it('warns when only metaboliteLife is provided (missing conversion fraction)', () => {
+        const result = validatePrescription(makeValid({ metaboliteLife: 12 }))
+        expect(result.valid).toBe(true)
+        expect(result.warnings.some((w) => /metabolite.*conversion/i.test(w) || /both.*required/i.test(w))).toBe(true)
+      })
+
+      it('warns when only metaboliteConversionFraction is provided (missing half-life)', () => {
+        const result = validatePrescription(makeValid({ metaboliteConversionFraction: 0.8 }))
+        expect(result.valid).toBe(true)
+        expect(result.warnings.some((w) => /metabolite.*half-life/i.test(w) || /both.*required/i.test(w))).toBe(true)
+      })
+
+      it('does not warn when both metaboliteLife and metaboliteConversionFraction are provided', () => {
+        const result = validatePrescription(makeValid({ metaboliteLife: 12, metaboliteConversionFraction: 0.8 }))
+        expect(result.valid).toBe(true)
+        // Should have no metabolite-related warnings
+        expect(result.warnings.some((w) => /metabolite.*conversion/i.test(w) || /metabolite.*half-life/i.test(w))).toBe(false)
       })
 
       it('warnings do not cause valid to be false', () => {

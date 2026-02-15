@@ -1,0 +1,72 @@
+---
+session: pharmacokinetics-grapher
+date: 2026-02-14
+status: complete
+outcome: SUCCEEDED
+---
+
+goal: Implement Task 19 - Clock Time X-Axis Display Mode Toggle for pharmacokinetics graph
+now: Ready for next task or resume Task 18 investigation (multi-dose accumulation math bug) when user provides reproduction case
+test: npm run test:unit
+
+done_this_session:
+  - task: Create time formatting utilities for clock time display
+    files: [src/core/utils/timeFormat.ts, src/core/utils/__tests__/timeFormat.spec.ts]
+  - task: Update GraphViewer component with xAxisMode and firstDoseTime props
+    files: [src/components/GraphViewer.vue, src/components/__tests__/GraphViewer.clock-mode.spec.ts]
+  - task: Add X-axis mode toggle UI in App.vue with Hours and Clock Time buttons
+    files: [src/App.vue]
+  - task: Implement firstDoseTime computed property from compared prescriptions
+    files: [src/App.vue]
+
+blockers: []
+
+questions: []
+
+decisions:
+  - "Time formatting approach": Used modulo arithmetic for 24-hour wraparound to handle multi-day simulations correctly
+  - "Tick step calculation": Dynamic step sizing (1h/2h/4h/6h/12h) based on timeframe range for optimal readability
+  - "Reference time computation": Derive from earliest dose time across all compared prescriptions (defaults to 00:00 if none)
+  - "Variable naming in hoursToClockTime": Used refH/refM to avoid shadowing hours/minutes from wrapping calculation
+
+findings:
+  - "All 618 unit tests passing (39 new tests for timeFormat utilities, 12 new tests for GraphViewer clock mode)"
+  - "Clock time formatting correctly handles fractional hours (e.g., 2.5h = 11:30 from 09:00)"
+  - "Multi-day tooltips automatically show day indicator (e.g., '08:00 (Day 2)' at 32 hours)"
+  - "App builds successfully with no TypeScript errors after variable name fix"
+  - "Toggle buttons styled with active state, hover effects, and focus-visible accessibility"
+
+worked:
+  - "Test-driven development: Writing comprehensive unit tests first ensured correctness before UI integration"
+  - "Time format utilities tested exhaustively (39 tests cover edge cases: zero reference, multi-day, fractional hours)"
+  - "Dynamic tick step calculation dramatically improves readability across 12h to 200h+ timeframes"
+  - "Computed firstDoseTime property keeps App.vue logic clean and reactive"
+  - "Watch dependency array includes xAxisMode and firstDoseTime to trigger chart re-renders on toggle"
+
+failed: []
+
+next:
+  - "Resume Task 18 investigation when user provides: specific prescription parameters + expected vs actual graph output + whether issue is math or display/rendering"
+  - "Consider future enhancements: persist xAxisMode to localStorage for user preference across sessions"
+  - "Potential expansion: Add option to display time as 'Hours from start' in clock mode (e.g., '+12h' format)"
+
+files:
+  created:
+    - src/core/utils/timeFormat.ts
+    - src/core/utils/__tests__/timeFormat.spec.ts
+    - src/components/__tests__/GraphViewer.clock-mode.spec.ts
+  modified:
+    - src/components/GraphViewer.vue (added xAxisMode/firstDoseTime props, clock time tick formatting, tooltip day indicator)
+    - src/App.vue (added xAxisMode state, firstDoseTime computed property, toggle button UI, CSS styling)
+
+notes: |
+  Task 19 complete. All deliverables implemented:
+
+  1. Time formatting utilities with 39 passing tests
+  2. GraphViewer accepts xAxisMode ('hours'|'clock') and firstDoseTime (HH:MM)
+  3. Clock mode shows time-of-day on X-axis with intelligent tick spacing
+  4. Multi-day simulations show day indicator in tooltips
+  5. Toggle buttons in graph controls section with active state styling
+  6. Full accessibility support (aria-labels, focus-visible)
+
+  No blockers or unresolved questions. Ready for next task.

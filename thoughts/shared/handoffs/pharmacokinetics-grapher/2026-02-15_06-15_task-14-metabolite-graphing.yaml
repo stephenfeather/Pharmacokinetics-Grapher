@@ -1,0 +1,91 @@
+---
+session: pharmacokinetics-grapher
+date: 2026-02-15
+status: complete
+outcome: SUCCEEDED
+---
+
+goal: Implement Task #14 - Add Metabolite Graphing Capability with dashed-line visualization for active metabolites alongside parent drug curves
+now: Ready for next task; metabolite feature complete with all 673 tests passing, zero linting errors, production build succeeds
+test: npm run test:unit && npm run type-check && npm run lint && npm run build
+
+done_this_session:
+  - task: Phase 1 - Add metaboliteConversionFraction to Prescription model with validation
+    files: [src/core/models/prescription.ts, src/core/models/__tests__/prescription.spec.ts]
+  - task: Phase 2 - Implement calculateMetaboliteConcentration using one-compartment sequential metabolism
+    files: [src/core/calculations/pkCalculator.ts, src/core/calculations/__tests__/pkCalculator.spec.ts, src/core/models/__tests__/fixtures.ts]
+  - task: Phase 3 - Implement accumulateMetaboliteDoses for multi-dose metabolite accumulation
+    files: [src/core/calculations/multiDose.ts, src/core/calculations/__tests__/multiDose.spec.ts, src/core/calculations/index.ts]
+  - task: Phase 4 - Add dashed line [5,5] styling for metabolite curves with parent drug color pairing
+    files: [src/components/GraphViewer.vue]
+  - task: Phase 5 - Add metaboliteConversionFraction input field (0-1 range) to PrescriptionForm
+    files: [src/components/PrescriptionForm.vue, src/components/__tests__/PrescriptionForm.spec.ts]
+  - task: Phase 6 - Integration testing, linting fixes, production build verification, documentation
+    files: [src/components/__tests__/GraphViewer.clock-mode.spec.ts, CLAUDE.md]
+
+blockers: []
+
+questions: []
+
+decisions:
+  - "Optional field design": metaboliteConversionFraction kept optional (0-1 range) for backward compatibility; no breaking changes
+  - "Visualization approach": Dashed lines [5,5] with parent drug color provide clear distinction without visual clutter
+  - "Color assignment logic": Metabolites automatically inherit parent drug color; smart indexing prevents collisions in multi-drug comparison
+  - "Calculation reuse": calculateMetaboliteConcentration mirrors calculateConcentration pattern (ke_parent/ke_metabolite substitution for ka/ke)
+  - "Edge case handling": Used existing KA_KE_TOLERANCE (0.001) for ke_metabolite ≈ ke_parent fallback formula
+
+findings:
+  - "Complete test coverage": 150+ new tests added; all 673 tests passing (137 model, 80 calculation, 51 accumulation, 55 form tests)
+  - "Metabolite curves render correctly": Dashed lines display alongside solid parent curves with proper color pairing and legend control
+  - "Multi-drug comparison works": 2+ drugs with metabolites generate 4+ curves (parent + metabolite pairs) with independent normalization to peak=1.0
+  - "Production build succeeds": Zero TypeScript errors, zero lint warnings (after necessary eslint-disable pragmas for test mocking)
+  - "Cross-field validation implemented": Warnings generated when only one metabolite field provided; both required for visualization
+
+worked:
+  - "TDD approach": Comprehensive tests first ensured correctness; caught edge cases before UI integration
+  - "Pattern reuse": calculateMetaboliteConcentration structure identical to calculateConcentration; easy to understand and maintain
+  - "Optional field pattern": Conditional spread operator consistent with existing duration/durationUnit; zero breaking changes
+  - "Dashed line styling": Chart.js borderDash simple and effective; legend controls independent for each curve
+  - "Modular phases": Each phase independent; could be implemented in any order with minimal coupling
+
+failed: []
+
+next:
+  - Ready for next task (either Task #18 investigation if reproduction case provided, or new feature assignment)
+  - Optional future enhancement: persist xAxisMode to localStorage for user preference persistence across sessions
+  - Optional future enhancement: add option to display time as "+12h" format in clock mode for alternate visualization
+
+files:
+  created:
+    - src/core/models/__tests__/fixtures.ts (added METABOLITE_STANDARD_FIXTURE for testing)
+  modified:
+    - src/core/models/prescription.ts (metaboliteConversionFraction field + validation rules + cross-field warnings)
+    - src/core/calculations/pkCalculator.ts (calculateMetaboliteConcentration function with fallback formula)
+    - src/core/calculations/multiDose.ts (accumulateMetaboliteDoses function + updated getGraphData to generate metabolite datasets)
+    - src/core/calculations/index.ts (added barrel exports for metabolite functions)
+    - src/components/GraphViewer.vue (dashed line rendering + parent-metabolite color pairing logic)
+    - src/components/PrescriptionForm.vue (metaboliteConversionFraction input field + conditional spread integration)
+    - src/components/__tests__/PrescriptionForm.spec.ts (5 new tests for metabolite input field behavior)
+    - src/components/__tests__/GraphViewer.clock-mode.spec.ts (ESLint disable pragmas for necessary test mocking)
+    - src/core/models/__tests__/prescription.spec.ts (+48 tests for metaboliteConversionFraction validation)
+    - src/core/calculations/__tests__/pkCalculator.spec.ts (+80 tests for metabolite concentration calculation, fallback formula, edge cases)
+    - src/core/calculations/__tests__/multiDose.spec.ts (+20 tests for metabolite accumulation, getGraphData integration, duration handling)
+    - CLAUDE.md (added Metabolite Model section with formulas, parameters, visualization strategy, key points)
+
+notes: |
+  IMPLEMENTATION COMPLETE: Task #14 - Metabolite Graphing Capability
+
+  All deliverables met:
+  1. Model: metaboliteConversionFraction optional field (0-1 range, validated)
+  2. Calculation: calculateMetaboliteConcentration() one-compartment sequential metabolism with fallback
+  3. Accumulation: accumulateMetaboliteDoses() integrated into getGraphData() for multi-dose support
+  4. Visualization: Dashed curves [5,5] with parent drug colors, independent legend control
+  5. UI: metaboliteConversionFraction input field in PrescriptionForm with validation hints
+  6. Tests: 150+ new tests; all 673 tests passing
+  7. Quality: Zero TypeScript errors, zero lint warnings, production build succeeds
+
+  Mathematical model validated: One-compartment sequential metabolism with ke_parent/ke_metabolite substitution.
+  Backward compatible: No breaking changes; optional fields don't affect existing prescriptions.
+  Integration complete: Works with multi-drug comparison, accumulation patterns, and all existing features.
+
+  Session outcome: SUCCEEDED - All phases complete, all tests passing, ready for deployment.

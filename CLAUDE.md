@@ -232,6 +232,38 @@ For practical purposes, drug concentration patterns stabilize after ~5 half-live
 - Complete absorption (F = 1.0)
 - Negligible active metabolites (metaboliteLife is informational only)
 
+### Metabolite Model (Optional)
+
+For drugs with active metabolites, use one-compartment sequential metabolism:
+
+**Formula**:
+```
+C_metabolite(t) = Dose × fm × ke_parent / (ke_metabolite - ke_parent) ×
+                  (e^(-ke_parent×t) - e^(-ke_metabolite×t))
+```
+
+**Parameters**:
+- `metaboliteConversionFraction` (fm): Fraction of parent drug converted to metabolite (0-1 range, optional field)
+- `metaboliteLife`: Metabolite elimination half-life in hours (optional field)
+
+**Fallback formula** (when ke_metabolite ≈ ke_parent):
+```
+C_metabolite(t) = Dose × fm × ke_parent × t × e^(-ke_parent×t)
+```
+
+**Visualization**:
+- Metabolite curves are displayed as dashed lines with same color as parent drug
+- Both `metaboliteLife` and `metaboliteConversionFraction` required for metabolite visualization
+- Independent legend control (click to show/hide individual curves)
+- Fully integrated with multi-drug comparison and accumulation calculations
+
+**Key Points**:
+- Metabolites accumulate similarly to parent drug with repeated dosing
+- Normalized to peak = 1.0 independent from parent curve
+- Dashed line pattern provides clear visual distinction
+- Supports slow metabolites (higher half-life = greater accumulation at steady-state)
+- Backward compatible: metabolite fields optional, no changes to existing prescriptions
+
 ### Calculation Engine
 
 The calculation layer should be **pure functions** (no UI dependencies):

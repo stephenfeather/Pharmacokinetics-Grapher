@@ -635,5 +635,13 @@ button[type='submit']:disabled {
   .validation-warnings li {
     color: #fcd34d;
   }
+
+  .import-link {
+    color: #60a5fa;
+  }
+
+  .import-link:hover {
+    color: #93c5fd;
+  }
 }
 </style>

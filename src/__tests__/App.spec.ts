@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { mount, flushPromises, VueWrapper } from '@vue/test-utils'
 import App from '@/App.vue'
 import type { Prescription } from '@/core/models/prescription'
+import { getLastDoseTime, calculateTailOffDuration } from '@/core/calculations'
 
 // Mock localStorage to avoid side effects
 const mockLocalStorage = (() => {
@@ -2603,6 +2604,196 @@ describe('App.vue - Phase 4: Styling and Polish', () => {
         slider.attributes('aria-label') ||
         slider.attributes('id'),
       ).toBeDefined()
+    })
+  })
+
+  describe('Task 15 Subtask 8: Multiple Prescriptions Auto-Extension', () => {
+    it('computes autoEndHours for single prescription in comparePrescriptions', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'bid',
+        times: ['09:00', '21:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.comparePrescriptions = [prescription]
+      vm.useAutoTimeframe = true
+      await flushPromises()
+
+      // With single prescription, autoEndHours should calculate normally
+      expect(vm.autoEndHours).toBeGreaterThan(24)
+      expect(vm.autoEndHours).toBeLessThanOrEqual(168)
+    })
+
+    it('uses longest tail-off when comparing multiple prescriptions', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const fastDrug: Prescription = {
+        name: 'Fast Drug',
+        frequency: 'bid',
+        times: ['09:00', '21:00'],
+        dose: 500,
+        halfLife: 2, // short half-life = short tail-off
+        peak: 1,
+        uptake: 0.5,
+      }
+
+      const slowDrug: Prescription = {
+        name: 'Slow Drug',
+        frequency: 'once',
+        times: ['09:00'],
+        dose: 250,
+        halfLife: 24, // long half-life = long tail-off
+        peak: 3,
+        uptake: 2,
+      }
+
+      vm.comparePrescriptions = [fastDrug, slowDrug]
+      vm.useAutoTimeframe = true
+      await flushPromises()
+
+      // autoEndHours should accommodate the slower drug's longer tail-off
+
+      expect(vm.autoEndHours).toBeGreaterThanOrEqual(
+        Math.max(
+          24,
+          Math.min(
+            168,
+            getLastDoseTime(fastDrug, Math.ceil(vm.endHours / 24) + 1) +
+              calculateTailOffDuration(fastDrug.halfLife),
+          ),
+        ),
+      )
+    })
+
+    it('finds max end time across three different prescriptions', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescriptions: Prescription[] = [
+        {
+          name: 'Short Half-life',
+          frequency: 'tid',
+          times: ['08:00', '14:00', '20:00'],
+          dose: 200,
+          halfLife: 3,
+          peak: 1,
+          uptake: 0.75,
+        },
+        {
+          name: 'Medium Half-life',
+          frequency: 'bid',
+          times: ['09:00', '21:00'],
+          dose: 400,
+          halfLife: 12,
+          peak: 2,
+          uptake: 1.5,
+        },
+        {
+          name: 'Long Half-life',
+          frequency: 'once',
+          times: ['12:00'],
+          dose: 500,
+          halfLife: 36,
+          peak: 3,
+          uptake: 3,
+        },
+      ]
+
+      vm.comparePrescriptions = prescriptions
+      vm.useAutoTimeframe = true
+      await flushPromises()
+
+      // autoEndHours should be determined by longest half-life drug
+      expect(vm.autoEndHours).toBeLessThanOrEqual(168)
+      expect(vm.autoEndHours).toBeGreaterThanOrEqual(24)
+    })
+
+    it('auto-extension respects bounds when comparing drugs with very different half-lives', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const veryShortDrug: Prescription = {
+        name: 'Very Short',
+        frequency: 'qid',
+        times: ['06:00', '12:00', '18:00', '00:00'],
+        dose: 100,
+        halfLife: 0.5,
+        peak: 0.25,
+        uptake: 0.1,
+      }
+
+      const veryLongDrug: Prescription = {
+        name: 'Very Long',
+        frequency: 'once',
+        times: ['12:00'],
+        dose: 800,
+        halfLife: 168, // 1 week half-life
+        peak: 6,
+        uptake: 4,
+      }
+
+      vm.comparePrescriptions = [veryShortDrug, veryLongDrug]
+      vm.useAutoTimeframe = true
+      await flushPromises()
+
+      // Even with very long drug, should cap at 168
+      expect(vm.autoEndHours).toBeLessThanOrEqual(168)
+      expect(vm.autoEndHours).toBeGreaterThanOrEqual(24)
+    })
+
+    it('effectiveEndHours uses max across prescriptions when auto mode enabled', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescriptions: Prescription[] = [
+        {
+          name: 'Drug A',
+          frequency: 'bid',
+          times: ['09:00', '21:00'],
+          dose: 300,
+          halfLife: 4,
+          peak: 1.5,
+          uptake: 1,
+        },
+        {
+          name: 'Drug B',
+          frequency: 'once',
+          times: ['08:00'],
+          dose: 600,
+          halfLife: 20,
+          peak: 3,
+          uptake: 2.5,
+        },
+      ]
+
+      vm.comparePrescriptions = prescriptions
+      vm.useAutoTimeframe = true
+      vm.endHours = 48 // manual slider value (ignored in auto mode)
+      await flushPromises()
+
+      // In auto mode, should use autoEndHours (max across prescriptions), not manual value
+      expect(vm.effectiveEndHours).toBe(vm.autoEndHours)
+      expect(vm.effectiveEndHours).toBeGreaterThanOrEqual(48)
+    })
+
+    it('empty comparePrescriptions defaults to 48 hours', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      vm.comparePrescriptions = []
+      vm.useAutoTimeframe = true
+      await flushPromises()
+
+      // No prescriptions = default to 48 hours
+      expect(vm.autoEndHours).toBe(48)
     })
   })
 })

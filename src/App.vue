@@ -46,8 +46,17 @@ const graphDatasets = computed<GraphDataset[]>(() => {
  * Used to determine auto-extended graph timeframe.
  */
 const autoEndHours = computed<number>(() => {
-  // Default: if no prescription, return 48 hours
-  if (!currentPrescription.value) {
+  // Use comparePrescriptions array if available (when graphing multiple drugs)
+  // Fall back to currentPrescription for form editing
+  const prescriptionsToConsider =
+    comparePrescriptions.value.length > 0
+      ? comparePrescriptions.value
+      : currentPrescription.value
+        ? [currentPrescription.value]
+        : []
+
+  // Default: if no prescriptions, return 48 hours
+  if (prescriptionsToConsider.length === 0) {
     return 48
   }
 
@@ -55,17 +64,18 @@ const autoEndHours = computed<number>(() => {
   // Add 1 to ensure we capture all doses in the window
   const numDays = Math.ceil(endHours.value / 24) + 1
 
-  // Get the last dose time within the simulation window
-  const lastDoseTime = getLastDoseTime(currentPrescription.value, numDays)
-
-  // Get the tail-off duration based on half-life (5 half-lives = ~97% elimination)
-  const tailOffDuration = calculateTailOffDuration(currentPrescription.value.halfLife)
-
-  // Calculate the recommended end time
-  const recommendedEnd = lastDoseTime + tailOffDuration
+  // For each prescription, calculate its recommended end time
+  // Use the maximum (longest tail-off)
+  const maxEndTime = Math.max(
+    ...prescriptionsToConsider.map((rx) => {
+      const lastDoseTime = getLastDoseTime(rx, numDays)
+      const tailOffDuration = calculateTailOffDuration(rx.halfLife)
+      return lastDoseTime + tailOffDuration
+    }),
+  )
 
   // Apply bounds: minimum 24 hours (at least 1 day), maximum 168 hours (1 week)
-  return Math.max(24, Math.min(168, recommendedEnd))
+  return Math.max(24, Math.min(168, maxEndTime))
 })
 
 /**

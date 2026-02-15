@@ -88,6 +88,22 @@ const effectiveEndHours = computed<number>(() => {
   return useAutoTimeframe.value ? autoEndHours.value : endHours.value
 })
 
+/**
+ * Dynamic slider minimum: the greater of startHours or 12
+ * Ensures slider can't be moved below reasonable minimum
+ */
+const sliderMin = computed<number>(() => {
+  return Math.max(12, startHours.value)
+})
+
+/**
+ * Dynamic slider maximum: the greater of 168 hours or autoEndHours
+ * Allows user to extend beyond auto-calculated value if desired
+ */
+const sliderMax = computed<number>(() => {
+  return Math.max(168, autoEndHours.value)
+})
+
 // ---- View switching ----
 
 function switchView(view: 'form' | 'list' | 'graph') {
@@ -292,8 +308,8 @@ watch(comparePrescriptions, (newVal) => {
               id="timeframe-slider"
               v-model.number="endHours"
               type="range"
-              min="12"
-              max="168"
+              :min="sliderMin"
+              :max="sliderMax"
               step="12"
               :disabled="useAutoTimeframe"
               aria-label="Manually adjust graph timeframe when auto-extend is disabled"

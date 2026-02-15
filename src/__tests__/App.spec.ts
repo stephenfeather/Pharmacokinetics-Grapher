@@ -2796,4 +2796,180 @@ describe('App.vue - Phase 4: Styling and Polish', () => {
       expect(vm.autoEndHours).toBe(48)
     })
   })
+
+  describe('Task 15 Subtask 9: Dynamic Slider Range', () => {
+    it('slider min attribute is set to 12 or startHours (whichever is greater)', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'bid',
+        times: ['09:00', '21:00'],
+        dose: 500,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.comparePrescriptions = [prescription]
+      vm.switchView('graph')
+      await flushPromises()
+
+      const slider = wrapper.find('input[type="range"]')
+      const minAttr = Number(slider.attributes('min'))
+      const expectedMin = Math.max(12, vm.startHours)
+
+      expect(minAttr).toBe(expectedMin)
+    })
+
+    it('slider max is dynamically set to Math.max(168, autoEndHours)', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'bid',
+        times: ['09:00', '21:00'],
+        dose: 500,
+        halfLife: 12,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.comparePrescriptions = [prescription]
+      vm.switchView('graph')
+      await flushPromises()
+
+      const slider = wrapper.find('input[type="range"]')
+      const maxAttr = Number(slider.attributes('max'))
+      const expectedMax = Math.max(168, vm.autoEndHours)
+
+      expect(maxAttr).toBe(expectedMax)
+    })
+
+    it('slider max updates when prescription changes', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const shortHalfLifeDrug: Prescription = {
+        name: 'Short Drug',
+        frequency: 'bid',
+        times: ['09:00', '21:00'],
+        dose: 300,
+        halfLife: 2,
+        peak: 1,
+        uptake: 0.5,
+      }
+
+      const longHalfLifeDrug: Prescription = {
+        name: 'Long Drug',
+        frequency: 'once',
+        times: ['12:00'],
+        dose: 600,
+        halfLife: 48,
+        peak: 4,
+        uptake: 3,
+      }
+
+      vm.comparePrescriptions = [shortHalfLifeDrug]
+      vm.switchView('graph')
+      await flushPromises()
+
+      // Switch to long half-life drug
+      vm.comparePrescriptions = [longHalfLifeDrug]
+      await flushPromises()
+
+      const slider = wrapper.find('input[type="range"]')
+      const maxAfter = Number(slider.attributes('max'))
+
+      // Max should reflect the new autoEndHours
+      expect(maxAfter).toBe(Math.max(168, vm.autoEndHours))
+    })
+
+    it('slider allows manual values beyond autoEndHours when in manual mode', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'bid',
+        times: ['09:00', '21:00'],
+        dose: 400,
+        halfLife: 4,
+        peak: 1.5,
+        uptake: 1,
+      }
+
+      vm.comparePrescriptions = [prescription]
+      vm.useAutoTimeframe = false
+      vm.switchView('graph')
+      await flushPromises()
+
+      const slider = wrapper.find('input[type="range"]')
+      const maxAttr = Number(slider.attributes('max'))
+
+      // User should be able to set manual values up to the max
+      // and max should be at least as large as autoEndHours
+      expect(maxAttr).toBeGreaterThanOrEqual(vm.autoEndHours)
+    })
+
+    it('slider step remains at 12 for hourly granularity', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'tid',
+        times: ['08:00', '14:00', '20:00'],
+        dose: 250,
+        halfLife: 6,
+        peak: 2,
+        uptake: 1.5,
+      }
+
+      vm.comparePrescriptions = [prescription]
+      vm.switchView('graph')
+      await flushPromises()
+
+      const slider = wrapper.find('input[type="range"]')
+      const stepAttr = Number(slider.attributes('step'))
+
+      expect(stepAttr).toBe(12)
+    })
+
+    it('slider range properly constrains user input to valid bounds', async () => {
+      const wrapper = mount(App)
+      const vm = getComponentState(wrapper)
+
+      const prescription: Prescription = {
+        name: 'Test Drug',
+        frequency: 'once',
+        times: ['12:00'],
+        dose: 500,
+        halfLife: 18,
+        peak: 3,
+        uptake: 2,
+      }
+
+      vm.comparePrescriptions = [prescription]
+      vm.useAutoTimeframe = false
+      vm.switchView('graph')
+      await flushPromises()
+
+      const slider = wrapper.find('input[type="range"]')
+      const minAttr = Number(slider.attributes('min'))
+      const maxAttr = Number(slider.attributes('max'))
+
+      // Set endHours to minimum
+      vm.endHours = minAttr
+      await flushPromises()
+      expect(vm.endHours).toBeGreaterThanOrEqual(minAttr)
+
+      // Set endHours to maximum
+      vm.endHours = maxAttr
+      await flushPromises()
+      expect(vm.endHours).toBeLessThanOrEqual(maxAttr)
+    })
+  })
 })

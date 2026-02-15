@@ -1,6 +1,8 @@
 # Pharmacokinetics Grapher
 
-A Vue 3 + TypeScript web application that visualizes medication concentration levels over time. Input prescription details and the app generates accurate line graphs showing peak and trough concentrations across your specified timeframe.
+A Vue 3 + TypeScript application that visualizes medication concentration levels over time. Input prescription details and the app generates accurate line graphs showing peak and trough concentrations across your specified timeframe. Available as a web app or a standalone desktop application via Tauri.
+
+**Your data stays on your device.** All prescription data is stored locally — in your browser's localStorage when using the web app, or on-disk within the desktop application. Nothing is sent to a server. There are no accounts, no cloud sync, and no telemetry. You own your data completely.
 
 ## Current Status
 
@@ -19,7 +21,6 @@ A Vue 3 + TypeScript web application that visualizes medication concentration le
 ### Coming Soon
 - Task 9: PrescriptionList component with comparison mode
 - Enhanced UI/UX features
-- IndexedDB fallback for larger datasets
 
 ## Prerequisites
 
@@ -121,7 +122,7 @@ npm run test:unit && npm run type-check && npm run lint
    - Accumulation over multiple doses
    - Normalized relative concentration (0–1 scale)
 
-4. **Save prescriptions**: Your entries are stored in browser localStorage and persist across sessions
+4. **Save prescriptions**: Your entries are stored locally on your device and persist across sessions. In the browser, data lives in localStorage. In the desktop app, data is stored on-disk. No data ever leaves your machine.
 
 ## Project Structure
 
@@ -152,7 +153,8 @@ src/
 - **Charting**: Chart.js 4.x (for accurate scientific visualization)
 - **Testing**: Vitest + Vue Test Utils
 - **Linting**: ESLint (oxlint) + Prettier
-- **Storage**: Browser localStorage (IndexedDB planned for future)
+- **Storage**: Local-only (browser localStorage for web; on-disk for desktop). No server, no accounts, no telemetry.
+- **Desktop**: Tauri v2 (lightweight native wrapper for macOS/Windows/Linux)
 
 ## Pharmacokinetics Model
 
@@ -252,6 +254,20 @@ When contributing, please follow the development workflow:
 ## License
 
 This project is open source and available for educational purposes.
+
+## Privacy & Data Storage
+
+All data created in Pharmacokinetics Grapher stays on your device:
+
+| Platform | Where data lives | How to clear it |
+|----------|-----------------|-----------------|
+| **Web app** (browser) | Browser `localStorage` under the app's origin | Clear site data in browser settings, or use the app's delete functions |
+| **Desktop app** (Tauri) | App data directory on your local filesystem | Uninstall the app, or delete its data folder |
+
+- **No server communication.** The app makes zero network requests. It runs entirely client-side.
+- **No accounts or sign-in.** There is nothing to register for.
+- **No analytics or telemetry.** No usage data is collected or transmitted.
+- **Portable.** Your prescriptions live where you run the app. If you clear your browser data or uninstall the desktop app, the data is gone.
 
 ## Educational Disclaimer
 

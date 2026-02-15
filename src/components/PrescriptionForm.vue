@@ -32,6 +32,41 @@ const metaboliteConversionFraction = ref<number | undefined>(props.initial?.meta
 const duration = ref<number | undefined>(props.initial?.duration ?? 7)
 const durationUnit = ref<DurationUnit>(props.initial?.durationUnit ?? 'days')
 
+// Phase 1.5: Watch initial prop -> reset form when editing different prescription
+watch(
+  () => props.initial,
+  (newInitial) => {
+    if (!newInitial) {
+      // New prescription mode - use defaults
+      name.value = 'Test Drug'
+      frequency.value = 'bid'
+      times.value = ['09:00', '21:00']
+      dose.value = 500
+      halfLife.value = 6
+      peak.value = 2
+      uptake.value = 1.5
+      metaboliteLife.value = undefined
+      metaboliteConversionFraction.value = undefined
+      duration.value = 7
+      durationUnit.value = 'days'
+    } else {
+      // Edit mode - populate from initial prescription
+      name.value = newInitial.name
+      frequency.value = newInitial.frequency
+      times.value = newInitial.times ? [...newInitial.times] : ['09:00', '21:00']
+      dose.value = newInitial.dose
+      halfLife.value = newInitial.halfLife
+      peak.value = newInitial.peak
+      uptake.value = newInitial.uptake
+      metaboliteLife.value = newInitial.metaboliteLife
+      metaboliteConversionFraction.value = newInitial.metaboliteConversionFraction
+      duration.value = newInitial.duration
+      durationUnit.value = newInitial.durationUnit ?? 'days'
+    }
+  },
+  { deep: true }
+)
+
 // Phase 2: Watch frequency -> adjust times array
 watch(frequency, (newFreq) => {
   const expectedCount = FREQUENCY_MAP[newFreq]

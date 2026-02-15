@@ -4,6 +4,7 @@ import { Chart, registerables } from 'chart.js'
 import a11yLegend from 'chartjs-plugin-a11y-legend'
 import type { GraphDataset } from '@/core/models/prescription'
 import { generateFilename, downloadImage } from '@/core/export'
+import { hoursToClockTime, calculateClockTickStep, formatTimeWithDay } from '@/core/utils/timeFormat'
 
 // Plugin lacks type definitions, but Chart.register accepts Plugin type
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -16,10 +17,14 @@ const props = withDefaults(
     datasets: GraphDataset[]
     startHours?: number
     endHours?: number
+    xAxisMode?: 'hours' | 'clock'
+    firstDoseTime?: string
   }>(),
   {
     startHours: 0,
     endHours: 48,
+    xAxisMode: 'hours',
+    firstDoseTime: '00:00',
   },
 )
 
@@ -58,7 +63,11 @@ const chartAriaLabel = computed(() => {
     return 'Pharmacokinetic graph - no data loaded'
   }
   const drugList = props.datasets.map((ds) => ds.label).join(', ')
-  return `Pharmacokinetic concentration graph showing: ${drugList}. Time range: ${props.startHours} to ${props.endHours} hours. Y-axis: relative concentration 0 to 1.`
+  const timeFormat =
+    props.xAxisMode === 'clock'
+      ? `Clock time starting from ${props.firstDoseTime}`
+      : `Hours from ${props.startHours} to ${props.endHours}`
+  return `Pharmacokinetic concentration graph showing: ${drugList}. ${timeFormat}. Y-axis: relative concentration 0 to 1.`
 })
 
 // ---- Helpers ----
@@ -109,13 +118,23 @@ function renderChart(): void {
           type: 'linear',
           title: {
             display: true,
-            text: 'Time (hours)',
+            text: props.xAxisMode === 'clock' ? 'Time of Day' : 'Time (hours)',
             font: { size: 14 },
           },
           min: props.startHours,
           max: props.endHours,
           ticks: {
-            stepSize: calculateTickStep(props.startHours, props.endHours),
+            stepSize:
+              props.xAxisMode === 'clock'
+                ? calculateClockTickStep(props.startHours, props.endHours)
+                : calculateTickStep(props.startHours, props.endHours),
+            callback: (value: string | number) => {
+              const num = typeof value === 'string' ? parseFloat(value) : value
+              if (props.xAxisMode === 'clock') {
+                return hoursToClockTime(num, props.firstDoseTime ?? '00:00')
+              }
+              return `${num}h`
+            },
           },
         },
         y: {
@@ -175,7 +194,11 @@ function renderChart(): void {
           callbacks: {
             title: (items) => {
               if (items.length > 0 && items[0] && items[0].parsed?.x !== undefined) {
-                return `Time: ${(items[0].parsed.x as number).toFixed(1)}h`
+                const hours = items[0].parsed.x as number
+                if (props.xAxisMode === 'clock') {
+                  return formatTimeWithDay(hours, props.firstDoseTime ?? '00:00')
+                }
+                return `Time: ${hours.toFixed(1)}h`
               }
               return ''
             },
@@ -203,7 +226,14 @@ onMounted(() => {
 })
 
 watch(
-  [() => props.datasets, () => props.startHours, () => props.endHours, isMobile],
+  [
+    () => props.datasets,
+    () => props.startHours,
+    () => props.endHours,
+    () => props.xAxisMode,
+    () => props.firstDoseTime,
+    isMobile,
+  ],
   () => {
     renderChart()
   },

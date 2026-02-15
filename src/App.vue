@@ -22,8 +22,9 @@ const statusMessage = ref('')
 
 const startHours = ref(0)
 const endHours = ref(48)
- 
+
 const useAutoTimeframe = ref(true)
+const xAxisMode = ref<'hours' | 'clock'>('hours')
 
 // ---- Refs for focus management ----
 
@@ -36,6 +37,19 @@ const graphContainerRef = ref<HTMLElement | null>(null)
 const graphDatasets = computed<GraphDataset[]>(() => {
   if (comparePrescriptions.value.length === 0) return []
   return getGraphData(comparePrescriptions.value, startHours.value, endHours.value)
+})
+
+/**
+ * Compute first dose time from compared prescriptions.
+ * Uses the earliest time across all prescriptions for reference.
+ * Defaults to '00:00' if no prescriptions loaded.
+ */
+const firstDoseTime = computed<string>(() => {
+  if (comparePrescriptions.value.length === 0) return '00:00'
+  const allTimes = comparePrescriptions.value.flatMap((rx) => rx.times)
+  if (allTimes.length === 0) return '00:00'
+  // Sort times lexicographically (HH:MM format sorts correctly)
+  return allTimes.sort()[0] ?? '00:00'
 })
 
 // ---- Auto-extend timeframe computation ----
@@ -280,9 +294,36 @@ watch(comparePrescriptions, (newVal) => {
           :datasets="graphDatasets"
           :start-hours="startHours"
           :end-hours="effectiveEndHours"
+          :x-axis-mode="xAxisMode"
+          :first-dose-time="firstDoseTime"
         />
 
         <div class="graph-controls">
+          <!-- X-axis display mode toggle -->
+          <div class="control-group">
+            <span class="toggle-label">X-Axis Display:</span>
+            <div class="button-group">
+              <button
+                :class="{ active: xAxisMode === 'hours' }"
+                class="mode-button"
+                type="button"
+                @click="xAxisMode = 'hours'"
+                aria-label="Display X-axis in hours"
+              >
+                Hours (0, 12, 24...)
+              </button>
+              <button
+                :class="{ active: xAxisMode === 'clock' }"
+                class="mode-button"
+                type="button"
+                @click="xAxisMode = 'clock'"
+                aria-label="Display X-axis in clock time"
+              >
+                Clock Time
+              </button>
+            </div>
+          </div>
+
           <!-- Auto-extend toggle -->
           <div class="control-group">
             <label for="auto-timeframe-toggle" class="toggle-label">
@@ -439,6 +480,40 @@ watch(comparePrescriptions, (newVal) => {
   margin-bottom: 0.5rem;
   font-weight: 500;
   color: #374151;
+}
+
+.button-group {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.mode-button {
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  transition: all 0.2s;
+}
+
+.mode-button:hover:not(.active) {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.mode-button.active {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+.mode-button:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
 }
 
 .mode-indicator {

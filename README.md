@@ -276,3 +276,11 @@ All data created in Pharmacokinetics Grapher stays on your device:
 This application demonstrates pharmacokinetic principles using simplified models. It is **not intended for medical dosing decisions**. Actual drug concentrations vary significantly based on individual factors (age, weight, liver/kidney function, food interactions, other medications, etc.).
 
 Always follow prescriptions written by licensed healthcare providers and consult with a pharmacist for any medication questions.
+
+## Acknowledgements
+
+This project was built with assistance from AI tools:
+
+- **Claude Opus 4.6** (Anthropic) — coding and implementation
+- **Gemini** (Google) — planning collaboration and image generation
+- **Codex GPT 5.2** (OpenAI) — planning collaboration

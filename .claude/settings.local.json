@@ -8,7 +8,13 @@
       "Skill(fix)",
       "Skill(premortem)",
       "Bash(npm exec tauri init:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "mcp__task-master-ai__update_task",
+      "mcp__task-master-ai__get_task",
+      "WebSearch",
+      "WebFetch(domain:v2.tauri.app)",
+      "Bash(curl:*)",
+      "mcp__task-master-ai__set_task_status"
     ]
   }
 }

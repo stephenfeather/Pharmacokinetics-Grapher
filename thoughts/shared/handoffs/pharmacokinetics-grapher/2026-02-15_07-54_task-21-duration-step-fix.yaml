@@ -1,0 +1,40 @@
+---
+session: pharmacokinetics-grapher
+date: 2026-02-15
+status: complete
+outcome: SUCCEEDED
+---
+
+goal: Fix Task 21 - Duration field browser validation rejects default value of 7
+now: Commit the duration step fix and verify in browser manually
+test: npx vitest run
+
+done_this_session:
+  - task: "Fixed HTML step/min mismatch on duration input that caused browser native validation to reject value 7"
+    files: [src/components/PrescriptionForm.vue]
+
+blockers: []
+
+questions: []
+
+decisions:
+  - step_value_choice: "Changed step from 0.5 to 0.1 (consistent with halfLife, peak, uptake inputs) rather than step='any' which would break arrow key increments"
+
+findings:
+  - root_cause: "HTML number input with min=0.1 step=0.5 only allows values 0.1, 0.6, 1.1, 1.6, ... 6.6, 7.1 — the default value 7 never lands on a valid step boundary, triggering browser's 'Enter a valid value' tooltip"
+  - prior_fix_attempts: "Two prior commits (4182b5c, 1cf298c) addressed duration issues but missed this step/min interaction"
+
+worked:
+  - "Reading the HTML spec behavior for step validation: valid values = min + n*step"
+
+failed:
+  - "Prior sessions fixed form data flow but missed the HTML constraint validation mismatch"
+
+next:
+  - Commit the one-line fix (step 0.5→0.1 at PrescriptionForm.vue:282)
+  - Manual browser verification that duration=7 submits without native validation error
+  - Consider closing Task 21 if browser test passes
+
+files:
+  created: []
+  modified: [src/components/PrescriptionForm.vue]

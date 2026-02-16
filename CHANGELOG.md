@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0-beta] - 2026-02-15
+
+### Added
+
+#### Visualization
+- **Pharmacokinetic summary timeline table**: New table below graph showing peak time, peak concentration, trough time, and trough concentration for each dose across the simulation window
+- **Dark mode support for GraphViewer**: Full dark mode theming for graph background, gridlines, axis labels, and legend text
+- **Navigation tab styling**: Proper sizing, active state indicator, and dark mode support for tab navigation
+
+#### Testing
+- Tests verifying graph curve extends to near-zero concentration (validates curve rendering completeness)
+
+### Fixed
+- **PK summary table clock times off by ~8 hours**: Corrected time offset calculation in milestone clock-time display
+- **Dark mode text readability in Saved Prescriptions**: Fixed contrast issues for prescription list items
+- **Clock X-axis offset**: Fixed time alignment when using clock-time display mode
+- **App layout width**: Widened app layout for better graph visibility
+- **White-on-white graph controls in dark mode**: Fixed unreadable graph control buttons/text
+- **Graph line ending prematurely**: Curve now extends to near-zero concentration instead of cutting off early
+- **Peak (Tmax) ka derivation**: Corrected absorption rate constant calculation to properly use peak time parameter
+
+### Changed
+- Test count increased from 675 to 724 (49 new tests)
+- Rebuilt dist with latest source changes
+
 ## [0.5.0-alpha] - 2026-02-15
 
 ### Added

@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Pharmacokinetics Grapher",
-  "version": "0.5.0-alpha",
+  "version": "0.6.0-beta",
   "identifier": "com.pkgrapher.graphapp",
   "build": {
     "frontendDist": "../dist",

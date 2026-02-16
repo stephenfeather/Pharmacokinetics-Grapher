@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0-beta] - 2026-02-16
+
+### Added
+
+#### Developer Experience
+- **Console logging utility** (`src/core/utils/logger.ts`): Lightweight `logWarn`/`logError` wrappers with `[PK-Grapher]` prefix and structured context objects for DevTools debugging
+- **Calculation warning deduplication**: PK calculator warnings (ka-ke fallback, metabolite ke fallback) are emitted once per accumulation cycle instead of per-timepoint
+- **10 new logger unit tests** covering formatted messages, context passing, and argument omission
+
+#### Quality
+- **localStorage write protection**: `savePrescription`, `updatePrescription`, and `deletePrescription` now catch `QuotaExceededError` with structured error logging before re-throwing
+
+### Fixed
+- **Tmax field rejecting decimal values** (Task 32): Changed peak time input `step` from `0.1` to `0.01` so values like 3.75 hours are accepted
+- **Numeric input step attributes** (Task 33): Updated half-life, uptake, metabolite half-life, and duration inputs to `step="0.01"` for consistent decimal precision
+- **Silent import failures** (Task 34): Import error handling was already in place; removed incorrect task dependencies
+
+### Changed
+- Replaced bare `console.error` in `prescriptionStorage.ts` with structured `logError` call
+- Added `logWarn`/`logError` calls to image export, GraphViewer chart creation, and ImportPrescriptions validation/save paths
+- Test count increased from 724 to 734 (10 new logger tests)
+
 ## [0.6.0-beta] - 2026-02-15
 
 ### Added

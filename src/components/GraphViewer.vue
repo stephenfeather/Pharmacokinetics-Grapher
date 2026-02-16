@@ -142,7 +142,7 @@ function renderChart(): void {
             callback: (value: string | number) => {
               const num = typeof value === 'string' ? parseFloat(value) : value
               if (props.xAxisMode === 'clock') {
-                return hoursToClockTime(num, props.firstDoseTime ?? '00:00')
+                return hoursToClockTime(num, '00:00')
               }
               return `${num}h`
             },
@@ -207,7 +207,7 @@ function renderChart(): void {
               if (items.length > 0 && items[0] && items[0].parsed?.x !== undefined) {
                 const hours = items[0].parsed.x as number
                 if (props.xAxisMode === 'clock') {
-                  return formatTimeWithDay(hours, props.firstDoseTime ?? '00:00')
+                  return formatTimeWithDay(hours, '00:00')
                 }
                 return `Time: ${hours.toFixed(1)}h`
               }

@@ -20,7 +20,16 @@ const statusMessage = ref('')
 
 // ---- Graph settings ----
 
-const startHours = ref(0)
+const startHours = computed<number>(() => {
+  if (comparePrescriptions.value.length === 0) return 0
+  const allTimes = comparePrescriptions.value.flatMap((rx) => rx.times)
+  if (allTimes.length === 0) return 0
+  const hours = allTimes.map((t) => {
+    const parts = t.split(':').map(Number)
+    return (parts[0] ?? 0) + (parts[1] ?? 0) / 60
+  })
+  return Math.floor(Math.min(...hours))
+})
 const endHours = ref(48)
 
 const useAutoTimeframe = ref(true)
@@ -439,7 +448,7 @@ watch(comparePrescriptions, (newVal) => {
 .app-main {
   flex: 1;
   padding: 2rem 1rem;
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   width: 100%;
 }

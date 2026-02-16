@@ -203,7 +203,7 @@ function exitCompareMode() {
 .empty-state {
   padding: 2rem;
   text-align: center;
-  color: var(--vt-c-text-light-2);
+  color: var(--color-text);
   font-size: 1rem;
 }
 
@@ -259,7 +259,7 @@ function exitCompareMode() {
   display: flex;
   gap: 1rem;
   font-size: 0.85rem;
-  color: var(--vt-c-text-light-2);
+  color: var(--color-text);
 }
 
 .frequency-badge {

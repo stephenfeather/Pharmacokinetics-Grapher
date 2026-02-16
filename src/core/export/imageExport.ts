@@ -1,3 +1,5 @@
+import { logError } from '../utils/logger'
+
 // ---- Image Export Utilities ----
 
 /**
@@ -65,6 +67,10 @@ function formatTimestamp(date: Date): string {
  */
 export function downloadImage(dataUrl: string, filename: string): boolean {
   if (!dataUrl || !dataUrl.startsWith('data:')) {
+    logError('imageExport.downloadImage', 'Invalid data URL for image download', {
+      dataUrlPrefix: dataUrl ? dataUrl.slice(0, 50) : '(empty)',
+      filename,
+    })
     return false
   }
 

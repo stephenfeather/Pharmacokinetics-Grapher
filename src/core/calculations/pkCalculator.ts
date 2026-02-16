@@ -7,6 +7,25 @@
  */
 
 import { KA_KE_TOLERANCE } from '@/core/models/prescription'
+import { logWarn } from '@/core/utils/logger'
+
+// ─── Warning Deduplication ───
+
+/**
+ * Tracks which calculation warnings have already been emitted this cycle.
+ * Prevents log flooding when calculateConcentration is called in tight loops
+ * (e.g. thousands of timepoints per accumulateDoses call).
+ * Call resetCalculationWarnings() at the start of each accumulation cycle.
+ */
+const emittedWarnings = new Set<string>()
+
+/**
+ * Reset the warning deduplication set.
+ * Should be called at the start of each accumulateDoses / accumulateMetaboliteDoses cycle.
+ */
+export function resetCalculationWarnings(): void {
+  emittedWarnings.clear()
+}
 
 // ─── Constants ───
 
@@ -140,6 +159,16 @@ export function calculateConcentration(
 
   if (Math.abs(ka - ke) < KA_KE_TOLERANCE) {
     // Fallback formula: limit as ka -> ke
+    if (!emittedWarnings.has('ka-ke-fallback')) {
+      emittedWarnings.add('ka-ke-fallback')
+      logWarn('pkCalculator.calculateConcentration', 'Using ka≈ke fallback formula (uptake ≈ halfLife)', {
+        ka,
+        ke,
+        diff: Math.abs(ka - ke),
+        halfLife,
+        uptake,
+      })
+    }
     concentration = dose * ka * time * Math.exp(-ke * time)
   } else {
     // Standard one-compartment first-order absorption
@@ -189,6 +218,16 @@ export function calculateMetaboliteConcentration(
 
   if (Math.abs(ke_metabolite - ke_parent) < KA_KE_TOLERANCE) {
     // Fallback formula: limit as ke_metabolite -> ke_parent
+    if (!emittedWarnings.has('metabolite-ke-fallback')) {
+      emittedWarnings.add('metabolite-ke-fallback')
+      logWarn('pkCalculator.calculateMetaboliteConcentration', 'Using ke≈ke fallback formula (metaboliteLife ≈ parentHalfLife)', {
+        ke_parent,
+        ke_metabolite,
+        diff: Math.abs(ke_metabolite - ke_parent),
+        parentHalfLife,
+        metaboliteHalfLife,
+      })
+    }
     concentration = dose * fm * ke_parent * time * Math.exp(-ke_parent * time)
   } else {
     // Standard one-compartment sequential metabolism

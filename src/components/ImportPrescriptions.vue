@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import type { Prescription } from '@/core/models/prescription'
 import { validatePrescription } from '@/core/models/prescription'
 import { savePrescription } from '@/core/storage/prescriptionStorage'
+import { logWarn, logError } from '@/core/utils/logger'
 
 const emit = defineEmits<{
   imported: [count: number]
@@ -22,7 +23,11 @@ const isValidJson = computed(() => {
     if (!jsonInput.value.trim()) return false
     JSON.parse(jsonInput.value)
     return true
-  } catch {
+  } catch (e) {
+    logWarn('ImportPrescriptions.isValidJson', 'JSON parse failed during validation', {
+      error: e instanceof Error ? e.message : String(e),
+      inputLength: jsonInput.value.length,
+    })
     return false
   }
 })
@@ -50,6 +55,11 @@ function handleImport() {
           savePrescription(rx)
           importResult.value.success++
         } catch (e) {
+          logError('ImportPrescriptions.handleImport', 'Failed to save imported prescription', {
+            row: index + 1,
+            name: rx.name,
+            error: e instanceof Error ? e.message : String(e),
+          })
           importResult.value.failed++
           importResult.value.errors.push(
             `Row ${index + 1} (${rx.name}): Failed to save - ${e instanceof Error ? e.message : 'Unknown error'}`
@@ -68,6 +78,10 @@ function handleImport() {
       emit('imported', importResult.value.success)
     }
   } catch (e) {
+    logError('ImportPrescriptions.handleImport', 'Failed to parse import JSON', {
+      error: e instanceof Error ? e.message : String(e),
+      inputLength: jsonInput.value.length,
+    })
     importResult.value.errors.push(
       `Invalid JSON: ${e instanceof Error ? e.message : 'Unknown error'}`
     )

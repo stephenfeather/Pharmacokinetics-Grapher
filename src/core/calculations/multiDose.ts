@@ -9,7 +9,7 @@
  */
 
 import type { Prescription, TimeSeriesPoint, GraphDataset } from '../models/prescription'
-import { calculateConcentration, calculateMetaboliteConcentration } from './pkCalculator'
+import { calculateConcentration, calculateMetaboliteConcentration, resetCalculationWarnings } from './pkCalculator'
 
 /**
  * Convert HH:MM time string to hours from midnight
@@ -92,6 +92,8 @@ export function accumulateDoses(
   endHours: number,
   intervalMinutes: number = 15,
 ): TimeSeriesPoint[] {
+  resetCalculationWarnings()
+
   // Determine the dosing window (when doses are administered)
   // Duration limits dosing only, NOT the observation window
   let dosingEndHours = endHours
@@ -169,6 +171,8 @@ export function accumulateMetaboliteDoses(
   endHours: number,
   intervalMinutes: number = 15,
 ): TimeSeriesPoint[] {
+  resetCalculationWarnings()
+
   // Guard: require both metaboliteLife and metaboliteConversionFraction
   if (
     !prescription.metaboliteLife ||

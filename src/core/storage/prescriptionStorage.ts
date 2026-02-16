@@ -10,6 +10,7 @@
  */
 
 import type { Prescription } from '../models/prescription'
+import { logError, logWarn } from '../utils/logger'
 
 // ─── Constants ───
 
@@ -38,7 +39,10 @@ export function getAllPrescriptions(): Prescription[] {
   try {
     return JSON.parse(data) as Prescription[]
   } catch {
-    console.error('Failed to parse prescriptions from localStorage')
+    logError('prescriptionStorage.getAllPrescriptions', 'Failed to parse prescriptions from localStorage', {
+      rawDataLength: data.length,
+      rawDataPreview: data.slice(0, 200),
+    })
     return []
   }
 }
@@ -64,7 +68,15 @@ export function savePrescription(rx: Prescription): Prescription {
   const prescriptions = getAllPrescriptions()
   const newRx = { ...rx, id: generateId() }
   prescriptions.push(newRx)
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(prescriptions))
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(prescriptions))
+  } catch (e) {
+    logError('prescriptionStorage.savePrescription', 'Failed to write to localStorage', {
+      error: e instanceof Error ? e.message : String(e),
+      prescriptionCount: prescriptions.length,
+    })
+    throw e
+  }
   return newRx
 }
 
@@ -74,12 +86,26 @@ export function savePrescription(rx: Prescription): Prescription {
  * @returns true if updated, false if id missing or not found
  */
 export function updatePrescription(rx: Prescription): boolean {
-  if (!rx.id) return false
+  if (!rx.id) {
+    logWarn('prescriptionStorage.updatePrescription', 'Called with missing id')
+    return false
+  }
   const prescriptions = getAllPrescriptions()
   const index = prescriptions.findIndex(p => p.id === rx.id)
-  if (index === -1) return false
+  if (index === -1) {
+    logWarn('prescriptionStorage.updatePrescription', 'Prescription not found', { id: rx.id })
+    return false
+  }
   prescriptions[index] = rx
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(prescriptions))
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(prescriptions))
+  } catch (e) {
+    logError('prescriptionStorage.updatePrescription', 'Failed to write to localStorage', {
+      error: e instanceof Error ? e.message : String(e),
+      id: rx.id,
+    })
+    throw e
+  }
   return true
 }
 
@@ -93,8 +119,19 @@ export function updatePrescription(rx: Prescription): boolean {
 export function deletePrescription(id: string): boolean {
   const prescriptions = getAllPrescriptions()
   const filtered = prescriptions.filter(rx => rx.id !== id)
-  if (filtered.length === prescriptions.length) return false
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered))
+  if (filtered.length === prescriptions.length) {
+    logWarn('prescriptionStorage.deletePrescription', 'Prescription not found', { id })
+    return false
+  }
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered))
+  } catch (e) {
+    logError('prescriptionStorage.deletePrescription', 'Failed to write to localStorage', {
+      error: e instanceof Error ? e.message : String(e),
+      id,
+    })
+    throw e
+  }
   return true
 }
 

@@ -4,6 +4,7 @@ import { Chart, registerables } from 'chart.js'
 import a11yLegend from 'chartjs-plugin-a11y-legend'
 import type { GraphDataset } from '@/core/models/prescription'
 import { generateFilename, downloadImage } from '@/core/export'
+import { logWarn, logError } from '@/core/utils/logger'
 import { hoursToClockTime, calculateClockTickStep, formatTimeWithDay } from '@/core/utils/timeFormat'
 
 // Plugin lacks type definitions, but Chart.register accepts Plugin type
@@ -133,6 +134,7 @@ function renderChart(): void {
     }
   })
 
+  try {
   chartInstance = new Chart(canvasRef.value, {
     type: 'line',
     data: { datasets: chartDatasets },
@@ -253,6 +255,12 @@ function renderChart(): void {
       },
     },
   })
+  } catch (e) {
+    logError('GraphViewer.renderChart', 'Failed to create Chart.js instance', {
+      error: e instanceof Error ? e.message : String(e),
+      datasetCount: chartDatasets.length,
+    })
+  }
 }
 
 // ---- Lifecycle ----
@@ -325,6 +333,7 @@ function handleDownload(): void {
   const success = exportAsImage()
 
   if (!success) {
+    logWarn('GraphViewer.handleDownload', 'Export failed — chart may be missing or data URL invalid')
     isExporting.value = false
     return
   }

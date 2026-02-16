@@ -14,3 +14,10 @@ export {
   KA_KE_TOLERANCE,
   validatePrescription,
 } from './prescription'
+
+// PK Summary types
+export type {
+  PkEventType,
+  PkMilestoneEvent,
+  PkSummaryData,
+} from './pkSummary'

@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, watch } from 'vue'
 import type { Prescription, GraphDataset } from '@/core/models/prescription'
-import { getGraphData, getLastDoseTime, calculateTailOffDuration } from '@/core/calculations'
+import { getGraphData, getLastDoseTime, calculateTailOffDuration, generateSummaryData } from '@/core/calculations'
 import { savePrescription, updatePrescription, getAllPrescriptions } from '@/core/storage/prescriptionStorage'
 import PrescriptionForm from '@/components/PrescriptionForm.vue'
 import GraphViewer from '@/components/GraphViewer.vue'
 import PrescriptionList from '@/components/PrescriptionList.vue'
+import PkSummaryTable from '@/components/PkSummaryTable.vue'
 
 // ---- State ----
 
@@ -17,6 +18,7 @@ const showList = ref(false)
 const comparePrescriptions = ref<Prescription[]>([])
 const activeTab = ref<'form' | 'list' | 'graph'>('form')
 const statusMessage = ref('')
+const showSummaryTable = ref(true)
 
 // ---- Graph settings ----
 
@@ -46,6 +48,16 @@ const graphContainerRef = ref<HTMLElement | null>(null)
 const graphDatasets = computed<GraphDataset[]>(() => {
   if (comparePrescriptions.value.length === 0) return []
   return getGraphData(comparePrescriptions.value, startHours.value, effectiveEndHours.value)
+})
+
+const summaryData = computed(() => {
+  if (comparePrescriptions.value.length === 0) return []
+  return generateSummaryData(
+    comparePrescriptions.value,
+    startHours.value,
+    effectiveEndHours.value,
+    firstDoseTime.value,
+  )
 })
 
 /**
@@ -386,6 +398,24 @@ watch(comparePrescriptions, (newVal) => {
           </div>
         </div>
 
+        <div class="summary-toggle">
+          <label for="summary-table-toggle" class="toggle-label">
+            <input
+              id="summary-table-toggle"
+              v-model="showSummaryTable"
+              type="checkbox"
+              class="toggle-checkbox"
+              aria-label="Show or hide the pharmacokinetic timeline summary table"
+            />
+            Show PK Timeline
+          </label>
+        </div>
+
+        <PkSummaryTable
+          v-if="showSummaryTable && comparePrescriptions.length > 0"
+          :summary-data="summaryData"
+        />
+
         <div class="actions">
           <button class="btn btn-primary" @click="saveCurrentPrescription">
             Save Prescription
@@ -601,6 +631,12 @@ watch(comparePrescriptions, (newVal) => {
 .graph-controls input[type="range"]:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.summary-toggle {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e7eb;
 }
 
 .actions {

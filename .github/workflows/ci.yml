@@ -1,29 +1,23 @@
-name: Release
+name: CI
 
 on:
-  release:
-    types: [published]
+  push:
+    branches: [main]
 
 jobs:
-  build-tauri:
+  ci:
     strategy:
       fail-fast: false
       matrix:
         include:
           - platform: macos-latest
-            args: '--target universal-apple-darwin --bundles dmg'
             rust_targets: 'aarch64-apple-darwin,x86_64-apple-darwin'
           - platform: windows-latest
-            args: '--bundles nsis'
             rust_targets: ''
           - platform: ubuntu-22.04
-            args: '--bundles deb,appimage'
             rust_targets: ''
 
     runs-on: ${{ matrix.platform }}
-
-    permissions:
-      contents: write
 
     env:
       SCCACHE_GHA_ENABLED: 'true'
@@ -62,17 +56,20 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
           shared-key: 'tauri-${{ matrix.platform }}'
-          save-if: false
+          save-if: true
 
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Build and upload Tauri app
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tagName: ${{ github.event.release.tag_name }}
-          releaseDraft: false
-          prerelease: ${{ github.event.release.prerelease }}
-          args: ${{ matrix.args }}
+      - name: Type check
+        run: npm run type-check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Warm Rust cache
+        working-directory: src-tauri
+        run: cargo check

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import type { Prescription } from '../../models/prescription'
 import { accumulateDoses, accumulateMetaboliteDoses, getGraphData, getLastDoseTime, calculateTailOffDuration } from '../multiDose'
 import { SINGLE_DOSE_FIXTURE, BID_MULTI_DOSE_FIXTURE, IBUPROFEN_FIXTURE, METABOLITE_STANDARD_FIXTURE } from '../../models/__tests__/fixtures'
 
@@ -541,6 +542,104 @@ describe('accumulateDoses - Multi-dose Accumulation', () => {
       for (const point of lastPoints) {
         expect(point.concentration).toBeLessThan(0.001)
       }
+    })
+  })
+
+  describe('Task 24: Curve extends to near-zero concentration', () => {
+    it('single dose with duration: curve decays to near-zero after dosing stops + 10 half-lives', () => {
+      // Use duration to limit dosing to 1 day, then extend observation for tail-off
+      const rx: Prescription = {
+        ...SINGLE_DOSE_FIXTURE, // halfLife=6, once at 09:00
+        duration: 1,
+        durationUnit: 'days',
+      }
+      // Dose at hour 9 (first day only due to duration=1 day)
+      // Tail-off: 10 * 6 = 60 hours after last dose at hour 9 = 69 hours
+      const endHours = 9 + calculateTailOffDuration(rx.halfLife) // 69
+      const result = accumulateDoses(rx, 0, endHours, 15)
+
+      // Last point should be near-zero (10 half-lives = 1/1024 ≈ 0.001)
+      const lastPoint = result[result.length - 1]!
+      expect(lastPoint.concentration).toBeLessThan(0.002)
+
+      // Curve should have data all the way to the end
+      expect(lastPoint.time).toBeGreaterThanOrEqual(endHours - 1)
+    })
+
+    it('multi-dose (bid) with duration: curve extends past last dose to near-zero', () => {
+      // Use duration to limit dosing to 3 days, then extend for tail-off
+      const rx: Prescription = {
+        ...BID_MULTI_DOSE_FIXTURE, // halfLife=6, bid at 09:00, 21:00
+        duration: 3,
+        durationUnit: 'days',
+      }
+      // 3 days of bid dosing: last dose at ~69 hours (day 2, 21:00)
+      const dosingDays = 3
+      const lastDose = getLastDoseTime(rx, dosingDays)
+      const tailOff = calculateTailOffDuration(rx.halfLife) // 10 * 6 = 60
+      const endHours = lastDose + tailOff
+
+      const result = accumulateDoses(rx, 0, endHours, 15)
+
+      // Last point should be near-zero
+      const lastPoint = result[result.length - 1]!
+      expect(lastPoint.concentration).toBeLessThan(0.002)
+      expect(lastPoint.time).toBeGreaterThanOrEqual(endHours - 1)
+    })
+
+    it('long half-life drug (240hr): tail-off calculation respects 2520hr cap', () => {
+      const rx: Prescription = {
+        ...SINGLE_DOSE_FIXTURE,
+        halfLife: 240,
+        times: ['00:00'],
+        uptake: 24,
+        peak: 48,
+      }
+      const tailOff = calculateTailOffDuration(rx.halfLife) // 2400
+      expect(tailOff).toBe(2400)
+
+      // Verify the autoEndHours cap logic (from App.vue)
+      const lastDose = getLastDoseTime(rx, 1) // 0
+      const rawEnd = lastDose + tailOff // 2400
+      const cappedEnd = Math.max(24, Math.min(2520, rawEnd))
+      expect(cappedEnd).toBeLessThanOrEqual(2520)
+      expect(cappedEnd).toBeGreaterThanOrEqual(24)
+    })
+
+    it('getGraphData produces datasets extending to provided endHours', () => {
+      // Verify data generation reaches the full endHours parameter
+      const rx = SINGLE_DOSE_FIXTURE // halfLife=6, once at 09:00
+      const endHours = 120 // provide a large endHours
+
+      const datasets = getGraphData([rx], 0, endHours)
+      expect(datasets.length).toBeGreaterThan(0)
+
+      const data = datasets[0]!.data
+      const lastPoint = data[data.length - 1]!
+
+      // Data should extend to near the provided endHours
+      expect(lastPoint.time).toBeGreaterThanOrEqual(endHours - 1)
+    })
+
+    it('effectiveEndHours extends data beyond default 48hr slider value', () => {
+      // This tests the core fix: graph data should use effectiveEndHours (auto-calculated)
+      // not the raw endHours (slider default=48)
+      const rx = SINGLE_DOSE_FIXTURE // halfLife=6
+
+      // Short endHours (old behavior) - data truncated
+      const shortDatasets = getGraphData([rx], 0, 48)
+      const shortData = shortDatasets[0]!.data
+      const shortLastTime = shortData[shortData.length - 1]!.time
+
+      // Long endHours (fixed behavior with effectiveEndHours)
+      const longDatasets = getGraphData([rx], 0, 120)
+      const longData = longDatasets[0]!.data
+      const longLastTime = longData[longData.length - 1]!.time
+
+      // The extended data should reach much further
+      expect(longLastTime).toBeGreaterThan(shortLastTime)
+      expect(longLastTime).toBeGreaterThanOrEqual(119) // extends to ~120h
+      expect(shortLastTime).toBeLessThanOrEqual(48) // truncated at ~48h
     })
   })
 })

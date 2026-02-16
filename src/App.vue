@@ -709,26 +709,62 @@ watch(comparePrescriptions, (newVal) => {
   }
 
   .toggle-label {
-    color: #374151;
+    color: #e5e7eb;
   }
 
   .graph-controls label {
-    color: #374151;
+    color: #e5e7eb;
   }
 
   .mode-indicator {
-    color: #6b7280;
+    color: #9ca3af;
   }
 
   .mode-button {
-    background: #f3f4f6;
-    border-color: #d1d5db;
-    color: #374151;
+    background: #374151;
+    border-color: #4b5563;
+    color: #e5e7eb;
   }
 
   .mode-button:hover:not(.active) {
-    background: #e5e7eb;
-    border-color: #9ca3af;
+    background: #4b5563;
+    border-color: #6b7280;
+  }
+
+  .app {
+    background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+  }
+
+  .app-header {
+    background: #1f2937;
+    border-bottom-color: #374151;
+  }
+
+  .app-header h1 {
+    color: #f9fafb;
+  }
+
+  .subtitle {
+    color: #9ca3af;
+  }
+
+  .disclaimer-banner {
+    background: #451a03;
+    border-color: #92400e;
+    color: #fef3c7;
+  }
+
+  .graph-section {
+    background: #1f2937;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  }
+
+  .graph-controls {
+    border-top-color: #374151;
+  }
+
+  .summary-toggle {
+    border-top-color: #374151;
   }
 }
 

@@ -46,6 +46,22 @@ const DEFAULT_COLORS = [
   '#84CC16', // lime
 ]
 
+// ---- Dark mode detection ----
+
+const darkModeQuery =
+  typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+    ? window.matchMedia('(prefers-color-scheme: dark)')
+    : null
+
+const prefersDark = ref(darkModeQuery?.matches ?? false)
+
+function handleDarkModeChange(e: MediaQueryListEvent) {
+  prefersDark.value = e.matches
+}
+
+const textColor = computed(() => (prefersDark.value ? '#e5e7eb' : '#374151'))
+const dimmedColor = computed(() => (prefersDark.value ? '#6b7280' : '#9CA3AF'))
+
 // ---- Responsive legend ----
 
 const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024)
@@ -131,6 +147,7 @@ function renderChart(): void {
             display: true,
             text: props.xAxisMode === 'clock' ? 'Time of Day' : 'Time (hours)',
             font: { size: 14 },
+            color: textColor.value,
           },
           min: props.startHours,
           max: props.endHours,
@@ -139,6 +156,7 @@ function renderChart(): void {
               props.xAxisMode === 'clock'
                 ? calculateClockTickStep(props.startHours, props.endHours)
                 : calculateTickStep(props.startHours, props.endHours),
+            color: textColor.value,
             callback: (value: string | number) => {
               const num = typeof value === 'string' ? parseFloat(value) : value
               if (props.xAxisMode === 'clock') {
@@ -147,6 +165,9 @@ function renderChart(): void {
               return `${num}h`
             },
           },
+          grid: {
+            color: prefersDark.value ? 'rgba(75, 85, 99, 0.4)' : 'rgba(0, 0, 0, 0.1)',
+          },
         },
         y: {
           type: 'linear',
@@ -154,15 +175,20 @@ function renderChart(): void {
             display: true,
             text: 'Relative Concentration (0–1)',
             font: { size: 14 },
+            color: textColor.value,
           },
           min: 0,
           max: 1,
           ticks: {
             stepSize: 0.1,
+            color: textColor.value,
             callback: (value: string | number) => {
               const num = typeof value === 'string' ? parseFloat(value) : value
               return num.toFixed(1)
             },
+          },
+          grid: {
+            color: prefersDark.value ? 'rgba(75, 85, 99, 0.4)' : 'rgba(0, 0, 0, 0.1)',
           },
         },
       },
@@ -174,7 +200,7 @@ function renderChart(): void {
             usePointStyle: true,
             padding: isMobile.value ? 10 : 16,
             font: { size: isMobile.value ? 11 : 13 },
-            color: '#374151',
+            color: textColor.value,
             generateLabels: (chart: Chart) => {
               const datasets = chart.data.datasets
               return datasets.map((ds, i) => ({
@@ -184,7 +210,7 @@ function renderChart(): void {
                 lineWidth: 2,
                 hidden: !chart.isDatasetVisible(i),
                 datasetIndex: i,
-                fontColor: chart.isDatasetVisible(i) ? '#374151' : '#9CA3AF',
+                fontColor: chart.isDatasetVisible(i) ? textColor.value : dimmedColor.value,
               }))
             },
           },
@@ -234,6 +260,7 @@ function renderChart(): void {
 onMounted(() => {
   renderChart()
   window.addEventListener('resize', handleResize)
+  darkModeQuery?.addEventListener('change', handleDarkModeChange)
 })
 
 watch(
@@ -244,6 +271,7 @@ watch(
     () => props.xAxisMode,
     () => props.firstDoseTime,
     isMobile,
+    prefersDark,
   ],
   () => {
     renderChart()
@@ -253,6 +281,7 @@ watch(
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  darkModeQuery?.removeEventListener('change', handleDarkModeChange)
   if (chartInstance) {
     chartInstance.destroy()
     chartInstance = null
@@ -408,6 +437,30 @@ defineExpose({
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border-width: 0;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .disclaimer {
+    background: #451a03;
+    border-color: #92400e;
+    color: #fef3c7;
+  }
+
+  .graph-actions {
+    border-top-color: #374151;
+  }
+
+  .download-btn {
+    background: #1f2937;
+    color: #e5e7eb;
+    border-color: #3b82f6;
+  }
+
+  .download-btn:hover:not(:disabled) {
+    background: #3b82f6;
+    color: white;
+  }
 }
 
 /* Mobile responsive */

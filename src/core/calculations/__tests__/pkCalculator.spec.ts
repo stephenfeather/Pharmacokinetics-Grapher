@@ -459,12 +459,12 @@ describe('PK Calculator', () => {
   // ─── Phase 6: calculateMetaboliteConcentration ───
 
   describe('calculateMetaboliteConcentration - standard formula', () => {
-    const { dose, halfLife, metaboliteLife, metaboliteConversionFraction } = METABOLITE_STANDARD_FIXTURE
+    const { dose, halfLife, metaboliteLife, relativeMetaboliteLevel } = METABOLITE_STANDARD_FIXTURE
 
-    it('requires metaboliteLife and metaboliteConversionFraction to be defined', () => {
+    it('requires metaboliteLife and relativeMetaboliteLevel to be defined', () => {
       // This is a TypeScript requirement, but verify the function works with valid inputs
       expect(metaboliteLife).toBeDefined()
-      expect(metaboliteConversionFraction).toBeDefined()
+      expect(relativeMetaboliteLevel).toBeDefined()
     })
 
     // --- Guard clause testing ---
@@ -475,7 +475,7 @@ describe('PK Calculator', () => {
         dose,
         halfLife,
         metaboliteLife!,
-        metaboliteConversionFraction!,
+        relativeMetaboliteLevel!,
       )
       expect(result).toBe(0)
     })
@@ -486,7 +486,7 @@ describe('PK Calculator', () => {
         dose,
         halfLife,
         metaboliteLife!,
-        metaboliteConversionFraction!,
+        relativeMetaboliteLevel!,
       )
       expect(result).toBe(0)
     })
@@ -497,7 +497,7 @@ describe('PK Calculator', () => {
         0,
         halfLife,
         metaboliteLife!,
-        metaboliteConversionFraction!,
+        relativeMetaboliteLevel!,
       )
       expect(result).toBe(0)
     })
@@ -508,7 +508,7 @@ describe('PK Calculator', () => {
         -100,
         halfLife,
         metaboliteLife!,
-        metaboliteConversionFraction!,
+        relativeMetaboliteLevel!,
       )
       expect(result).toBe(0)
     })
@@ -543,7 +543,7 @@ describe('PK Calculator', () => {
         dose,
         halfLife,
         metaboliteLife!,
-        metaboliteConversionFraction!,
+        relativeMetaboliteLevel!,
       )
       expect(result).toBeGreaterThan(0)
     })
@@ -554,14 +554,14 @@ describe('PK Calculator', () => {
         dose,
         halfLife,
         metaboliteLife!,
-        metaboliteConversionFraction!,
+        relativeMetaboliteLevel!,
       )
       const c2 = calculateMetaboliteConcentration(
         2,
         dose,
         halfLife,
         metaboliteLife!,
-        metaboliteConversionFraction!,
+        relativeMetaboliteLevel!,
       )
       expect(c2).toBeGreaterThan(c1)
     })
@@ -572,14 +572,14 @@ describe('PK Calculator', () => {
         dose,
         halfLife,
         metaboliteLife!,
-        metaboliteConversionFraction!,
+        relativeMetaboliteLevel!,
       )
       const c2 = calculateMetaboliteConcentration(
         24,
         dose,
         halfLife,
         metaboliteLife!,
-        metaboliteConversionFraction!,
+        relativeMetaboliteLevel!,
       )
       expect(c2).toBeLessThan(c1)
     })
@@ -591,7 +591,7 @@ describe('PK Calculator', () => {
         dose,
         halfLife,
         metaboliteLife!,
-        metaboliteConversionFraction!,
+        relativeMetaboliteLevel!,
       )
       expect(result).toBeCloseTo(0, 0)
       expect(result).toBeGreaterThanOrEqual(0)
@@ -605,14 +605,14 @@ describe('PK Calculator', () => {
         500,
         halfLife,
         metaboliteLife!,
-        metaboliteConversionFraction!,
+        relativeMetaboliteLevel!,
       )
       const c2 = calculateMetaboliteConcentration(
         4,
         1000,
         halfLife,
         metaboliteLife!,
-        metaboliteConversionFraction!,
+        relativeMetaboliteLevel!,
       )
       expect(c2).toBeCloseTo(2 * c1, 6)
     })
@@ -644,7 +644,7 @@ describe('PK Calculator', () => {
         dose,
         halfLife,
         100, // Very slow metabolite
-        metaboliteConversionFraction!,
+        relativeMetaboliteLevel!,
       )
       // Same parent, fast metabolite
       const fastMetabolite = calculateMetaboliteConcentration(
@@ -652,7 +652,7 @@ describe('PK Calculator', () => {
         dose,
         halfLife,
         2, // Very fast metabolite
-        metaboliteConversionFraction!,
+        relativeMetaboliteLevel!,
       )
       expect(slowMetabolite).toBeGreaterThan(fastMetabolite)
     })

@@ -160,6 +160,47 @@ describe('transformImportedPrescription', () => {
     })
   })
 
+  describe('backward compatibility: metaboliteConversionFraction migration', () => {
+    it('migrates metaboliteConversionFraction to relativeMetaboliteLevel when >= 0.1', () => {
+      const input = {
+        name: 'Drug',
+        metaboliteConversionFraction: 0.8,
+      }
+      const result = transformImportedPrescription(input)
+      expect(result.relativeMetaboliteLevel).toBe(0.8)
+      expect((result as unknown as Record<string, unknown>).metaboliteConversionFraction).toBeUndefined()
+    })
+
+    it('does not migrate metaboliteConversionFraction when < 0.1', () => {
+      const input = {
+        name: 'Drug',
+        metaboliteConversionFraction: 0.05,
+      }
+      const result = transformImportedPrescription(input)
+      expect(result.relativeMetaboliteLevel).toBeUndefined()
+      expect((result as unknown as Record<string, unknown>).metaboliteConversionFraction).toBeUndefined()
+    })
+
+    it('does not overwrite existing relativeMetaboliteLevel with old field', () => {
+      const input = {
+        name: 'Drug',
+        metaboliteConversionFraction: 0.5,
+        relativeMetaboliteLevel: 3.0,
+      }
+      const result = transformImportedPrescription(input)
+      expect(result.relativeMetaboliteLevel).toBe(3.0)
+    })
+
+    it('removes old metaboliteConversionFraction even when not migrated', () => {
+      const input = {
+        name: 'Drug',
+        metaboliteConversionFraction: 0.01,
+      }
+      const result = transformImportedPrescription(input)
+      expect((result as unknown as Record<string, unknown>).metaboliteConversionFraction).toBeUndefined()
+    })
+  })
+
   describe('full Zoloft import scenario', () => {
     it('correctly transforms the Zoloft example from the bug report', () => {
       const zoloftImport = {

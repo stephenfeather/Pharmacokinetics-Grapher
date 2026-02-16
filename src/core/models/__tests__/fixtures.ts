@@ -74,7 +74,7 @@ export const METABOLITE_STANDARD_FIXTURE: Prescription = {
   dose: 500,
   halfLife: 6,
   metaboliteLife: 12,
-  metaboliteConversionFraction: 0.8,
+  relativeMetaboliteLevel: 1.0,
   peak: 2,
   uptake: 1.5,
 }

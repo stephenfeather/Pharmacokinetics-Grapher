@@ -28,7 +28,7 @@ const halfLife = ref(props.initial?.halfLife ?? 6)
 const peak = ref(props.initial?.peak ?? 2)
 const uptake = ref(props.initial?.uptake ?? 1.5)
 const metaboliteLife = ref<number | undefined>(props.initial?.metaboliteLife)
-const metaboliteConversionFraction = ref<number | undefined>(props.initial?.metaboliteConversionFraction)
+const relativeMetaboliteLevel = ref<number | undefined>(props.initial?.relativeMetaboliteLevel)
 const metaboliteName = ref<string | undefined>(props.initial?.metaboliteName)
 const duration = ref<number | undefined>(props.initial?.duration ?? 7)
 const durationUnit = ref<DurationUnit>(props.initial?.durationUnit ?? 'days')
@@ -47,7 +47,7 @@ watch(
       peak.value = 2
       uptake.value = 1.5
       metaboliteLife.value = undefined
-      metaboliteConversionFraction.value = undefined
+      relativeMetaboliteLevel.value = undefined
       metaboliteName.value = undefined
       duration.value = 7
       durationUnit.value = 'days'
@@ -61,7 +61,7 @@ watch(
       peak.value = newInitial.peak
       uptake.value = newInitial.uptake
       metaboliteLife.value = newInitial.metaboliteLife
-      metaboliteConversionFraction.value = newInitial.metaboliteConversionFraction
+      relativeMetaboliteLevel.value = newInitial.relativeMetaboliteLevel
       metaboliteName.value = newInitial.metaboliteName
       duration.value = newInitial.duration
       durationUnit.value = newInitial.durationUnit ?? 'days'
@@ -108,8 +108,8 @@ const prescription = computed<Prescription>(() => ({
   ...(metaboliteLife.value !== undefined && !isNaN(metaboliteLife.value)
     ? { metaboliteLife: metaboliteLife.value }
     : {}),
-  ...(metaboliteConversionFraction.value !== undefined && !isNaN(metaboliteConversionFraction.value)
-    ? { metaboliteConversionFraction: metaboliteConversionFraction.value }
+  ...(relativeMetaboliteLevel.value !== undefined && !isNaN(relativeMetaboliteLevel.value)
+    ? { relativeMetaboliteLevel: relativeMetaboliteLevel.value }
     : {}),
   ...(metaboliteName.value !== undefined && metaboliteName.value.trim() !== ''
     ? { metaboliteName: metaboliteName.value }
@@ -240,57 +240,57 @@ function handleImportSuccess(count: number) {
         <small id="hint-uptake" class="field-hint">Range: 0.1 - 24 hours</small>
       </div>
 
-      <!-- Metabolite half-life (optional) -->
-      <div class="form-field">
-        <label for="rx-metabolite">Metabolite Half-life (hours, optional)</label>
-        <input
-          id="rx-metabolite"
-          v-model.number="metaboliteLife"
-          type="number"
-          min="0.1"
-          max="1000"
-          step="0.01"
-          aria-describedby="hint-metabolite"
-        />
-        <small id="hint-metabolite" class="field-hint"
-          >Optional. Range: 0.1 - 1,000 hours</small
-        >
-      </div>
-
-      <!-- Metabolite Conversion Fraction (optional) -->
-      <div class="form-field">
-        <label for="rx-metabolite-fm">
-          Metabolite Conversion Fraction (optional)
-        </label>
-        <input
-          id="rx-metabolite-fm"
-          v-model.number="metaboliteConversionFraction"
-          type="number"
-          min="0.0"
-          max="1.0"
-          step="0.01"
-          aria-describedby="hint-metabolite-fm"
-        />
-        <small id="hint-metabolite-fm" class="field-hint">
-          Optional. Fraction of parent drug converted to metabolite (0.0 - 1.0).
-          Both half-life and fraction required for metabolite visualization.
+      <!-- Metabolite Parameters (optional group - both half-life and conversion fraction required to graph) -->
+      <fieldset class="metabolite-fieldset">
+        <legend class="metabolite-legend">Metabolite Parameters (optional)</legend>
+        <small class="metabolite-group-hint">
+          To graph a metabolite curve, both half-life and relative metabolite level must be provided.
         </small>
-      </div>
 
-      <!-- Metabolite Name (optional) -->
-      <div class="form-field">
-        <label for="rx-metabolite-name">Metabolite Name (optional)</label>
-        <input
-          id="rx-metabolite-name"
-          v-model="metaboliteName"
-          type="text"
-          maxlength="100"
-          aria-describedby="hint-metabolite-name"
-        />
-        <small id="hint-metabolite-name" class="field-hint">
-          Optional. Name of the active metabolite (e.g., N-desmethylsertraline). Used in graph legend.
-        </small>
-      </div>
+        <div class="form-field">
+          <label for="rx-metabolite">Metabolite Half-life (hours)</label>
+          <input
+            id="rx-metabolite"
+            v-model.number="metaboliteLife"
+            type="number"
+            min="0.1"
+            max="1000"
+            step="0.01"
+            aria-describedby="hint-metabolite"
+          />
+          <small id="hint-metabolite" class="field-hint">Range: 0.1 - 1,000 hours</small>
+        </div>
+
+        <div class="form-field">
+          <label for="rx-metabolite-level">Relative Metabolite Level</label>
+          <input
+            id="rx-metabolite-level"
+            v-model.number="relativeMetaboliteLevel"
+            type="number"
+            min="0.1"
+            max="10.0"
+            step="0.1"
+            aria-describedby="hint-metabolite-level"
+          />
+          <small id="hint-metabolite-level" class="field-hint">
+            Relative metabolite level vs. normal metabolizer (1.0 = normal, 3.0 = 3x higher).
+          </small>
+        </div>
+
+        <div class="form-field">
+          <label for="rx-metabolite-name">Metabolite Name</label>
+          <input
+            id="rx-metabolite-name"
+            v-model="metaboliteName"
+            type="text"
+            maxlength="100"
+            aria-describedby="hint-metabolite-name"
+          />
+          <small id="hint-metabolite-name" class="field-hint">
+            Name of the active metabolite (e.g., N-desmethylsertraline). Used in graph legend.
+          </small>
+        </div>
+      </fieldset>
 
       <!-- Medication Duration -->
       <div class="duration-input-group">
@@ -569,6 +569,27 @@ fieldset legend {
   margin-bottom: 0.25rem;
 }
 
+.metabolite-fieldset {
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 1rem 1.25rem;
+  margin: 1rem 0;
+}
+
+.metabolite-legend {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #374151;
+  padding: 0 0.5rem;
+}
+
+.metabolite-group-hint {
+  display: block;
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin-bottom: 1rem;
+}
+
 .duration-input-group {
   display: flex;
   gap: 1rem;
@@ -667,6 +688,18 @@ button[type='submit']:disabled {
 
   fieldset legend {
     color: #ffffff;
+  }
+
+  .metabolite-fieldset {
+    border-color: #4b5563;
+  }
+
+  .metabolite-legend {
+    color: #e5e7eb;
+  }
+
+  .metabolite-group-hint {
+    color: #9ca3af;
   }
 
   .educational-disclaimer strong {

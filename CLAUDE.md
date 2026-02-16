@@ -91,6 +91,7 @@ interface Prescription {
   dose: number             // Amount per dose as written on prescription (mg, units, etc.)
   halfLife: number         // Half-life in hours (from pharmacy insert)
   metaboliteLife?: number  // Half-life of metabolites in hours (optional, from insert)
+  relativeMetaboliteLevel?: number // Relative metabolite level vs. normal metabolizer (0.1-10.0, optional)
   peak: number             // Time to peak concentration in hours, Tmax (from insert; stored for documentation, not used in calculations)
   uptake: number           // Absorption time in hours (from insert)
 }
@@ -243,7 +244,7 @@ C_metabolite(t) = Dose × fm × ke_parent / (ke_metabolite - ke_parent) ×
 ```
 
 **Parameters**:
-- `metaboliteConversionFraction` (fm): Fraction of parent drug converted to metabolite (0-1 range, optional field)
+- `relativeMetaboliteLevel`: Relative metabolite level vs. normal metabolizer (0.1-10.0, optional field; 1.0 = normal, 3.0 = 3x higher)
 - `metaboliteLife`: Metabolite elimination half-life in hours (optional field)
 
 **Fallback formula** (when ke_metabolite ≈ ke_parent):
@@ -253,7 +254,7 @@ C_metabolite(t) = Dose × fm × ke_parent × t × e^(-ke_parent×t)
 
 **Visualization**:
 - Metabolite curves are displayed as dashed lines with same color as parent drug
-- Both `metaboliteLife` and `metaboliteConversionFraction` required for metabolite visualization
+- Both `metaboliteLife` and `relativeMetaboliteLevel` required for metabolite visualization
 - Independent legend control (click to show/hide individual curves)
 - Fully integrated with multi-drug comparison and accumulation calculations
 

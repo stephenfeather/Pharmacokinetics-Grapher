@@ -46,7 +46,7 @@ export function transformImportedPrescription(imported: Record<string, any>): Pr
   }
 
   // Coerce string numbers to actual numbers for common numeric fields
-  const numericFields = ['dose', 'halfLife', 'peak', 'uptake', 'metaboliteLife', 'metaboliteConversionFraction', 'duration'] as const
+  const numericFields = ['dose', 'halfLife', 'peak', 'uptake', 'metaboliteLife', 'relativeMetaboliteLevel', 'duration'] as const
   for (const field of numericFields) {
     if (typeof result[field] === 'string') {
       const parsed = Number(result[field])
@@ -54,6 +54,18 @@ export function transformImportedPrescription(imported: Record<string, any>): Pr
         result[field] = parsed
       }
     }
+  }
+
+  // Backward compatibility: migrate metaboliteConversionFraction -> relativeMetaboliteLevel
+  if (
+    result.metaboliteConversionFraction !== undefined &&
+    result.relativeMetaboliteLevel === undefined
+  ) {
+    const value = Number(result.metaboliteConversionFraction)
+    if (!isNaN(value) && value >= 0.1) {
+      result.relativeMetaboliteLevel = value
+    }
+    delete result.metaboliteConversionFraction
   }
 
   return result as Prescription

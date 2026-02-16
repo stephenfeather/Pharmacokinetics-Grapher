@@ -173,7 +173,7 @@ describe('accumulateDoses - Multi-dose Accumulation', () => {
       expect(result[0]!.data[0]).toHaveProperty('concentration')
     })
 
-    it('includes metabolite dataset when both metaboliteLife and metaboliteConversionFraction are present', () => {
+    it('includes metabolite dataset when both metaboliteLife and relativeMetaboliteLevel are present', () => {
       const result = getGraphData([METABOLITE_STANDARD_FIXTURE], 0, 48)
       expect(result.length).toBe(2)
       expect(result[0]!.label).toBe('Test Metabolite Drug 500mg (bid)')
@@ -194,8 +194,8 @@ describe('accumulateDoses - Multi-dose Accumulation', () => {
       expect(result[0]!.isMetabolite).toBe(false)
     })
 
-    it('does not generate metabolite dataset when metaboliteConversionFraction is missing', () => {
-      const rx = { ...METABOLITE_STANDARD_FIXTURE, metaboliteConversionFraction: undefined }
+    it('does not generate metabolite dataset when relativeMetaboliteLevel is undefined', () => {
+      const rx = { ...METABOLITE_STANDARD_FIXTURE, relativeMetaboliteLevel: undefined }
       const result = getGraphData([rx], 0, 48)
       expect(result.length).toBe(1)
       expect(result[0]!.isMetabolite).toBe(false)
@@ -321,20 +321,20 @@ describe('accumulateDoses - Multi-dose Accumulation', () => {
 
   describe('Phase 5b: Metabolite Accumulation - accumulateMetaboliteDoses', () => {
     it('returns empty array when metaboliteLife is missing', () => {
-      const rx = { ...BID_MULTI_DOSE_FIXTURE, metaboliteLife: undefined, metaboliteConversionFraction: 0.8 }
+      const rx = { ...BID_MULTI_DOSE_FIXTURE, metaboliteLife: undefined, relativeMetaboliteLevel: 0.8 }
       const result = accumulateMetaboliteDoses(rx, 0, 48)
       expect(result).toEqual([])
     })
 
-    it('returns empty array when metaboliteConversionFraction is missing', () => {
-      const rx = { ...BID_MULTI_DOSE_FIXTURE, metaboliteLife: 12, metaboliteConversionFraction: undefined }
+    it('returns empty array when relativeMetaboliteLevel is missing', () => {
+      const rx = { ...BID_MULTI_DOSE_FIXTURE, metaboliteLife: 12, relativeMetaboliteLevel: undefined }
       const result = accumulateMetaboliteDoses(rx, 0, 48)
       expect(result).toEqual([])
     })
 
-    it('returns empty array when metaboliteConversionFraction is null', () => {
+    it('returns empty array when relativeMetaboliteLevel is null', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const rx = { ...BID_MULTI_DOSE_FIXTURE, metaboliteLife: 12, metaboliteConversionFraction: null } as any
+      const rx = { ...BID_MULTI_DOSE_FIXTURE, metaboliteLife: 12, relativeMetaboliteLevel: null } as any
       const result = accumulateMetaboliteDoses(rx, 0, 48)
       expect(result).toEqual([])
     })
@@ -348,12 +348,20 @@ describe('accumulateDoses - Multi-dose Accumulation', () => {
       expect(result.length).toBeGreaterThan(0)
     })
 
-    it('normalizes metabolite curve to peak=1.0', () => {
-      const rx = METABOLITE_STANDARD_FIXTURE
+    it('normalizes metabolite curve to peak=relativeMetaboliteLevel', () => {
+      const rx = METABOLITE_STANDARD_FIXTURE // relativeMetaboliteLevel=1.0
       const result = accumulateMetaboliteDoses(rx, 0, 48, 1)
 
       const peakConc = Math.max(...result.map(p => p.concentration))
       expect(peakConc).toBeCloseTo(1.0, 5)
+    })
+
+    it('scales metabolite curve peak to relativeMetaboliteLevel=3.0', () => {
+      const rx = { ...METABOLITE_STANDARD_FIXTURE, relativeMetaboliteLevel: 3.0 }
+      const result = accumulateMetaboliteDoses(rx, 0, 48, 1)
+
+      const peakConc = Math.max(...result.map(p => p.concentration))
+      expect(peakConc).toBeCloseTo(3.0, 5)
     })
 
     it('returns zero concentration before first dose', () => {

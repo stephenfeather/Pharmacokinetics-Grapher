@@ -21,7 +21,7 @@ export interface Prescription {
   dose: number
   halfLife: number
   metaboliteLife?: number
-  metaboliteConversionFraction?: number
+  relativeMetaboliteLevel?: number
   metaboliteName?: string
   peak: number
   uptake: number
@@ -114,10 +114,10 @@ export const VALIDATION_RULES = {
     min: 0.1,
     max: 1000,
   },
-  metaboliteConversionFraction: {
+  relativeMetaboliteLevel: {
     required: false,
-    min: 0.0,
-    max: 1.0,
+    min: 0.1,
+    max: 10.0,
   },
   metaboliteName: {
     required: false,
@@ -319,27 +319,27 @@ function validateMetaboliteLife(
   return errors
 }
 
-function validateMetaboliteConversionFraction(
-  fm: number | undefined,
+function validateRelativeMetaboliteLevel(
+  level: number | undefined,
 ): string[] {
   const errors: string[] = []
 
-  if (fm === undefined || fm === null) {
+  if (level === undefined || level === null) {
     return errors
   }
 
-  if (typeof fm !== 'number' || isNaN(fm)) {
-    errors.push('Metabolite conversion fraction must be a number when provided')
+  if (typeof level !== 'number' || isNaN(level)) {
+    errors.push('Relative metabolite level must be a number when provided')
     return errors
   }
 
-  if (fm < VALIDATION_RULES.metaboliteConversionFraction.min) {
+  if (level < VALIDATION_RULES.relativeMetaboliteLevel.min) {
     errors.push(
-      `Metabolite conversion fraction must be at least ${VALIDATION_RULES.metaboliteConversionFraction.min}`,
+      `Relative metabolite level must be at least ${VALIDATION_RULES.relativeMetaboliteLevel.min}`,
     )
-  } else if (fm > VALIDATION_RULES.metaboliteConversionFraction.max) {
+  } else if (level > VALIDATION_RULES.relativeMetaboliteLevel.max) {
     errors.push(
-      `Metabolite conversion fraction must be at most ${VALIDATION_RULES.metaboliteConversionFraction.max}`,
+      `Relative metabolite level must be at most ${VALIDATION_RULES.relativeMetaboliteLevel.max}`,
     )
   }
 
@@ -438,17 +438,17 @@ function checkCrossFieldWarnings(rx: Prescription): string[] {
   // Check for partial metabolite data (one field provided, other missing)
   const hasMetaboliteLife =
     rx.metaboliteLife !== undefined && rx.metaboliteLife !== null
-  const hasMetaboliteConversionFraction =
-    rx.metaboliteConversionFraction !== undefined &&
-    rx.metaboliteConversionFraction !== null
+  const hasRelativeMetaboliteLevel =
+    rx.relativeMetaboliteLevel !== undefined &&
+    rx.relativeMetaboliteLevel !== null
 
-  if (hasMetaboliteLife && !hasMetaboliteConversionFraction) {
+  if (hasMetaboliteLife && !hasRelativeMetaboliteLevel) {
     warnings.push(
-      'Metabolite half-life provided but conversion fraction missing. Both are required for metabolite visualization.',
+      'Metabolite half-life provided but relative metabolite level missing. Both are required for metabolite visualization.',
     )
-  } else if (!hasMetaboliteLife && hasMetaboliteConversionFraction) {
+  } else if (!hasMetaboliteLife && hasRelativeMetaboliteLevel) {
     warnings.push(
-      'Metabolite conversion fraction provided but half-life missing. Both are required for metabolite visualization.',
+      'Relative metabolite level provided but half-life missing. Both are required for metabolite visualization.',
     )
   }
 
@@ -496,7 +496,7 @@ export function validatePrescription(rx: Prescription): ValidationResult {
     ...validatePeak(rx.peak),
     ...validateUptake(rx.uptake),
     ...validateMetaboliteLife(rx.metaboliteLife),
-    ...validateMetaboliteConversionFraction(rx.metaboliteConversionFraction),
+    ...validateRelativeMetaboliteLevel(rx.relativeMetaboliteLevel),
     ...validateMetaboliteName(rx.metaboliteName),
     ...validateDuration(rx.duration, rx.durationUnit),
   ]

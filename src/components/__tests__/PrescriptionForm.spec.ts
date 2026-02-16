@@ -487,18 +487,17 @@ describe('PrescriptionForm', () => {
       expect(prescription.metaboliteLife).toBe(12)
     })
 
-    it('renders metabolite conversion fraction input field', () => {
+    it('renders relative metabolite level input field', () => {
       const wrapper = mountForm()
-      const input = wrapper.find('input#rx-metabolite-fm')
+      const input = wrapper.find('input#rx-metabolite-level')
       expect(input.exists()).toBe(true)
       expect(input.attributes('type')).toBe('number')
-      // HTML renders min/max as string; 0.0 or 0 both valid
-      expect(['0', '0.0']).toContain(input.attributes('min'))
-      expect(['1', '1.0']).toContain(input.attributes('max'))
-      expect(input.attributes('step')).toBe('0.01')
+      expect(input.attributes('min')).toBe('0.1')
+      expect(['10', '10.0']).toContain(input.attributes('max'))
+      expect(input.attributes('step')).toBe('0.1')
     })
 
-    it('emitted prescription excludes metaboliteConversionFraction when undefined', async () => {
+    it('emitted prescription excludes relativeMetaboliteLevel when undefined', async () => {
       const wrapper = mountForm()
       await nextTick()
       await wrapper.find('form').trigger('submit')
@@ -506,45 +505,44 @@ describe('PrescriptionForm', () => {
       const emitted = wrapper.emitted('submit')
       expect(emitted).toBeTruthy()
       const prescription = (emitted?.[0]?.[0]) as Record<string, unknown>
-      expect(prescription.metaboliteConversionFraction).toBeUndefined()
+      expect(prescription.relativeMetaboliteLevel).toBeUndefined()
     })
 
-    it('emitted prescription includes metaboliteConversionFraction when provided', async () => {
+    it('emitted prescription includes relativeMetaboliteLevel when provided', async () => {
       const wrapper = mountForm()
       await nextTick()
-      await wrapper.find('input#rx-metabolite-fm').setValue(0.8)
+      await wrapper.find('input#rx-metabolite-level').setValue(3.0)
       await nextTick()
       await wrapper.find('form').trigger('submit')
       await nextTick()
       const emitted = wrapper.emitted('submit')
       expect(emitted).toBeTruthy()
       const prescription = (emitted?.[0]?.[0]) as Record<string, unknown>
-      expect(prescription.metaboliteConversionFraction).toBe(0.8)
+      expect(prescription.relativeMetaboliteLevel).toBe(3.0)
     })
 
-    it('accepts metaboliteConversionFraction value of 0', async () => {
+    it('accepts relativeMetaboliteLevel at minimum (0.1)', async () => {
       const wrapper = mountForm()
       await nextTick()
-      await wrapper.find('input#rx-metabolite-fm').setValue(0)
+      await wrapper.find('input#rx-metabolite-level').setValue(0.1)
       await nextTick()
       await wrapper.find('form').trigger('submit')
       await nextTick()
       const emitted = wrapper.emitted('submit')
       const prescription = (emitted?.[0]?.[0]) as Record<string, unknown>
-      // Even though fm=0 is unusual, the form should accept it
-      expect(prescription.metaboliteConversionFraction).toBe(0)
+      expect(prescription.relativeMetaboliteLevel).toBe(0.1)
     })
 
-    it('accepts metaboliteConversionFraction value of 1.0', async () => {
+    it('accepts relativeMetaboliteLevel at maximum (10.0)', async () => {
       const wrapper = mountForm()
       await nextTick()
-      await wrapper.find('input#rx-metabolite-fm').setValue(1.0)
+      await wrapper.find('input#rx-metabolite-level').setValue(10.0)
       await nextTick()
       await wrapper.find('form').trigger('submit')
       await nextTick()
       const emitted = wrapper.emitted('submit')
       const prescription = (emitted?.[0]?.[0]) as Record<string, unknown>
-      expect(prescription.metaboliteConversionFraction).toBe(1.0)
+      expect(prescription.relativeMetaboliteLevel).toBe(10.0)
     })
   })
 
@@ -626,11 +624,13 @@ describe('PrescriptionForm', () => {
 
     it('times fieldset has a legend', () => {
       const wrapper = mountForm()
-      const fieldset = wrapper.find('fieldset')
-      expect(fieldset.exists()).toBe(true)
-      const legend = fieldset.find('legend')
-      expect(legend.exists()).toBe(true)
-      expect(legend.text()).toContain('Time')
+      const fieldsets = wrapper.findAll('fieldset')
+      const timesFieldset = fieldsets.find((fs) => {
+        const legend = fs.find('legend')
+        return legend.exists() && legend.text().includes('Time')
+      })
+      expect(timesFieldset).toBeDefined()
+      expect(timesFieldset!.find('legend').text()).toContain('Time')
     })
 
     it('numeric inputs have aria-describedby pointing to hint text', () => {

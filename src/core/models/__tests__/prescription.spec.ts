@@ -202,11 +202,11 @@ describe('Prescription Models', () => {
       })
     })
 
-    it('defines metaboliteConversionFraction rules as optional with min 0.0 and max 1.0', () => {
-      expect(VALIDATION_RULES.metaboliteConversionFraction).toMatchObject({
+    it('defines relativeMetaboliteLevel rules as optional with min 0.1 and max 10.0', () => {
+      expect(VALIDATION_RULES.relativeMetaboliteLevel).toMatchObject({
         required: false,
-        min: 0.0,
-        max: 1.0,
+        min: 0.1,
+        max: 10.0,
       })
     })
   })
@@ -702,46 +702,51 @@ describe('Prescription Models', () => {
       })
     })
 
-    // ─── Phase 11b: Metabolite Conversion Fraction Validation ───
+    // ─── Phase 11b: Relative Metabolite Level Validation ───
 
-    describe('metaboliteConversionFraction validation', () => {
-      it('accepts undefined metaboliteConversionFraction (optional field)', () => {
+    describe('relativeMetaboliteLevel validation', () => {
+      it('accepts undefined relativeMetaboliteLevel (optional field)', () => {
         const rx = makeValid()
-        delete (rx as Partial<Prescription>).metaboliteConversionFraction
+        delete (rx as Partial<Prescription>).relativeMetaboliteLevel
         const result = validatePrescription(rx)
         expect(result.valid).toBe(true)
       })
 
-      it('accepts metaboliteConversionFraction not present on object', () => {
-        // makeValid() does not include metaboliteConversionFraction by default
+      it('accepts relativeMetaboliteLevel not present on object', () => {
+        // makeValid() does not include relativeMetaboliteLevel by default
         const result = validatePrescription(makeValid())
         expect(result.valid).toBe(true)
       })
 
-      it('rejects metaboliteConversionFraction below 0 (-0.1)', () => {
-        const result = validatePrescription(makeValid({ metaboliteConversionFraction: -0.1 }))
+      it('rejects relativeMetaboliteLevel below 0.1 (0.05)', () => {
+        const result = validatePrescription(makeValid({ relativeMetaboliteLevel: 0.05 }))
         expect(result.valid).toBe(false)
-        expect(result.errors.some((e) => /metabolite.*conversion/i.test(e))).toBe(true)
+        expect(result.errors.some((e) => /relative.*metabolite.*level/i.test(e))).toBe(true)
       })
 
-      it('rejects metaboliteConversionFraction above 1.0 (1.5)', () => {
-        const result = validatePrescription(makeValid({ metaboliteConversionFraction: 1.5 }))
+      it('rejects relativeMetaboliteLevel above 10.0 (11.0)', () => {
+        const result = validatePrescription(makeValid({ relativeMetaboliteLevel: 11.0 }))
         expect(result.valid).toBe(false)
-        expect(result.errors.some((e) => /metabolite.*conversion/i.test(e))).toBe(true)
+        expect(result.errors.some((e) => /relative.*metabolite.*level/i.test(e))).toBe(true)
       })
 
-      it('accepts metaboliteConversionFraction at minimum boundary (0.0)', () => {
-        const result = validatePrescription(makeValid({ metaboliteConversionFraction: 0.0 }))
+      it('accepts relativeMetaboliteLevel at minimum boundary (0.1)', () => {
+        const result = validatePrescription(makeValid({ relativeMetaboliteLevel: 0.1 }))
         expect(result.valid).toBe(true)
       })
 
-      it('accepts metaboliteConversionFraction at maximum boundary (1.0)', () => {
-        const result = validatePrescription(makeValid({ metaboliteConversionFraction: 1.0 }))
+      it('accepts relativeMetaboliteLevel at maximum boundary (10.0)', () => {
+        const result = validatePrescription(makeValid({ relativeMetaboliteLevel: 10.0 }))
         expect(result.valid).toBe(true)
       })
 
-      it('accepts typical metaboliteConversionFraction (0.8)', () => {
-        const result = validatePrescription(makeValid({ metaboliteConversionFraction: 0.8 }))
+      it('accepts typical relativeMetaboliteLevel (1.0)', () => {
+        const result = validatePrescription(makeValid({ relativeMetaboliteLevel: 1.0 }))
+        expect(result.valid).toBe(true)
+      })
+
+      it('accepts relativeMetaboliteLevel of 3.0 (3x normal)', () => {
+        const result = validatePrescription(makeValid({ relativeMetaboliteLevel: 3.0 }))
         expect(result.valid).toBe(true)
       })
     })
@@ -780,23 +785,23 @@ describe('Prescription Models', () => {
         expect(result.warnings).toEqual([])
       })
 
-      it('warns when only metaboliteLife is provided (missing conversion fraction)', () => {
+      it('warns when only metaboliteLife is provided (missing relative metabolite level)', () => {
         const result = validatePrescription(makeValid({ metaboliteLife: 12 }))
         expect(result.valid).toBe(true)
-        expect(result.warnings.some((w) => /metabolite.*conversion/i.test(w) || /both.*required/i.test(w))).toBe(true)
+        expect(result.warnings.some((w) => /metabolite.*level/i.test(w) || /both.*required/i.test(w))).toBe(true)
       })
 
-      it('warns when only metaboliteConversionFraction is provided (missing half-life)', () => {
-        const result = validatePrescription(makeValid({ metaboliteConversionFraction: 0.8 }))
+      it('warns when only relativeMetaboliteLevel is provided (missing half-life)', () => {
+        const result = validatePrescription(makeValid({ relativeMetaboliteLevel: 1.0 }))
         expect(result.valid).toBe(true)
         expect(result.warnings.some((w) => /metabolite.*half-life/i.test(w) || /both.*required/i.test(w))).toBe(true)
       })
 
-      it('does not warn when both metaboliteLife and metaboliteConversionFraction are provided', () => {
-        const result = validatePrescription(makeValid({ metaboliteLife: 12, metaboliteConversionFraction: 0.8 }))
+      it('does not warn when both metaboliteLife and relativeMetaboliteLevel are provided', () => {
+        const result = validatePrescription(makeValid({ metaboliteLife: 12, relativeMetaboliteLevel: 1.0 }))
         expect(result.valid).toBe(true)
         // Should have no metabolite-related warnings
-        expect(result.warnings.some((w) => /metabolite.*conversion/i.test(w) || /metabolite.*half-life/i.test(w))).toBe(false)
+        expect(result.warnings.some((w) => /metabolite.*level/i.test(w) || /metabolite.*half-life/i.test(w))).toBe(false)
       })
 
       it('warnings do not cause valid to be false', () => {

@@ -109,6 +109,20 @@ function renderChart(): void {
 
   if (props.datasets.length === 0) return
 
+  // Compute dynamic Y-axis max from all dataset points (minimum 1.0)
+  let dataMax = 1.0
+  for (const ds of props.datasets) {
+    for (const point of ds.data) {
+      if (point.concentration > dataMax) {
+        dataMax = point.concentration
+      }
+    }
+  }
+  // Round up to nearest 0.1
+  const yMax = Math.ceil(dataMax * 10) / 10
+  // Dynamic step size based on range
+  const yStepSize = yMax <= 1 ? 0.1 : yMax <= 5 ? 0.5 : 1.0
+
   const chartDatasets = props.datasets.map((ds, index) => {
     const isMetabolite = ds.isMetabolite === true
 
@@ -175,14 +189,14 @@ function renderChart(): void {
           type: 'linear',
           title: {
             display: true,
-            text: 'Relative Concentration (0–1)',
+            text: 'Relative Concentration',
             font: { size: 14 },
             color: textColor.value,
           },
           min: 0,
-          max: 1,
+          max: yMax,
           ticks: {
-            stepSize: 0.1,
+            stepSize: yStepSize,
             color: textColor.value,
             callback: (value: string | number) => {
               const num = typeof value === 'string' ? parseFloat(value) : value

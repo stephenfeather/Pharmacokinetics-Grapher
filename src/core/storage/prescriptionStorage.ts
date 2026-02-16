@@ -37,7 +37,22 @@ export function getAllPrescriptions(): Prescription[] {
   const data = localStorage.getItem(STORAGE_KEY)
   if (!data) return []
   try {
-    return JSON.parse(data) as Prescription[]
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const prescriptions = JSON.parse(data) as any[]
+    // Lazy migration: rename metaboliteConversionFraction -> relativeMetaboliteLevel
+    for (const rx of prescriptions) {
+      if (
+        rx.metaboliteConversionFraction !== undefined &&
+        rx.relativeMetaboliteLevel === undefined
+      ) {
+        const value = Number(rx.metaboliteConversionFraction)
+        if (!isNaN(value) && value >= 0.1) {
+          rx.relativeMetaboliteLevel = value
+        }
+        delete rx.metaboliteConversionFraction
+      }
+    }
+    return prescriptions as Prescription[]
   } catch {
     logError('prescriptionStorage.getAllPrescriptions', 'Failed to parse prescriptions from localStorage', {
       rawDataLength: data.length,

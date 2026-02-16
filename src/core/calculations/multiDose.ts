@@ -156,14 +156,14 @@ export function accumulateDoses(
  * Strategy:
  * 1. Expand prescription times across simulation window
  * 2. For each timepoint in the simulation, sum raw contributions from all prior parent doses
- * 3. Normalize final curve so peak = 1.0
- * 4. Returns empty array if either metaboliteLife or metaboliteConversionFraction is missing
+ * 3. Normalize final curve so peak = relativeMetaboliteLevel
+ * 4. Returns empty array if either metaboliteLife or relativeMetaboliteLevel is missing
  *
- * @param prescription - Prescription with metaboliteLife and metaboliteConversionFraction (both required)
+ * @param prescription - Prescription with metaboliteLife and relativeMetaboliteLevel (both required)
  * @param startHours - Simulation start time in hours from midnight
  * @param endHours - Simulation end time in hours from midnight (overridden by prescription.duration if present)
  * @param intervalMinutes - Time step resolution (default 15 min)
- * @returns Array of TimeSeriesPoint with normalized metabolite concentrations (peak = 1.0), or empty if data incomplete
+ * @returns Array of TimeSeriesPoint with scaled metabolite concentrations (peak = relativeMetaboliteLevel), or empty if data incomplete
  */
 export function accumulateMetaboliteDoses(
   prescription: Prescription,
@@ -173,11 +173,11 @@ export function accumulateMetaboliteDoses(
 ): TimeSeriesPoint[] {
   resetCalculationWarnings()
 
-  // Guard: require both metaboliteLife and metaboliteConversionFraction
+  // Guard: require both metaboliteLife and relativeMetaboliteLevel
   if (
     !prescription.metaboliteLife ||
-    prescription.metaboliteConversionFraction === undefined ||
-    prescription.metaboliteConversionFraction === null
+    prescription.relativeMetaboliteLevel === undefined ||
+    prescription.relativeMetaboliteLevel === null
   ) {
     return []
   }
@@ -218,7 +218,7 @@ export function accumulateMetaboliteDoses(
           prescription.dose,
           prescription.halfLife,
           prescription.metaboliteLife,
-          prescription.metaboliteConversionFraction,
+          1.0, // Shape-only; relativeMetaboliteLevel scales the normalized peak
         )
       }
     }
@@ -228,10 +228,11 @@ export function accumulateMetaboliteDoses(
     maxConc = Math.max(maxConc, totalConc)
   }
 
-  // Normalize to peak = 1.0
+  // Normalize to peak = relativeMetaboliteLevel
+  const level = prescription.relativeMetaboliteLevel ?? 1.0
   if (maxConc > 0) {
     for (const p of points) {
-      p.concentration /= maxConc
+      p.concentration = (p.concentration / maxConc) * level
     }
   }
 
@@ -283,7 +284,7 @@ export function getGraphData(
     })
 
     // Metabolite (if both fields present)
-    if (rx.metaboliteLife && rx.metaboliteConversionFraction !== undefined && rx.metaboliteConversionFraction !== null) {
+    if (rx.metaboliteLife && rx.relativeMetaboliteLevel !== undefined && rx.relativeMetaboliteLevel !== null) {
       const metaboliteLabel = rx.metaboliteName
         ? `${rx.name} - ${rx.metaboliteName} (${rx.frequency})`
         : `${rx.name} - Metabolite (${rx.frequency})`

@@ -2,25 +2,23 @@
 
 A Vue 3 + TypeScript application that visualizes medication concentration levels over time. Input prescription details and the app generates accurate line graphs showing peak and trough concentrations across your specified timeframe. Available as a web app or a standalone desktop application via Tauri.
 
+![Pharmacokinetics Grapher desktop app](tauri-desktop-app-featured.jpg)
+
 **Your data stays on your device.** All prescription data is stored locally — in your browser's localStorage when using the web app, or on-disk within the desktop application. Nothing is sent to a server. There are no accounts, no cloud sync, and no telemetry. You own your data completely.
 
-## Current Status
+## Features
 
-**Development Phase:** Feature Implementation (Tasks 1-7 Complete)
-
-### Completed
-- ✅ **Task 1-3**: Core PK calculation engine with multi-dose accumulation
-- ✅ **Task 4**: Multi-dose accumulation calculator with steady-state support
-- ✅ **Task 5**: localStorage prescription storage layer
-- ✅ **Task 6**: PrescriptionForm component with validation and testing
-- ✅ **Task 7**: GraphViewer component with Chart.js integration (22 unit tests)
-
-### In Progress
-- 🔄 **Task 8**: App.vue integration (wiring components together)
-
-### Coming Soon
-- Task 9: PrescriptionList component with comparison mode
-- Enhanced UI/UX features
+- **Pharmacokinetic curve visualization** — one-compartment first-order absorption model with multi-dose accumulation
+- **Prescription management** — create, edit, delete, duplicate, and import prescriptions (JSON)
+- **Multi-drug comparison** — overlay multiple medications on a single graph
+- **PK summary table** — peak time, peak concentration, trough time, and trough concentration for each dose
+- **Auto-extending timeframe** — intelligent graph duration based on half-lives (24–2520 hours), with manual override
+- **Clock time X-axis** — toggle between elapsed hours and wall-clock time (HH:MM) display
+- **Downloadable graphs** — export as PNG images
+- **Dark mode** — full dark mode support with WCAG AA contrast compliance
+- **Keyboard-accessible navigation** — tab-based navigation with aria-labels
+- **Desktop app** — native cross-platform builds via Tauri v2 (macOS, Windows, Linux)
+- **Privacy-first** — zero network requests, no accounts, no telemetry
 
 ## Prerequisites
 
@@ -32,6 +30,8 @@ Check your versions:
 node --version
 npm --version
 ```
+
+For desktop builds, you also need the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for your platform.
 
 ## Installation
 
@@ -48,65 +48,52 @@ npm install
 
 ## Running the Application
 
-### Development Server
+### Web (Development Server)
 
-Start the dev server (opens on http://localhost:5173):
 ```bash
 npm run dev
 ```
 
-The app will hot-reload as you make changes. Open your browser and navigate to the URL shown in the terminal.
+Opens on http://localhost:5173 with hot-reload.
 
-### Production Build
+### Web (Production Build)
 
-Build for production:
 ```bash
 npm run build
+npm run preview    # Preview locally
 ```
 
-Preview the production build locally:
+### Desktop (Tauri)
+
 ```bash
-npm run preview
+npm run tauri:dev              # Development with hot-reload
+npm run tauri:build            # Production build for current platform
+npm run tauri:build:mac        # macOS universal binary
+npm run tauri:build:windows    # Windows (MSI + NSIS)
+npm run tauri:build:linux      # Linux (deb + AppImage)
 ```
 
 ## Testing & Quality Checks
 
-### Run All Tests
+724 passing tests across 17 test files.
+
 ```bash
-npm run test:unit
+npm run test:unit                # Run all tests
+npm run test:watch               # Watch mode for development
+npm run test:unit -- path/to/test.spec.ts   # Run a specific test file
+npm run type-check               # TypeScript type checking
+npm run lint                     # ESLint (oxlint) + Prettier checks
+npm run format                   # Format with Prettier
 ```
 
-### Watch Mode (for development)
-```bash
-npm run test:watch
-```
-
-### Run Specific Test File
-```bash
-npm run test:unit -- src/components/__tests__/PrescriptionForm.spec.ts
-```
-
-### Type Checking
-```bash
-npm run type-check
-```
-
-### Linting & Code Formatting
-```bash
-npm run lint        # Check for issues
-npm run lint:fix    # Auto-fix issues
-npm run format      # Format with Prettier
-```
-
-### Full Quality Check
-Run all checks before committing:
+Full quality check before committing:
 ```bash
 npm run test:unit && npm run type-check && npm run lint
 ```
 
 ## How to Use
 
-1. **Open the app** at http://localhost:5173
+1. **Open the app** in your browser or launch the desktop application
 2. **Enter prescription details**:
    - Drug name (e.g., "Ibuprofen", "Amoxicillin")
    - Dose per administration (in mg or units)
@@ -115,46 +102,55 @@ npm run test:unit && npm run type-check && npm run lint
    - Half-life (from pharmacy insert)
    - Time to peak absorption (Tmax, from insert)
    - Absorption time (uptake)
-
-3. **View the graph**: The app displays your medication's concentration curve over time, showing:
-   - Peak concentration points (highest levels)
-   - Trough concentration points (lowest levels)
+3. **View the graph** showing:
+   - Peak and trough concentration points
    - Accumulation over multiple doses
    - Normalized relative concentration (0–1 scale)
-
-4. **Save prescriptions**: Your entries are stored locally on your device and persist across sessions. In the browser, data lives in localStorage. In the desktop app, data is stored on-disk. No data ever leaves your machine.
+   - PK summary table with per-dose milestones
+4. **Save and compare**: Save prescriptions locally and overlay multiple drugs on the same graph
+5. **Export**: Download graphs as PNG images
 
 ## Project Structure
 
 ```
 src/
-├── core/                          # Calculation engine (no UI dependencies)
+├── core/                            # Calculation engine (no UI dependencies)
 │   ├── calculations/
-│   │   ├── pkCalculator.ts        # Core pharmacokinetics math
-│   │   └── multiDoseProfile.ts    # Multi-dose accumulation
+│   │   ├── pkCalculator.ts          # Core pharmacokinetics math
+│   │   ├── multiDose.ts             # Multi-dose accumulation
+│   │   └── pkMilestones.ts          # Peak/trough milestone detection
 │   ├── models/
-│   │   └── prescription.ts        # TypeScript types and validation
-│   └── storage/
-│       └── prescriptionStorage.ts # localStorage wrapper
+│   │   ├── prescription.ts          # TypeScript types and validation
+│   │   └── pkSummary.ts             # Summary table data types
+│   ├── storage/
+│   │   └── prescriptionStorage.ts   # localStorage wrapper
+│   ├── export/
+│   │   └── imageExport.ts           # PNG export logic
+│   └── utils/
+│       └── timeFormat.ts            # Clock time formatting utilities
 ├── components/
-│   ├── PrescriptionForm.vue       # Input form for new prescriptions
-│   ├── GraphViewer.vue            # Chart.js visualization
-│   ├── __tests__/                 # Component tests (Vitest + Vue Test Utils)
-│   └── ...
-├── App.vue                        # Main application component
-└── main.ts                        # Entry point
+│   ├── PrescriptionForm.vue         # Input form with validation
+│   ├── GraphViewer.vue              # Chart.js visualization
+│   ├── PrescriptionList.vue         # Saved prescriptions with CRUD + compare
+│   ├── PkSummaryTable.vue           # Per-dose peak/trough table
+│   ├── ImportPrescriptions.vue      # JSON import modal
+│   └── __tests__/                   # Component tests (Vitest + Vue Test Utils)
+├── App.vue                          # Main application (tab navigation, state)
+└── main.ts                          # Entry point
 ```
 
 ## Technology Stack
 
-- **Framework**: Vue 3 (Composition API)
-- **Language**: TypeScript (strict mode)
-- **Build Tool**: Vite
-- **Charting**: Chart.js 4.x (for accurate scientific visualization)
-- **Testing**: Vitest + Vue Test Utils
-- **Linting**: ESLint (oxlint) + Prettier
-- **Storage**: Local-only (browser localStorage for web; on-disk for desktop). No server, no accounts, no telemetry.
-- **Desktop**: Tauri v2 (lightweight native wrapper for macOS/Windows/Linux)
+| Layer | Technology |
+|-------|-----------|
+| Framework | Vue 3 (Composition API) |
+| Language | TypeScript (strict mode) |
+| Build | Vite |
+| Charting | Chart.js 4.x + chartjs-plugin-a11y-legend |
+| Testing | Vitest + Vue Test Utils |
+| Linting | ESLint + oxlint + Prettier |
+| Storage | Browser localStorage (web) / on-disk (desktop) |
+| Desktop | Tauri v2 |
 
 ## Pharmacokinetics Model
 
@@ -165,21 +161,17 @@ C(t) = Dose × [ka/(ka - ke)] × (e^(-ke×t) - e^(-ka×t))
 ```
 
 Where:
-- `ka` = absorption rate constant (derived from uptake)
+- `ka` = absorption rate constant (derived from uptake time)
 - `ke` = elimination rate constant (derived from half-life)
 - `t` = time since dose
 
-**Key Features**:
-- Accurate multi-dose accumulation
-- Normalized relative concentration curves (peak = 1.0)
-- Handles steady-state patterns
-- Special fallback for near-equal ka/ke cases
+Multi-dose accumulation sums contributions from each scheduled dose, then normalizes the total curve so the highest concentration point = 1.0. Steady-state patterns emerge after approximately 5 half-lives.
 
-**Important**: This app visualizes approximate concentration curves for **educational and visualization purposes only**. It is not for medical dosing decisions. Actual drug levels vary by individual and require consultation with healthcare providers.
+A fallback formula (`C(t) = Dose × ka × t × e^(-ke×t)`) is used when ka and ke are nearly equal (`|ka - ke| < 0.001`), avoiding numerical instability.
+
+**Important**: This app visualizes approximate concentration curves for **educational and visualization purposes only**. It is not for medical dosing decisions.
 
 ## Development Workflow
-
-### Making Changes
 
 1. **Write tests first** (TDD approach):
    ```bash
@@ -198,20 +190,10 @@ Where:
    npm run dev
    ```
 
-### Adding a New Feature
-
-Example: Adding a new dosing frequency
-
-1. Update types in `src/core/models/prescription.ts`
-2. Write tests in relevant `__tests__/` file
-3. Implement logic in `src/core/calculations/`
-4. Update UI component in `src/components/`
-5. Run full test suite and quality checks
-
 ## Troubleshooting
 
 ### Port Already in Use
-If http://localhost:5173 is already in use, Vite will try the next port (5174, 5175, etc.). Check the terminal output for the actual URL.
+Vite will try the next available port (5174, 5175, etc.). Check the terminal output for the actual URL.
 
 ### Node Version Issues
 Ensure you're using Node ^20.19.0 or >=22.12.0:
@@ -226,12 +208,6 @@ rm -rf node_modules package-lock.json
 npm install
 ```
 
-### Type Errors After Pulling Changes
-Type definitions may need rebuilding:
-```bash
-npm run type-check
-```
-
 ### Tests Failing
 Ensure all dependencies are installed and up-to-date:
 ```bash
@@ -241,8 +217,6 @@ npm run test:unit
 
 ## Contributing
 
-When contributing, please follow the development workflow:
-
 1. Create a feature branch from `main`
 2. Implement with tests (TDD)
 3. Ensure all checks pass:
@@ -250,10 +224,6 @@ When contributing, please follow the development workflow:
    npm run test:unit && npm run type-check && npm run lint
    ```
 4. Create a pull request with a clear description
-
-## License
-
-This project is open source and available for educational purposes.
 
 ## Privacy & Data Storage
 
@@ -271,11 +241,15 @@ All data created in Pharmacokinetics Grapher stays on your device:
 
 ## Educational Disclaimer
 
-⚠️ **This app is for visualization and educational purposes only.**
+**This app is for visualization and educational purposes only.**
 
 This application demonstrates pharmacokinetic principles using simplified models. It is **not intended for medical dosing decisions**. Actual drug concentrations vary significantly based on individual factors (age, weight, liver/kidney function, food interactions, other medications, etc.).
 
 Always follow prescriptions written by licensed healthcare providers and consult with a pharmacist for any medication questions.
+
+## License
+
+This project is open source and available for educational purposes.
 
 ## Acknowledgements
 

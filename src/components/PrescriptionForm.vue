@@ -29,6 +29,7 @@ const peak = ref(props.initial?.peak ?? 2)
 const uptake = ref(props.initial?.uptake ?? 1.5)
 const metaboliteLife = ref<number | undefined>(props.initial?.metaboliteLife)
 const metaboliteConversionFraction = ref<number | undefined>(props.initial?.metaboliteConversionFraction)
+const metaboliteName = ref<string | undefined>(props.initial?.metaboliteName)
 const duration = ref<number | undefined>(props.initial?.duration ?? 7)
 const durationUnit = ref<DurationUnit>(props.initial?.durationUnit ?? 'days')
 
@@ -47,6 +48,7 @@ watch(
       uptake.value = 1.5
       metaboliteLife.value = undefined
       metaboliteConversionFraction.value = undefined
+      metaboliteName.value = undefined
       duration.value = 7
       durationUnit.value = 'days'
     } else {
@@ -60,6 +62,7 @@ watch(
       uptake.value = newInitial.uptake
       metaboliteLife.value = newInitial.metaboliteLife
       metaboliteConversionFraction.value = newInitial.metaboliteConversionFraction
+      metaboliteName.value = newInitial.metaboliteName
       duration.value = newInitial.duration
       durationUnit.value = newInitial.durationUnit ?? 'days'
     }
@@ -107,6 +110,9 @@ const prescription = computed<Prescription>(() => ({
     : {}),
   ...(metaboliteConversionFraction.value !== undefined && !isNaN(metaboliteConversionFraction.value)
     ? { metaboliteConversionFraction: metaboliteConversionFraction.value }
+    : {}),
+  ...(metaboliteName.value !== undefined && metaboliteName.value.trim() !== ''
+    ? { metaboliteName: metaboliteName.value }
     : {}),
   ...(duration.value !== undefined && !isNaN(duration.value)
     ? { duration: duration.value, durationUnit: durationUnit.value }
@@ -268,6 +274,21 @@ function handleImportSuccess(count: number) {
         <small id="hint-metabolite-fm" class="field-hint">
           Optional. Fraction of parent drug converted to metabolite (0.0 - 1.0).
           Both half-life and fraction required for metabolite visualization.
+        </small>
+      </div>
+
+      <!-- Metabolite Name (optional) -->
+      <div class="form-field">
+        <label for="rx-metabolite-name">Metabolite Name (optional)</label>
+        <input
+          id="rx-metabolite-name"
+          v-model="metaboliteName"
+          type="text"
+          maxlength="100"
+          aria-describedby="hint-metabolite-name"
+        />
+        <small id="hint-metabolite-name" class="field-hint">
+          Optional. Name of the active metabolite (e.g., N-desmethylsertraline). Used in graph legend.
         </small>
       </div>
 

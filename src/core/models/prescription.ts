@@ -22,6 +22,7 @@ export interface Prescription {
   halfLife: number
   metaboliteLife?: number
   metaboliteConversionFraction?: number
+  metaboliteName?: string
   peak: number
   uptake: number
   duration?: number
@@ -117,6 +118,10 @@ export const VALIDATION_RULES = {
     required: false,
     min: 0.0,
     max: 1.0,
+  },
+  metaboliteName: {
+    required: false,
+    maxLength: 100,
   },
   duration: {
     required: false,
@@ -341,6 +346,29 @@ function validateMetaboliteConversionFraction(
   return errors
 }
 
+function validateMetaboliteName(
+  metaboliteName: string | undefined,
+): string[] {
+  const errors: string[] = []
+
+  if (metaboliteName === undefined || metaboliteName === null) {
+    return errors
+  }
+
+  if (typeof metaboliteName !== 'string') {
+    errors.push('Metabolite name must be a string when provided')
+    return errors
+  }
+
+  if (metaboliteName.length > VALIDATION_RULES.metaboliteName.maxLength) {
+    errors.push(
+      `Metabolite name must be ${VALIDATION_RULES.metaboliteName.maxLength} characters or fewer`,
+    )
+  }
+
+  return errors
+}
+
 function validateDuration(
   duration: number | undefined,
   durationUnit: DurationUnit | undefined,
@@ -469,6 +497,7 @@ export function validatePrescription(rx: Prescription): ValidationResult {
     ...validateUptake(rx.uptake),
     ...validateMetaboliteLife(rx.metaboliteLife),
     ...validateMetaboliteConversionFraction(rx.metaboliteConversionFraction),
+    ...validateMetaboliteName(rx.metaboliteName),
     ...validateDuration(rx.duration, rx.durationUnit),
   ]
 

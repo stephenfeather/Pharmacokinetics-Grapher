@@ -284,8 +284,11 @@ export function getGraphData(
 
     // Metabolite (if both fields present)
     if (rx.metaboliteLife && rx.metaboliteConversionFraction !== undefined && rx.metaboliteConversionFraction !== null) {
+      const metaboliteLabel = rx.metaboliteName
+        ? `${rx.name} - ${rx.metaboliteName} (${rx.frequency})`
+        : `${rx.name} - Metabolite (${rx.frequency})`
       datasets.push({
-        label: `${rx.name} - Metabolite (${rx.frequency})`,
+        label: metaboliteLabel,
         data: accumulateMetaboliteDoses(rx, startHours, effectiveEndHours),
         isMetabolite: true,
       })

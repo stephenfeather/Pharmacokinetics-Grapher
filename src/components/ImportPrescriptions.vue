@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import type { Prescription } from '@/core/models/prescription'
 import { validatePrescription } from '@/core/models/prescription'
 import { savePrescription } from '@/core/storage/prescriptionStorage'
+import { transformImportedPrescription } from '@/core/utils/importTransform'
 import { logWarn, logError } from '@/core/utils/logger'
 
 const emit = defineEmits<{
@@ -38,7 +38,8 @@ function handleImport() {
 
   try {
     const data = JSON.parse(jsonInput.value)
-    const prescriptions: Prescription[] = Array.isArray(data)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const prescriptions: any[] = Array.isArray(data)
       ? data
       : data.prescriptions || []
 
@@ -48,7 +49,8 @@ function handleImport() {
       return
     }
 
-    prescriptions.forEach((rx, index) => {
+    prescriptions.forEach((rawRx, index) => {
+      const rx = transformImportedPrescription(rawRx)
       const validation = validatePrescription(rx)
       if (validation.valid) {
         try {
@@ -119,7 +121,11 @@ function handleClose() {
       "times": ["09:00", "21:00"],
       "halfLife": 6,
       "peak": 2,
-      "uptake": 1.5
+      "uptake": 1.5,
+      "metaboliteHalfLife": {
+        "name": "Metabolite Name",
+        "halfLife": 12
+      }
     }
   ]
 }</code></pre>

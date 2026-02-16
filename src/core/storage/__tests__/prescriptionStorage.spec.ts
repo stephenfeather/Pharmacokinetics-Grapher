@@ -36,7 +36,7 @@ import {
   duplicatePrescription,
   clearAllPrescriptions,
   getStorageUsage,
-} from '../prescriptionStorage'
+} from '../index'
 import type { Prescription } from '../../models/prescription'
 import {
   SINGLE_DOSE_FIXTURE,

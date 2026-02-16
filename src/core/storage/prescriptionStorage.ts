@@ -124,6 +124,23 @@ export function updatePrescription(rx: Prescription): boolean {
   return true
 }
 
+/**
+ * Replace entire prescriptions array (for reorder operations).
+ * Persists the given order to localStorage.
+ * @param prescriptions - New ordered array
+ * @throws Re-throws after logging if localStorage write fails (e.g. quota exceeded)
+ */
+export function savePrescriptionOrder(prescriptions: Prescription[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(prescriptions))
+  } catch (e) {
+    logError('prescriptionStorage.savePrescriptionOrder', 'Failed to persist order', {
+      error: e instanceof Error ? e.message : String(e),
+    })
+    throw e
+  }
+}
+
 // ─── Delete and Duplicate Operations ───
 
 /**

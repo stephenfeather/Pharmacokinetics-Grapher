@@ -12,7 +12,10 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      'vuedraggable-es': fileURLToPath(
+        new URL('./node_modules/vuedraggable-es/dist/index.es.js', import.meta.url),
+      ),
     },
   },
   clearScreen: false,

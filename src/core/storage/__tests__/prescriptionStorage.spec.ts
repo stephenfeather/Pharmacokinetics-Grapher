@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 
 // Mock localStorage before importing the storage module
 const mockStorage: Record<string, string> = {}
@@ -30,6 +30,7 @@ import {
   getAllPrescriptions,
   getPrescription,
   savePrescription,
+  savePrescriptionOrder,
   updatePrescription,
   deletePrescription,
   duplicatePrescription,
@@ -269,6 +270,51 @@ describe('prescriptionStorage', () => {
       expect(copy?.halfLife).toBe(original.halfLife)
       expect(copy?.peak).toBe(original.peak)
       expect(copy?.uptake).toBe(original.uptake)
+    })
+  })
+
+  describe('savePrescriptionOrder', () => {
+    it('persists new order to localStorage', () => {
+      const saved1 = savePrescription(SINGLE_DOSE_FIXTURE)
+      const saved2 = savePrescription(BID_MULTI_DOSE_FIXTURE)
+      const saved3 = savePrescription(IBUPROFEN_FIXTURE)
+
+      const reordered = [saved3, saved1, saved2]
+      savePrescriptionOrder(reordered)
+
+      const stored = getAllPrescriptions()
+      expect(stored).toHaveLength(3)
+      expect(stored[0]!.id).toBe(saved3.id)
+      expect(stored[1]!.id).toBe(saved1.id)
+      expect(stored[2]!.id).toBe(saved2.id)
+    })
+
+    it('works with empty array', () => {
+      savePrescription(SINGLE_DOSE_FIXTURE)
+      savePrescriptionOrder([])
+
+      expect(getAllPrescriptions()).toEqual([])
+    })
+
+    it('throws and logs when localStorage setItem fails', async () => {
+      const logger = await import('../../utils/logger')
+      const logErrorSpy = vi.spyOn(logger, 'logError')
+      const originalSetItem = localStorage.setItem
+      ;(localStorage as MockStorage).setItem = () => {
+        throw new DOMException('QuotaExceededError', 'QuotaExceededError')
+      }
+      try {
+        const prescriptions = [{ ...SINGLE_DOSE_FIXTURE, id: 'rx-order-fail-test' }]
+        expect(() => savePrescriptionOrder(prescriptions)).toThrow(DOMException)
+        expect(logErrorSpy).toHaveBeenCalledWith(
+          'prescriptionStorage.savePrescriptionOrder',
+          'Failed to persist order',
+          expect.objectContaining({ error: expect.any(String) }),
+        )
+      } finally {
+        ;(localStorage as MockStorage).setItem = originalSetItem
+        logErrorSpy.mockRestore()
+      }
     })
   })
 

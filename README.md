@@ -18,6 +18,7 @@ A Vue 3 + TypeScript application that visualizes medication concentration levels
 - **Dark mode** — full dark mode support with WCAG AA contrast compliance
 - **Keyboard-accessible navigation** — tab-based navigation with aria-labels
 - **Desktop app** — native cross-platform builds via Tauri v2 (macOS, Windows, Linux)
+- **Metabolite visualization** — optional display of active metabolite concentration curves (work in progress, parameters being refined)
 - **Privacy-first** — zero network requests, no accounts, no telemetry
 
 ## Prerequisites
@@ -168,6 +169,10 @@ Where:
 Multi-dose accumulation sums contributions from each scheduled dose, then normalizes the total curve so the highest concentration point = 1.0. Steady-state patterns emerge after approximately 5 half-lives.
 
 A fallback formula (`C(t) = Dose × ka × t × e^(-ke×t)`) is used when ka and ke are nearly equal (`|ka - ke| < 0.001`), avoiding numerical instability.
+
+### Metabolite Curves (Work in Progress)
+
+For drugs with active metabolites, the app supports an optional sequential metabolism model using a one-compartment parent-to-metabolite conversion. Metabolite curves are displayed as dashed lines alongside the parent drug curve. This feature is **actively being developed** — metabolite parameters (conversion fraction, elimination half-life) and their visualization are still being refined and may change between releases.
 
 **Important**: This app visualizes approximate concentration curves for **educational and visualization purposes only**. It is not for medical dosing decisions.
 

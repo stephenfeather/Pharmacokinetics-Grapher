@@ -197,7 +197,7 @@ function handleImportSuccess(count: number) {
           type="number"
           min="0.1"
           max="240"
-          step="0.1"
+          step="0.01"
           aria-describedby="hint-halflife"
         />
         <small id="hint-halflife" class="field-hint">Range: 0.1 - 240 hours</small>
@@ -212,7 +212,7 @@ function handleImportSuccess(count: number) {
           type="number"
           min="0.1"
           max="48"
-          step="0.1"
+          step="0.01"
           aria-describedby="hint-peak"
         />
         <small id="hint-peak" class="field-hint">Range: 0.1 - 48 hours</small>
@@ -227,7 +227,7 @@ function handleImportSuccess(count: number) {
           type="number"
           min="0.1"
           max="24"
-          step="0.1"
+          step="0.01"
           aria-describedby="hint-uptake"
         />
         <small id="hint-uptake" class="field-hint">Range: 0.1 - 24 hours</small>
@@ -242,7 +242,7 @@ function handleImportSuccess(count: number) {
           type="number"
           min="0.1"
           max="1000"
-          step="0.1"
+          step="0.01"
           aria-describedby="hint-metabolite"
         />
         <small id="hint-metabolite" class="field-hint"
@@ -279,7 +279,7 @@ function handleImportSuccess(count: number) {
             v-model.number="duration"
             type="number"
             min="0.1"
-            step="0.1"
+            step="0.01"
             aria-describedby="hint-duration"
           />
           <small id="hint-duration" class="field-hint">

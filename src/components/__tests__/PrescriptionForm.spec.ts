@@ -60,6 +60,7 @@ describe('PrescriptionForm', () => {
       const peak = wrapper.find('input#rx-peak')
       expect(peak.attributes('min')).toBe('0.1')
       expect(peak.attributes('max')).toBe('48')
+      expect(peak.attributes('step')).toBe('0.01')
 
       const uptake = wrapper.find('input#rx-uptake')
       expect(uptake.attributes('min')).toBe('0.1')

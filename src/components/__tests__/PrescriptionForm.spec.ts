@@ -56,6 +56,7 @@ describe('PrescriptionForm', () => {
       const halfLife = wrapper.find('input#rx-halflife')
       expect(halfLife.attributes('min')).toBe('0.1')
       expect(halfLife.attributes('max')).toBe('240')
+      expect(halfLife.attributes('step')).toBe('0.01')
 
       const peak = wrapper.find('input#rx-peak')
       expect(peak.attributes('min')).toBe('0.1')
@@ -65,6 +66,16 @@ describe('PrescriptionForm', () => {
       const uptake = wrapper.find('input#rx-uptake')
       expect(uptake.attributes('min')).toBe('0.1')
       expect(uptake.attributes('max')).toBe('24')
+      expect(uptake.attributes('step')).toBe('0.01')
+
+      const metabolite = wrapper.find('input#rx-metabolite')
+      expect(metabolite.attributes('min')).toBe('0.1')
+      expect(metabolite.attributes('max')).toBe('1000')
+      expect(metabolite.attributes('step')).toBe('0.01')
+
+      const duration = wrapper.find('input#rx-duration')
+      expect(duration.attributes('min')).toBe('0.1')
+      expect(duration.attributes('step')).toBe('0.01')
     })
 
     it('renders educational disclaimer text', () => {

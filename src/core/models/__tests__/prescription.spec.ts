@@ -37,8 +37,8 @@ describe('Prescription Models', () => {
 
   describe('FrequencyLabel type', () => {
     it('accepts all valid frequency labels', () => {
-      const labels: FrequencyLabel[] = ['once', 'bid', 'tid', 'qid', 'q6h', 'q8h', 'q12h', 'custom']
-      expect(labels).toHaveLength(8)
+      const labels: FrequencyLabel[] = ['once', 'qd', 'bid', 'tid', 'qid', 'q6h', 'q8h', 'q12h', 'custom']
+      expect(labels).toHaveLength(9)
     })
   })
 
@@ -101,6 +101,10 @@ describe('Prescription Models', () => {
       expect(FREQUENCY_MAP.once).toBe(1)
     })
 
+    it('maps qd to 1', () => {
+      expect(FREQUENCY_MAP.qd).toBe(1)
+    })
+
     it('maps bid to 2', () => {
       expect(FREQUENCY_MAP.bid).toBe(2)
     })
@@ -129,8 +133,8 @@ describe('Prescription Models', () => {
       expect(FREQUENCY_MAP.custom).toBeNull()
     })
 
-    it('has exactly 8 entries', () => {
-      expect(Object.keys(FREQUENCY_MAP)).toHaveLength(8)
+    it('has exactly 9 entries', () => {
+      expect(Object.keys(FREQUENCY_MAP)).toHaveLength(9)
     })
   })
 
@@ -151,9 +155,9 @@ describe('Prescription Models', () => {
       })
     })
 
-    it('defines frequency rules with all 8 allowed values', () => {
+    it('defines frequency rules with all 9 allowed values', () => {
       expect(VALIDATION_RULES.frequency.allowedValues).toEqual(
-        ['once', 'bid', 'tid', 'qid', 'q6h', 'q8h', 'q12h', 'custom'],
+        ['once', 'qd', 'bid', 'tid', 'qid', 'q6h', 'q8h', 'q12h', 'custom'],
       )
     })
 
@@ -259,6 +263,15 @@ describe('Prescription Models', () => {
         expect(result.errors).toEqual([])
       })
 
+      it('passes with frequency qd and 1 time', () => {
+        const result = validatePrescription(makeValid({
+          frequency: 'qd',
+          times: ['09:00'],
+        }))
+        expect(result.valid).toBe(true)
+        expect(result.errors).toEqual([])
+      })
+
       it('passes with frequency custom and variable time counts', () => {
         for (const times of [['08:00'], ['08:00', '12:00', '16:00', '20:00', '23:00']]) {
           const result = validatePrescription(makeValid({
@@ -297,6 +310,7 @@ describe('Prescription Models', () => {
       it('passes with all standard frequency types', () => {
         const frequencyCases: Array<{ frequency: FrequencyLabel; times: string[] }> = [
           { frequency: 'once', times: ['09:00'] },
+          { frequency: 'qd', times: ['09:00'] },
           { frequency: 'bid', times: ['09:00', '21:00'] },
           { frequency: 'tid', times: ['08:00', '14:00', '20:00'] },
           { frequency: 'qid', times: ['06:00', '12:00', '18:00', '23:00'] },
@@ -403,8 +417,8 @@ describe('Prescription Models', () => {
         expect(result.errors.some((e) => /frequency/i.test(e))).toBe(true)
       })
 
-      it('accepts each of the 8 valid frequency labels', () => {
-        const labels: FrequencyLabel[] = ['once', 'bid', 'tid', 'qid', 'q6h', 'q8h', 'q12h', 'custom']
+      it('accepts each of the 9 valid frequency labels', () => {
+        const labels: FrequencyLabel[] = ['once', 'qd', 'bid', 'tid', 'qid', 'q6h', 'q8h', 'q12h', 'custom']
         for (const freq of labels) {
           const times = freq === 'custom'
             ? ['09:00']

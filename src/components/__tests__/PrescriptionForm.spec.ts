@@ -28,13 +28,14 @@ describe('PrescriptionForm', () => {
       expect(wrapper.find('input#rx-metabolite').exists()).toBe(true)
     })
 
-    it('renders frequency select with all 8 options', () => {
+    it('renders frequency select with all 9 options', () => {
       const wrapper = mountForm()
       const options = wrapper.findAll('select#rx-frequency option')
-      expect(options).toHaveLength(8)
+      expect(options).toHaveLength(9)
       const values = options.map((opt) => opt.attributes('value'))
       expect(values).toEqual([
         'once',
+        'qd',
         'bid',
         'tid',
         'qid',

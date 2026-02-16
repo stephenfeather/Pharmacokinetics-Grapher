@@ -2,6 +2,7 @@
 
 export type FrequencyLabel =
   | 'once'
+  | 'qd'
   | 'bid'
   | 'tid'
   | 'qid'
@@ -51,6 +52,7 @@ export interface ValidationResult {
 
 export const FREQUENCY_MAP: Record<FrequencyLabel, number | null> = {
   once: 1,
+  qd: 1,
   bid: 2,
   tid: 3,
   qid: 4,
@@ -75,6 +77,7 @@ export const VALIDATION_RULES = {
     required: true,
     allowedValues: [
       'once',
+      'qd',
       'bid',
       'tid',
       'qid',

@@ -163,6 +163,7 @@ function handleImportSuccess(count: number) {
         <label for="rx-frequency">Dosing Frequency</label>
         <select id="rx-frequency" v-model="frequency">
           <option value="once">Once daily</option>
+          <option value="qd">QD (once daily)</option>
           <option value="bid">BID (twice daily)</option>
           <option value="tid">TID (three times daily)</option>
           <option value="qid">QID (four times daily)</option>

@@ -45,7 +45,7 @@ const graphContainerRef = ref<HTMLElement | null>(null)
 
 const graphDatasets = computed<GraphDataset[]>(() => {
   if (comparePrescriptions.value.length === 0) return []
-  return getGraphData(comparePrescriptions.value, startHours.value, endHours.value)
+  return getGraphData(comparePrescriptions.value, startHours.value, effectiveEndHours.value)
 })
 
 /**
@@ -445,6 +445,46 @@ watch(comparePrescriptions, (newVal) => {
   font-weight: 500;
 }
 
+.tab-navigation {
+  display: flex;
+  gap: 0.5rem;
+  padding: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.tab-navigation button {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  min-height: 44px;
+  min-width: 44px;
+  border: 1px solid #d1d5db;
+  background: white;
+  color: #374151;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab-navigation button:hover:not(.active) {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.tab-navigation button.active {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+.tab-navigation button:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
 .app-main {
   flex: 1;
   padding: 2rem 1rem;
@@ -610,6 +650,28 @@ watch(comparePrescriptions, (newVal) => {
 }
 
 @media (prefers-color-scheme: dark) {
+  .tab-navigation {
+    background: #1f2937;
+    border-bottom-color: #374151;
+  }
+
+  .tab-navigation button {
+    background: #374151;
+    color: #e5e7eb;
+    border-color: #4b5563;
+  }
+
+  .tab-navigation button:hover:not(.active) {
+    background: #4b5563;
+    border-color: #6b7280;
+  }
+
+  .tab-navigation button.active {
+    background: #3b82f6;
+    color: white;
+    border-color: #3b82f6;
+  }
+
   .toggle-label {
     color: #374151;
   }

@@ -35,14 +35,12 @@ export function formatElapsedTime(hours: number): string {
  * @param prescription - Prescription with dose times and PK parameters
  * @param startHours - Simulation start in hours from midnight
  * @param endHours - Simulation end in hours from midnight
- * @param firstDoseTime - Reference time string (HH:MM) for clock time display
  * @returns Sorted array of milestone events
  */
 export function calculateMilestones(
   prescription: Prescription,
   startHours: number,
   endHours: number,
-  firstDoseTime: string,
 ): PkMilestoneEvent[] {
   const events: PkMilestoneEvent[] = []
 
@@ -71,7 +69,7 @@ export function calculateMilestones(
     // 1. Dose administration
     events.push({
       eventType: 'dose',
-      clockTime: formatTimeWithDay(doseTime, firstDoseTime),
+      clockTime: formatTimeWithDay(doseTime, '00:00'),
       elapsedTime: formatElapsedTime(doseOffset),
       elapsedHours: doseTime,
       description: `Dose ${prescription.dose}mg administered — absorption begins`,
@@ -84,7 +82,7 @@ export function calculateMilestones(
     if (absorptionEndTime <= endHours && (nextDoseTime === null || absorptionEndTime < nextDoseTime)) {
       events.push({
         eventType: 'absorption_end',
-        clockTime: formatTimeWithDay(absorptionEndTime, firstDoseTime),
+        clockTime: formatTimeWithDay(absorptionEndTime, '00:00'),
         elapsedTime: formatElapsedTime(absorptionEndTime - startHours),
         elapsedHours: absorptionEndTime,
         description: `Absorption phase complete (${prescription.uptake}h)`,
@@ -98,7 +96,7 @@ export function calculateMilestones(
     if (peakTime <= endHours && (nextDoseTime === null || peakTime < nextDoseTime)) {
       events.push({
         eventType: 'peak',
-        clockTime: formatTimeWithDay(peakTime, firstDoseTime),
+        clockTime: formatTimeWithDay(peakTime, '00:00'),
         elapsedTime: formatElapsedTime(peakTime - startHours),
         elapsedHours: peakTime,
         description: `Peak concentration (Cmax) — Tmax ${prescription.peak}h`,
@@ -125,7 +123,7 @@ export function calculateMilestones(
 
       events.push({
         eventType: 'half_life',
-        clockTime: formatTimeWithDay(decayTime, firstDoseTime),
+        clockTime: formatTimeWithDay(decayTime, '00:00'),
         elapsedTime: formatElapsedTime(decayTime - startHours),
         elapsedHours: decayTime,
         description: `${halfLifeCount} half-life${halfLifeCount > 1 ? 's' : ''} elapsed — ~${percentRemaining}% of peak`,
@@ -145,7 +143,7 @@ export function calculateMilestones(
 
       events.push({
         eventType: 'next_dose',
-        clockTime: formatTimeWithDay(nextDoseTime, firstDoseTime),
+        clockTime: formatTimeWithDay(nextDoseTime, '00:00'),
         elapsedTime: formatElapsedTime(nextDoseTime - startHours),
         elapsedHours: nextDoseTime,
         description: `Next dose due — ~${(remainingAtNextDose * 100).toFixed(1)}% of previous peak remaining`,
@@ -190,18 +188,16 @@ export function calculateMilestones(
  * @param prescriptions - Array of prescriptions to summarize
  * @param startHours - Simulation start in hours from midnight
  * @param endHours - Simulation end in hours from midnight
- * @param firstDoseTime - Reference time string (HH:MM) for clock time display
  * @returns Array of PkSummaryData, one per prescription
  */
 export function generateSummaryData(
   prescriptions: Prescription[],
   startHours: number,
   endHours: number,
-  firstDoseTime: string,
 ): PkSummaryData[] {
   return prescriptions.map((rx) => ({
     prescriptionId: rx.id,
     prescriptionName: rx.name,
-    events: calculateMilestones(rx, startHours, endHours, firstDoseTime),
+    events: calculateMilestones(rx, startHours, endHours),
   }))
 }

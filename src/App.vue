@@ -56,7 +56,6 @@ const summaryData = computed(() => {
     comparePrescriptions.value,
     startHours.value,
     effectiveEndHours.value,
-    firstDoseTime.value,
   )
 })
 

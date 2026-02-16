@@ -22,7 +22,7 @@ describe('calculateMilestones', () => {
   describe('single dose (once daily)', () => {
     it('generates dose, absorption, peak, and half-life events', () => {
       // SINGLE_DOSE_FIXTURE: once at 09:00, halfLife=6, peak=2, uptake=1.5
-      const events = calculateMilestones(SINGLE_DOSE_FIXTURE, 0, 48, '00:00')
+      const events = calculateMilestones(SINGLE_DOSE_FIXTURE, 0, 48)
 
       expect(events.length).toBeGreaterThan(0)
 
@@ -51,7 +51,7 @@ describe('calculateMilestones', () => {
     })
 
     it('half-life milestones show correct decay percentages', () => {
-      const events = calculateMilestones(SINGLE_DOSE_FIXTURE, 0, 48, '00:00')
+      const events = calculateMilestones(SINGLE_DOSE_FIXTURE, 0, 48)
 
       // Filter half-life events from the first dose only (between dose at 9h and next dose at 33h)
       const firstDoseHalfLifes = events.filter(
@@ -75,7 +75,7 @@ describe('calculateMilestones', () => {
     })
 
     it('stops decay milestones below 5% of peak', () => {
-      const events = calculateMilestones(SINGLE_DOSE_FIXTURE, 0, 200, '00:00')
+      const events = calculateMilestones(SINGLE_DOSE_FIXTURE, 0, 200)
       const halfLifeEvents = events.filter((e) => e.eventType === 'half_life')
 
       // Every half-life event should have >= 5% concentration
@@ -91,7 +91,7 @@ describe('calculateMilestones', () => {
 
     it('no next_dose events for once-daily within a single day', () => {
       // Only simulate 24 hours — single dose, no repeat in that window
-      const events = calculateMilestones(SINGLE_DOSE_FIXTURE, 0, 24, '00:00')
+      const events = calculateMilestones(SINGLE_DOSE_FIXTURE, 0, 24)
       const nextDoseEvents = events.filter((e) => e.eventType === 'next_dose')
       // expandDoseTimes for numDays=2 will generate dose at day 0 and day 1
       // But the 2nd dose at hour 33 is beyond endHours=24, so no next_dose event
@@ -102,7 +102,7 @@ describe('calculateMilestones', () => {
   describe('multi-dose (BID)', () => {
     it('generates events for multiple doses', () => {
       // BID: 09:00 and 21:00, halfLife=6
-      const events = calculateMilestones(BID_MULTI_DOSE_FIXTURE, 0, 48, '00:00')
+      const events = calculateMilestones(BID_MULTI_DOSE_FIXTURE, 0, 48)
 
       const doseEvents = events.filter((e) => e.eventType === 'dose')
       // Over 48 hours with bid: 4 doses (day0: 09:00, 21:00; day1: 09:00, 21:00)
@@ -113,7 +113,7 @@ describe('calculateMilestones', () => {
       // BID at 09:00 and 21:00 with halfLife=6
       // After first dose peak at 11:00, half-life milestones at 17:00 (50%), 23:00 (25%)
       // But next dose at 21:00 should cut off the 23:00 milestone
-      const events = calculateMilestones(BID_MULTI_DOSE_FIXTURE, 0, 48, '00:00')
+      const events = calculateMilestones(BID_MULTI_DOSE_FIXTURE, 0, 48)
 
       // Find half-life events between first dose (9) and second dose (21)
       const firstDoseHalfLifes = events.filter(
@@ -128,7 +128,7 @@ describe('calculateMilestones', () => {
   describe('ibuprofen TID schedule', () => {
     it('generates events for TID dosing', () => {
       // IBUPROFEN_FIXTURE: tid at 08:00, 14:00, 20:00, halfLife=2
-      const events = calculateMilestones(IBUPROFEN_FIXTURE, 0, 24, '00:00')
+      const events = calculateMilestones(IBUPROFEN_FIXTURE, 0, 24)
 
       const doseEvents = events.filter((e) => e.eventType === 'dose')
       expect(doseEvents.length).toBeGreaterThanOrEqual(3) // At least 3 doses in 24h
@@ -141,7 +141,7 @@ describe('calculateMilestones', () => {
 
   describe('events are sorted by time', () => {
     it('events are in chronological order', () => {
-      const events = calculateMilestones(BID_MULTI_DOSE_FIXTURE, 0, 48, '00:00')
+      const events = calculateMilestones(BID_MULTI_DOSE_FIXTURE, 0, 48)
 
       for (let i = 1; i < events.length; i++) {
         expect(events[i]!.elapsedHours).toBeGreaterThanOrEqual(events[i - 1]!.elapsedHours)
@@ -150,21 +150,50 @@ describe('calculateMilestones', () => {
   })
 
   describe('clock time formatting', () => {
-    it('uses firstDoseTime as reference for clock times', () => {
-      const events = calculateMilestones(SINGLE_DOSE_FIXTURE, 0, 48, '09:00')
+    it('displays correct clock times for dose events', () => {
+      // SINGLE_DOSE_FIXTURE: once at 09:00
+      const events = calculateMilestones(SINGLE_DOSE_FIXTURE, 0, 48)
 
-      // The dose event should show a clock time
       const doseEvent = events.find((e) => e.eventType === 'dose')
       expect(doseEvent).toBeDefined()
-      expect(doseEvent!.clockTime).toBeDefined()
-      expect(doseEvent!.clockTime.length).toBeGreaterThan(0)
+      // Dose at 09:00 should display as 09:00, not 18:00
+      expect(doseEvent!.clockTime).toBe('09:00')
+    })
+
+    it('displays correct clock times for peak events', () => {
+      // SINGLE_DOSE_FIXTURE: once at 09:00, peak=2h → peak at 11:00
+      const events = calculateMilestones(SINGLE_DOSE_FIXTURE, 0, 48)
+
+      const peakEvent = events.find((e) => e.eventType === 'peak')
+      expect(peakEvent).toBeDefined()
+      expect(peakEvent!.clockTime).toBe('11:00')
+    })
+
+    it('displays correct clock times with non-zero startHours', () => {
+      // Simulating what App.vue does: startHours=9 for a 09:00 dose
+      const events = calculateMilestones(SINGLE_DOSE_FIXTURE, 9, 48)
+
+      const doseEvent = events.find((e) => e.eventType === 'dose')
+      expect(doseEvent).toBeDefined()
+      // Should still be 09:00, not offset by startHours
+      expect(doseEvent!.clockTime).toBe('09:00')
+    })
+
+    it('displays correct clock times for BID doses', () => {
+      // BID_MULTI_DOSE_FIXTURE: 09:00 and 21:00
+      const events = calculateMilestones(BID_MULTI_DOSE_FIXTURE, 0, 48)
+
+      const doseEvents = events.filter((e) => e.eventType === 'dose')
+      expect(doseEvents.length).toBeGreaterThanOrEqual(2)
+      expect(doseEvents[0]!.clockTime).toBe('09:00')
+      expect(doseEvents[1]!.clockTime).toBe('21:00')
     })
   })
 })
 
 describe('generateSummaryData', () => {
   it('generates summary for a single prescription', () => {
-    const result = generateSummaryData([SINGLE_DOSE_FIXTURE], 0, 48, '00:00')
+    const result = generateSummaryData([SINGLE_DOSE_FIXTURE], 0, 48)
 
     expect(result).toHaveLength(1)
     expect(result[0]!.prescriptionName).toBe('Test Drug A')
@@ -176,7 +205,6 @@ describe('generateSummaryData', () => {
       [SINGLE_DOSE_FIXTURE, BID_MULTI_DOSE_FIXTURE],
       0,
       48,
-      '00:00',
     )
 
     expect(result).toHaveLength(2)
@@ -185,18 +213,18 @@ describe('generateSummaryData', () => {
   })
 
   it('returns empty array for no prescriptions', () => {
-    const result = generateSummaryData([], 0, 48, '00:00')
+    const result = generateSummaryData([], 0, 48)
     expect(result).toEqual([])
   })
 
   it('preserves prescription ID when present', () => {
     const rxWithId = { ...SINGLE_DOSE_FIXTURE, id: 'test-123' }
-    const result = generateSummaryData([rxWithId], 0, 48, '00:00')
+    const result = generateSummaryData([rxWithId], 0, 48)
     expect(result[0]!.prescriptionId).toBe('test-123')
   })
 
   it('prescriptionId is undefined when not present', () => {
-    const result = generateSummaryData([SINGLE_DOSE_FIXTURE], 0, 48, '00:00')
+    const result = generateSummaryData([SINGLE_DOSE_FIXTURE], 0, 48)
     expect(result[0]!.prescriptionId).toBeUndefined()
   })
 })

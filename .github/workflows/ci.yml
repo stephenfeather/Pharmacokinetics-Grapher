@@ -72,4 +72,7 @@ jobs:
 
       - name: Warm Rust cache
         working-directory: src-tauri
+        env:
+          # Run without sccache so CI passes when GitHub Actions cache is unavailable
+          RUSTC_WRAPPER: ''
         run: cargo check

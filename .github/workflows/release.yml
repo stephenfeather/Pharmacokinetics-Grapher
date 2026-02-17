@@ -24,6 +24,9 @@ jobs:
 
     permissions:
       contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
 
     env:
       SCCACHE_GHA_ENABLED: 'true'
@@ -68,6 +71,7 @@ jobs:
         run: npm ci
 
       - name: Build and upload Tauri app
+        id: tauri-build
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -76,3 +80,8 @@ jobs:
           releaseDraft: false
           prerelease: ${{ github.event.release.prerelease }}
           args: ${{ matrix.args }}
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: ${{ steps.tauri-build.outputs.artifactPaths }}

@@ -21,6 +21,10 @@ A Vue 3 + TypeScript application that visualizes medication concentration levels
 - **Metabolite visualization** — optional display of active metabolite concentration curves (work in progress, parameters being refined)
 - **Privacy-first** — zero network requests, no accounts, no telemetry
 
+![PK concentration graph showing parent drug and metabolite curves](screenshot-pk-graph.png)
+
+![PK timeline table showing dose, absorption, peak, and decay events](screenshot-pk-timeline.png)
+
 ## Installation
 
 Download the latest release for your platform from the [Releases page](https://github.com/stephenfeather/Pharmacokinetics-Grapher/releases):

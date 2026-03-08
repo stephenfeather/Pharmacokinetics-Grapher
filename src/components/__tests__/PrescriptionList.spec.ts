@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import draggable from 'vuedraggable-es'
 import type { Prescription } from '@/core/models/prescription'
 import PrescriptionList from '../PrescriptionList.vue'
 import { MOCK_PRESCRIPTIONS } from './prescriptionListFixtures'
@@ -9,17 +10,20 @@ vi.mock('@/core/storage/prescriptionStorage', () => ({
   getAllPrescriptions: vi.fn(() => []),
   deletePrescription: vi.fn(() => true),
   duplicatePrescription: vi.fn(),
+  savePrescriptionOrder: vi.fn(),
 }))
 
 import {
   getAllPrescriptions,
   deletePrescription,
   duplicatePrescription,
+  savePrescriptionOrder,
 } from '@/core/storage/prescriptionStorage'
 
 const mockGetAll = vi.mocked(getAllPrescriptions)
 const mockDelete = vi.mocked(deletePrescription)
 const mockDuplicate = vi.mocked(duplicatePrescription)
+const mockSaveOrder = vi.mocked(savePrescriptionOrder)
 
 describe('PrescriptionList', () => {
   beforeEach(() => {
@@ -281,6 +285,51 @@ describe('PrescriptionList', () => {
 
       const compareBar = wrapper.find('[data-testid="compare-bar"]')
       expect(compareBar.exists()).toBe(true)
+    })
+  })
+
+  describe('drag handles', () => {
+    it('renders drag handles for each prescription item', () => {
+      mockGetAll.mockReturnValueOnce(MOCK_PRESCRIPTIONS as Prescription[])
+      const wrapper = mount(PrescriptionList)
+
+      const handles = wrapper.findAll('.drag-handle')
+      expect(handles).toHaveLength(3)
+    })
+
+    it('hides drag handles when compare mode is active', async () => {
+      mockGetAll.mockReturnValueOnce(MOCK_PRESCRIPTIONS as Prescription[])
+      const wrapper = mount(PrescriptionList)
+
+      await wrapper.find('[data-testid="compare-toggle"]').trigger('click')
+
+      const handles = wrapper.findAll('.drag-handle')
+      expect(handles).toHaveLength(0)
+    })
+  })
+
+  describe('drag reorder persistence', () => {
+    it('calls savePrescriptionOrder when drag ends', async () => {
+      mockGetAll.mockReturnValueOnce(MOCK_PRESCRIPTIONS as Prescription[])
+      const wrapper = mount(PrescriptionList)
+
+      const draggableComponent = wrapper.findComponent(draggable)
+      expect(draggableComponent.exists()).toBe(true)
+
+      await draggableComponent.vm.$emit('end')
+
+      expect(mockSaveOrder).toHaveBeenCalledTimes(1)
+      expect(mockSaveOrder).toHaveBeenCalledWith(MOCK_PRESCRIPTIONS)
+    })
+  })
+
+  describe('edge cases', () => {
+    it('renders single prescription with drag handle visible', () => {
+      mockGetAll.mockReturnValueOnce([MOCK_PRESCRIPTIONS[0]] as Prescription[])
+      const wrapper = mount(PrescriptionList)
+
+      const handles = wrapper.findAll('.drag-handle')
+      expect(handles).toHaveLength(1)
     })
   })
 })

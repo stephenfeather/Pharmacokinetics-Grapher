@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import draggable from 'vuedraggable-es'
 import type { Prescription } from '@/core/models/prescription'
 import {
   getAllPrescriptions,
   deletePrescription,
   duplicatePrescription,
+  savePrescriptionOrder,
 } from '@/core/storage/prescriptionStorage'
 
 // Emits
@@ -68,6 +70,10 @@ function exitCompareMode() {
   compareMode.value = false
   selectedIds.value = new Set()
 }
+
+function onDragEnd() {
+  savePrescriptionOrder(prescriptions.value)
+}
 </script>
 
 <template>
@@ -89,60 +95,79 @@ function exitCompareMode() {
       <p>No prescriptions saved yet. Start by creating a new prescription above.</p>
     </div>
 
-    <!-- Prescription list -->
-    <ul v-else class="prescription-list">
-      <li v-for="rx in prescriptions" :key="rx.id" class="prescription-item">
-        <!-- Checkbox (compare mode) -->
-        <input
-          v-if="compareMode"
-          :data-testid="`compare-checkbox-${rx.id}`"
-          type="checkbox"
-          :checked="rx.id ? selectedIds.has(rx.id) : false"
-          @change="rx.id && toggleSelect(rx.id)"
-          class="compare-checkbox"
-        />
+    <!-- Prescription list (draggable when not in compare mode) -->
+    <draggable
+      v-else
+      v-model="prescriptions"
+      item-key="id"
+      handle=".drag-handle"
+      ghost-class="drag-ghost"
+      chosen-class="drag-chosen"
+      :animation="200"
+      tag="ul"
+      class="prescription-list"
+      @end="onDragEnd"
+    >
+      <template #item="{ element: rx }">
+        <li class="prescription-item">
+          <!-- Drag handle (hidden in compare mode) -->
+          <span
+            v-if="!compareMode"
+            class="drag-handle"
+            aria-label="Drag to reorder"
+          >⠿</span>
+          <!-- Checkbox (compare mode) -->
+          <input
+            v-if="compareMode"
+            :data-testid="`compare-checkbox-${rx.id}`"
+            type="checkbox"
+            :checked="rx.id ? selectedIds.has(rx.id) : false"
+            @change="rx.id && toggleSelect(rx.id)"
+            class="compare-checkbox"
+          />
 
-        <!-- Prescription info -->
-        <div class="rx-info">
-          <div class="rx-name">{{ rx.name }}</div>
-          <div class="rx-details">
-            <span class="frequency-badge">{{ rx.frequency }}</span>
-            <span class="rx-dose">{{ rx.dose }}mg</span>
-            <span class="rx-halflife">t1/2={{ rx.halfLife }}h</span>
+          <!-- Prescription info -->
+          <div class="rx-info">
+            <div class="rx-name">{{ rx.name }}</div>
+            <div class="rx-details">
+              <span class="frequency-badge">{{ rx.frequency }}</span>
+              <span class="rx-dose">{{ rx.dose }}mg</span>
+              <span class="rx-halflife">t1/2={{ rx.halfLife }}h</span>
+            </div>
           </div>
-        </div>
 
-        <!-- Action buttons -->
-        <div class="rx-actions">
-          <button
-            :data-testid="`view-btn-${rx.id}`"
-            @click="emit('view', rx)"
-            class="action-btn"
-          >
-            View
-          </button>
-          <button :data-testid="`edit-btn-${rx.id}`" @click="handleEdit(rx)" class="action-btn">
-            Edit
-          </button>
-          <button
-            v-if="rx.id"
-            :data-testid="`duplicate-btn-${rx.id}`"
-            @click="handleDuplicate(rx.id)"
-            class="action-btn"
-          >
-            Duplicate
-          </button>
-          <button
-            v-if="rx.id"
-            :data-testid="`delete-btn-${rx.id}`"
-            @click="handleDelete(rx.id)"
-            class="action-btn danger"
-          >
-            Delete
-          </button>
-        </div>
-      </li>
-    </ul>
+          <!-- Action buttons -->
+          <div class="rx-actions">
+            <button
+              :data-testid="`view-btn-${rx.id}`"
+              @click="emit('view', rx)"
+              class="action-btn"
+            >
+              View
+            </button>
+            <button :data-testid="`edit-btn-${rx.id}`" @click="handleEdit(rx)" class="action-btn">
+              Edit
+            </button>
+            <button
+              v-if="rx.id"
+              :data-testid="`duplicate-btn-${rx.id}`"
+              @click="handleDuplicate(rx.id)"
+              class="action-btn"
+            >
+              Duplicate
+            </button>
+            <button
+              v-if="rx.id"
+              :data-testid="`delete-btn-${rx.id}`"
+              @click="handleDelete(rx.id)"
+              class="action-btn danger"
+            >
+              Delete
+            </button>
+          </div>
+        </li>
+      </template>
+    </draggable>
 
     <!-- Compare bar -->
     <div
@@ -233,6 +258,31 @@ function exitCompareMode() {
 
 .prescription-item:hover {
   background-color: var(--color-border);
+}
+
+.drag-handle {
+  cursor: grab;
+  padding: 0 0.5rem;
+  color: var(--color-text);
+  opacity: 0.5;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.drag-handle:hover {
+  opacity: 1;
+}
+
+.drag-ghost {
+  opacity: 0.4;
+  background-color: var(--color-background-soft);
+  border-style: dashed;
+}
+
+.drag-chosen {
+  background-color: var(--color-background-mute);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  cursor: grabbing;
 }
 
 .compare-checkbox {
@@ -339,6 +389,10 @@ function exitCompareMode() {
 @media (prefers-color-scheme: dark) {
   .prescription-item:hover {
     background-color: var(--color-border);
+  }
+
+  .drag-chosen {
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
   }
 
   .action-btn.danger {

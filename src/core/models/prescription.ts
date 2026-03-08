@@ -6,6 +6,7 @@ export type FrequencyLabel =
   | 'bid'
   | 'tid'
   | 'qid'
+  | 'q3h'
   | 'q6h'
   | 'q8h'
   | 'q12h'
@@ -57,10 +58,24 @@ export const FREQUENCY_MAP: Record<FrequencyLabel, number | null> = {
   bid: 2,
   tid: 3,
   qid: 4,
+  q3h: 8,
   q6h: 4,
   q8h: 3,
   q12h: 2,
   custom: null,
+}
+
+export const DEFAULT_TIMES: Record<FrequencyLabel, string[]> = {
+  once: ['09:00'],
+  qd: ['09:00'],
+  bid: ['09:00', '21:00'],
+  tid: ['09:00', '14:00', '21:00'],
+  qid: ['09:00', '13:00', '17:00', '21:00'],
+  q3h: ['00:00', '03:00', '06:00', '09:00', '12:00', '15:00', '18:00', '21:00'],
+  q6h: ['06:00', '12:00', '18:00', '00:00'],
+  q8h: ['08:00', '16:00', '00:00'],
+  q12h: ['09:00', '21:00'],
+  custom: [],
 }
 
 export const VALIDATION_RULES = {
@@ -82,6 +97,7 @@ export const VALIDATION_RULES = {
       'bid',
       'tid',
       'qid',
+      'q3h',
       'q6h',
       'q8h',
       'q12h',

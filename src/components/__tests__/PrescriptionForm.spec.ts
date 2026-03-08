@@ -28,10 +28,10 @@ describe('PrescriptionForm', () => {
       expect(wrapper.find('input#rx-metabolite').exists()).toBe(true)
     })
 
-    it('renders frequency select with all 9 options', () => {
+    it('renders frequency select with all 10 options', () => {
       const wrapper = mountForm()
       const options = wrapper.findAll('select#rx-frequency option')
-      expect(options).toHaveLength(9)
+      expect(options).toHaveLength(10)
       const values = options.map((opt) => opt.attributes('value'))
       expect(values).toEqual([
         'once',
@@ -39,6 +39,7 @@ describe('PrescriptionForm', () => {
         'bid',
         'tid',
         'qid',
+        'q3h',
         'q6h',
         'q8h',
         'q12h',
@@ -228,35 +229,56 @@ describe('PrescriptionForm', () => {
       expect(afterCount).toBe(beforeCount)
     })
 
-    it('preserves existing time values when shrinking', async () => {
+    it('resets times to defaults when frequency changes from tid to bid', async () => {
       const wrapper = mountForm({ initial: IBUPROFEN_FIXTURE })
       // tid has 3 times: ['08:00', '14:00', '20:00']
       await wrapper.find('select#rx-frequency').setValue('bid')
       await nextTick()
       const timeInputs = wrapper.findAll('input[type="time"]')
       expect(timeInputs).toHaveLength(2)
-      // First two times should be preserved
+      // Should be standard bid defaults, not preserved times
       const input0 = timeInputs[0]?.element as HTMLInputElement | undefined
       const input1 = timeInputs[1]?.element as HTMLInputElement | undefined
-      expect(input0?.value).toBe('08:00')
-      expect(input1?.value).toBe('14:00')
+      expect(input0?.value).toBe('09:00')
+      expect(input1?.value).toBe('21:00')
     })
 
-    it('adds default 12:00 when growing', async () => {
+    it('resets times to defaults when frequency changes from once to tid', async () => {
       const wrapper = mountForm({ initial: SINGLE_DOSE_FIXTURE })
       // once has 1 time
       await wrapper.find('select#rx-frequency').setValue('tid')
       await nextTick()
       const timeInputs = wrapper.findAll('input[type="time"]')
       expect(timeInputs).toHaveLength(3)
-      // Original time preserved
+      // Should be standard tid defaults
       const input0 = timeInputs[0]?.element as HTMLInputElement | undefined
       const input1 = timeInputs[1]?.element as HTMLInputElement | undefined
       const input2 = timeInputs[2]?.element as HTMLInputElement | undefined
       expect(input0?.value).toBe('09:00')
-      // New times should be '12:00'
-      expect(input1?.value).toBe('12:00')
-      expect(input2?.value).toBe('12:00')
+      expect(input1?.value).toBe('14:00')
+      expect(input2?.value).toBe('21:00')
+    })
+
+    it.each([
+      ['once', ['09:00']],
+      ['qd', ['09:00']],
+      ['bid', ['09:00', '21:00']],
+      ['tid', ['09:00', '14:00', '21:00']],
+      ['qid', ['09:00', '13:00', '17:00', '21:00']],
+      ['q3h', ['00:00', '03:00', '06:00', '09:00', '12:00', '15:00', '18:00', '21:00']],
+      ['q6h', ['06:00', '12:00', '18:00', '00:00']],
+      ['q8h', ['08:00', '16:00', '00:00']],
+      ['q12h', ['09:00', '21:00']],
+    ])('sets standard default times for %s frequency', async (freq, expectedTimes) => {
+      const wrapper = mountForm()
+      await wrapper.find('select#rx-frequency').setValue(freq)
+      await nextTick()
+      const timeInputs = wrapper.findAll('input[type="time"]')
+      expect(timeInputs).toHaveLength(expectedTimes.length)
+      for (let i = 0; i < expectedTimes.length; i++) {
+        const input = timeInputs[i]?.element as HTMLInputElement | undefined
+        expect(input?.value).toBe(expectedTimes[i])
+      }
     })
 
     it('shows add/remove buttons only for custom frequency', async () => {

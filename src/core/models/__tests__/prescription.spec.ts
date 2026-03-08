@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import type { Prescription, FrequencyLabel, TimeSeriesPoint, GraphDataset, ValidationResult } from '../prescription'
 import {
   FREQUENCY_MAP,
+  DEFAULT_TIMES,
   VALIDATION_RULES,
   KA_KE_TOLERANCE,
   validatePrescription,
@@ -37,8 +38,8 @@ describe('Prescription Models', () => {
 
   describe('FrequencyLabel type', () => {
     it('accepts all valid frequency labels', () => {
-      const labels: FrequencyLabel[] = ['once', 'qd', 'bid', 'tid', 'qid', 'q6h', 'q8h', 'q12h', 'custom']
-      expect(labels).toHaveLength(9)
+      const labels: FrequencyLabel[] = ['once', 'qd', 'bid', 'tid', 'qid', 'q3h', 'q6h', 'q8h', 'q12h', 'custom']
+      expect(labels).toHaveLength(10)
     })
   })
 
@@ -117,6 +118,10 @@ describe('Prescription Models', () => {
       expect(FREQUENCY_MAP.qid).toBe(4)
     })
 
+    it('maps q3h to 8', () => {
+      expect(FREQUENCY_MAP.q3h).toBe(8)
+    })
+
     it('maps q6h to 4', () => {
       expect(FREQUENCY_MAP.q6h).toBe(4)
     })
@@ -133,8 +138,36 @@ describe('Prescription Models', () => {
       expect(FREQUENCY_MAP.custom).toBeNull()
     })
 
-    it('has exactly 9 entries', () => {
-      expect(Object.keys(FREQUENCY_MAP)).toHaveLength(9)
+    it('has exactly 10 entries', () => {
+      expect(Object.keys(FREQUENCY_MAP)).toHaveLength(10)
+    })
+  })
+
+  describe('DEFAULT_TIMES', () => {
+    it('has entry for each FrequencyLabel', () => {
+      expect(Object.keys(DEFAULT_TIMES)).toHaveLength(10)
+    })
+
+    it.each([
+      ['once', ['09:00']],
+      ['qd', ['09:00']],
+      ['bid', ['09:00', '21:00']],
+      ['tid', ['09:00', '14:00', '21:00']],
+      ['qid', ['09:00', '13:00', '17:00', '21:00']],
+      ['q3h', ['00:00', '03:00', '06:00', '09:00', '12:00', '15:00', '18:00', '21:00']],
+      ['q6h', ['06:00', '12:00', '18:00', '00:00']],
+      ['q8h', ['08:00', '16:00', '00:00']],
+      ['q12h', ['09:00', '21:00']],
+      ['custom', []],
+    ])('DEFAULT_TIMES.%s equals %j', (freq, expected) => {
+      expect(DEFAULT_TIMES[freq as FrequencyLabel]).toEqual(expected)
+    })
+
+    it('each frequency times count matches FREQUENCY_MAP count', () => {
+      for (const freq of Object.keys(FREQUENCY_MAP) as FrequencyLabel[]) {
+        if (freq === 'custom') continue
+        expect(DEFAULT_TIMES[freq].length).toBe(FREQUENCY_MAP[freq])
+      }
     })
   })
 
@@ -155,9 +188,9 @@ describe('Prescription Models', () => {
       })
     })
 
-    it('defines frequency rules with all 9 allowed values', () => {
+    it('defines frequency rules with all 10 allowed values', () => {
       expect(VALIDATION_RULES.frequency.allowedValues).toEqual(
-        ['once', 'qd', 'bid', 'tid', 'qid', 'q6h', 'q8h', 'q12h', 'custom'],
+        ['once', 'qd', 'bid', 'tid', 'qid', 'q3h', 'q6h', 'q8h', 'q12h', 'custom'],
       )
     })
 
@@ -314,6 +347,7 @@ describe('Prescription Models', () => {
           { frequency: 'bid', times: ['09:00', '21:00'] },
           { frequency: 'tid', times: ['08:00', '14:00', '20:00'] },
           { frequency: 'qid', times: ['06:00', '12:00', '18:00', '23:00'] },
+          { frequency: 'q3h', times: ['00:00', '03:00', '06:00', '09:00', '12:00', '15:00', '18:00', '21:00'] },
           { frequency: 'q6h', times: ['00:00', '06:00', '12:00', '18:00'] },
           { frequency: 'q8h', times: ['08:00', '16:00', '00:00'] },
           { frequency: 'q12h', times: ['08:00', '20:00'] },
@@ -417,8 +451,8 @@ describe('Prescription Models', () => {
         expect(result.errors.some((e) => /frequency/i.test(e))).toBe(true)
       })
 
-      it('accepts each of the 9 valid frequency labels', () => {
-        const labels: FrequencyLabel[] = ['once', 'qd', 'bid', 'tid', 'qid', 'q6h', 'q8h', 'q12h', 'custom']
+      it('accepts each of the 10 valid frequency labels', () => {
+        const labels: FrequencyLabel[] = ['once', 'qd', 'bid', 'tid', 'qid', 'q3h', 'q6h', 'q8h', 'q12h', 'custom']
         for (const freq of labels) {
           const times = freq === 'custom'
             ? ['09:00']
@@ -1046,6 +1080,7 @@ describe('Prescription Models', () => {
     it('exports all types and values from index', async () => {
       const indexModule = await import('../index')
       expect(indexModule.FREQUENCY_MAP).toBeDefined()
+      expect(indexModule.DEFAULT_TIMES).toBeDefined()
       expect(indexModule.VALIDATION_RULES).toBeDefined()
       expect(indexModule.KA_KE_TOLERANCE).toBeDefined()
       expect(indexModule.validatePrescription).toBeDefined()

@@ -10,6 +10,7 @@ export type {
 
 export {
   FREQUENCY_MAP,
+  DEFAULT_TIMES,
   VALIDATION_RULES,
   KA_KE_TOLERANCE,
   validatePrescription,

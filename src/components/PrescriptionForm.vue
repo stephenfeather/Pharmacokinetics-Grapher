@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import type { Prescription, FrequencyLabel, DurationUnit, ValidationResult } from '@/core/models/prescription'
-import { FREQUENCY_MAP, validatePrescription } from '@/core/models/prescription'
+import { FREQUENCY_MAP, DEFAULT_TIMES, validatePrescription } from '@/core/models/prescription'
 import ImportPrescriptions from './ImportPrescriptions.vue'
 
 // Props & Emits
@@ -70,19 +70,12 @@ watch(
   { deep: true }
 )
 
-// Phase 2: Watch frequency -> adjust times array
+// Phase 2: Watch frequency -> reset to standardized default times
+// Always replace with defaults (no preservation of custom times)
+// Users who want non-standard timing should use 'custom' frequency
 watch(frequency, (newFreq) => {
-  const expectedCount = FREQUENCY_MAP[newFreq]
-  if (expectedCount === null) return // 'custom' -- leave times alone
-
-  // Grow: add default times
-  while (times.value.length < expectedCount) {
-    times.value.push('12:00')
-  }
-  // Shrink: remove from end
-  while (times.value.length > expectedCount) {
-    times.value.pop()
-  }
+  if (newFreq === 'custom') return
+  times.value = [...DEFAULT_TIMES[newFreq]]
 })
 
 function addTime() {
@@ -173,6 +166,7 @@ function handleImportSuccess(count: number) {
           <option value="bid">BID (twice daily)</option>
           <option value="tid">TID (three times daily)</option>
           <option value="qid">QID (four times daily)</option>
+          <option value="q3h">Q3H (every 3 hours)</option>
           <option value="q6h">Q6H (every 6 hours)</option>
           <option value="q8h">Q8H (every 8 hours)</option>
           <option value="q12h">Q12H (every 12 hours)</option>

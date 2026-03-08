@@ -21,6 +21,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Testing**: Vitest + Vue Test Utils (for unit/component tests)
 - **Linting**: ESLint + Prettier
 - **Package Manager**: npm or pnpm
+- **Task Manager**: task-master-ai
 
 ## Project Setup & Common Commands
 
@@ -50,6 +51,14 @@ npm run type-check  # Type check with TypeScript compiler
 npm run test -- src/components/__tests__/PrescriptionForm.spec.ts
 npm run test -- --grep "prescription"  # Test files matching pattern
 ```
+
+### Task Management
+- mcp__task-master-ai__get_tasks
+- mcp__task-master-ai__get_task
+- mcp__task-master-ai__set_task_status
+- mcp__task-master-ai__add_task
+- mcp__task-master-ai__update
+- mcp__task-master-ai__update_task
 
 ## Architecture & Code Organization
 
@@ -81,7 +90,7 @@ src/
 
 Based on the preplanning notes, a prescription contains:
 ```typescript
-type FrequencyLabel = 'once' | 'bid' | 'tid' | 'qid' | 'q6h' | 'q8h' | 'q12h' | 'custom';
+type FrequencyLabel = 'once' | 'qd' | 'bid' | 'tid' | 'qid' | 'q3h' | 'q6h' | 'q8h' | 'q12h' | 'custom';
 
 interface Prescription {
   id?: string               // Unique identifier for storage
@@ -117,9 +126,11 @@ All prescription fields must be validated before use in calculations:
 ```typescript
 const FREQUENCY_MAP = {
   'once': 1,
+  'qd': 1,        // Once daily
   'bid': 2,       // Twice daily
   'tid': 3,       // Three times daily
   'qid': 4,       // Four times daily
+  'q3h': 8,       // Every 3 hours
   'q6h': 4,       // Every 6 hours
   'q8h': 3,       // Every 8 hours
   'q12h': 2,      // Every 12 hours
@@ -139,7 +150,7 @@ const VALIDATION_RULES = {
   },
   frequency: {
     required: true,
-    allowedValues: ['once', 'bid', 'tid', 'qid', 'q6h', 'q8h', 'q12h', 'custom'],
+    allowedValues: ['once', 'qd', 'bid', 'tid', 'qid', 'q3h', 'q6h', 'q8h', 'q12h', 'custom'],
   },
   times: {
     required: true,

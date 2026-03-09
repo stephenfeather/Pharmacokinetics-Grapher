@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import type { Prescription, FrequencyLabel, DurationUnit, ValidationResult } from '@/core/models/prescription'
-import { FREQUENCY_MAP, DEFAULT_TIMES, validatePrescription } from '@/core/models/prescription'
+import { DEFAULT_TIMES, validatePrescription } from '@/core/models/prescription'
 import ImportPrescriptions from './ImportPrescriptions.vue'
 
 // Props & Emits

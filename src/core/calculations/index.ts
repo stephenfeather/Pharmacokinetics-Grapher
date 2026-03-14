@@ -10,3 +10,5 @@ export {
 export { accumulateDoses, accumulateMetaboliteDoses, getGraphData, getLastDoseTime, calculateTailOffDuration, expandDoseTimes } from './multiDose'
 
 export { calculateMilestones, generateSummaryData, formatElapsedTime } from './pkMilestones'
+
+export { expandScheduleDoses, accumulateScheduleDoses } from './scheduleCalculator'

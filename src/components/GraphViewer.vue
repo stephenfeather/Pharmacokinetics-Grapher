@@ -2,8 +2,10 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { Chart, registerables } from 'chart.js'
 import a11yLegend from 'chartjs-plugin-a11y-legend'
-import type { GraphDataset } from '@/core/models/prescription'
-import { generateFilename, downloadImage } from '@/core/export'
+import type { GraphDataset, Prescription } from '@/core/models/prescription'
+import type { PkSummaryData } from '@/core/models/pkSummary'
+import { generateFilename, downloadImage, generatePdfReport, generatePdfFilename, downloadPdf } from '@/core/export'
+import type { PdfExportData } from '@/core/export'
 import { logWarn, logError } from '@/core/utils/logger'
 import { hoursToClockTime, calculateClockTickStep, formatTimeWithDay } from '@/core/utils/timeFormat'
 
@@ -20,12 +22,16 @@ const props = withDefaults(
     endHours?: number
     xAxisMode?: 'hours' | 'clock'
     firstDoseTime?: string
+    prescriptions?: Prescription[]
+    summaryData?: PkSummaryData[]
   }>(),
   {
     startHours: 0,
     endHours: 48,
     xAxisMode: 'hours',
     firstDoseTime: '00:00',
+    prescriptions: () => [],
+    summaryData: () => [],
   },
 )
 
@@ -358,9 +364,40 @@ function handleDownload(): void {
   }, 1000)
 }
 
+// ---- PDF Export API ----
+
+const isExportingPdf = ref(false)
+
+function handlePdfExport(): void {
+  if (isExportingPdf.value || !chartInstance) return
+  isExportingPdf.value = true
+
+  const chartImageDataUrl = chartInstance.toBase64Image('image/png', 1.0) as string
+  const drugNames = props.datasets.map((ds) => ds.label)
+
+  const pdfData: PdfExportData = {
+    drugNames,
+    prescriptions: props.prescriptions,
+    summaryData: props.summaryData,
+    chartImageDataUrl,
+    timeframeLabel: `${props.startHours}–${props.endHours} hours`,
+  }
+
+  const blob = generatePdfReport(pdfData)
+  if (blob) {
+    const filename = generatePdfFilename(drugNames)
+    downloadPdf(blob, filename)
+  }
+
+  setTimeout(() => {
+    isExportingPdf.value = false
+  }, 1000)
+}
+
 defineExpose({
   getChartInstance,
   exportAsImage,
+  exportAsPdf: handlePdfExport,
 })
 </script>
 
@@ -391,7 +428,18 @@ defineExpose({
         data-testid="download-graph-btn"
         @click="handleDownload"
       >
-        {{ isExporting ? 'Downloading...' : 'Download as PNG' }}
+        {{ isExporting ? 'Downloading...' : 'Download PNG' }}
+      </button>
+      <button
+        type="button"
+        class="download-btn pdf-btn"
+        :disabled="isExportingPdf || !prescriptions.length"
+        :aria-busy="isExportingPdf"
+        aria-label="Export full report as PDF"
+        data-testid="export-pdf-btn"
+        @click="handlePdfExport"
+      >
+        {{ isExportingPdf ? 'Exporting...' : 'Export PDF' }}
       </button>
     </div>
   </div>
@@ -422,6 +470,7 @@ defineExpose({
 .graph-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid #e5e7eb;
@@ -441,6 +490,16 @@ defineExpose({
 
 .download-btn:hover:not(:disabled) {
   background: #3b82f6;
+  color: white;
+}
+
+.pdf-btn {
+  border-color: #059669;
+  color: #059669;
+}
+
+.pdf-btn:hover:not(:disabled) {
+  background: #059669;
   color: white;
 }
 
@@ -482,6 +541,16 @@ defineExpose({
 
   .download-btn:hover:not(:disabled) {
     background: #3b82f6;
+    color: white;
+  }
+
+  .pdf-btn {
+    border-color: #059669;
+    color: #10b981;
+  }
+
+  .pdf-btn:hover:not(:disabled) {
+    background: #059669;
     color: white;
   }
 }

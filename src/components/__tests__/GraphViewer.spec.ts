@@ -358,12 +358,12 @@ describe('GraphViewer', () => {
       expect(wrapper.find('[data-testid="download-graph-btn"]').exists()).toBe(true)
     })
 
-    it('download button text is "Download as PNG"', () => {
+    it('download button text is "Download PNG"', () => {
       const datasets = [
         { label: 'Test', data: [{ time: 0, concentration: 0 }] },
       ]
       const wrapper = mount(GraphViewer, { props: { datasets } })
-      expect(wrapper.find('[data-testid="download-graph-btn"]').text()).toBe('Download as PNG')
+      expect(wrapper.find('[data-testid="download-graph-btn"]').text()).toBe('Download PNG')
     })
 
     it('download button has aria-label', () => {

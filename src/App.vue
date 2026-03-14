@@ -407,6 +407,8 @@ watch(comparePrescriptions, (newVal) => {
           :end-hours="effectiveEndHours"
           :x-axis-mode="xAxisMode"
           :first-dose-time="firstDoseTime"
+          :prescriptions="comparePrescriptions"
+          :summary-data="summaryData"
         />
 
         <div class="graph-controls">

@@ -4,6 +4,7 @@ import type { FrequencyLabel } from '@/core/models/prescription'
 import { DEFAULT_TIMES } from '@/core/models/prescription'
 import type { DosageSchedule, DoseStep, ScheduleDirection } from '@/core/models/dosageSchedule'
 import { validateDosageSchedule, computeStartDays } from '@/core/models/dosageSchedule'
+import { SCHEDULE_PRESETS } from '@/core/data/schedulePresets'
 import draggable from 'vuedraggable-es'
 
 // Props & Emits
@@ -37,6 +38,26 @@ const steps = ref<DoseStep[]>(
         { stepNumber: 2, dose: 50, durationDays: 7, startDay: 7 },
       ],
 )
+
+// Preset selection
+const selectedPresetId = ref('')
+
+function loadPreset() {
+  if (!selectedPresetId.value) return
+  const preset = SCHEDULE_PRESETS.find(p => p.id === selectedPresetId.value)
+  if (!preset) return
+
+  const s = preset.schedule
+  name.value = s.name
+  direction.value = s.direction
+  frequency.value = s.basePrescription.frequency
+  times.value = [...s.basePrescription.times]
+  halfLife.value = s.basePrescription.halfLife
+  uptake.value = s.basePrescription.uptake
+  peak.value = s.basePrescription.peak
+  steps.value = s.steps.map(step => ({ ...step }))
+  selectedPresetId.value = ''
+}
 
 // Watch initial prop -> reset form when editing different schedule
 watch(
@@ -140,6 +161,31 @@ function handleSubmit() {
 <template>
   <div class="schedule-form-container">
     <form @submit.prevent="handleSubmit" class="schedule-form">
+      <!-- Preset Selector -->
+      <div class="preset-selector">
+        <label for="sched-preset">Load Preset</label>
+        <div class="preset-row">
+          <select id="sched-preset" v-model="selectedPresetId">
+            <option value="">Start from scratch</option>
+            <option
+              v-for="preset in SCHEDULE_PRESETS"
+              :key="preset.id"
+              :value="preset.id"
+            >
+              {{ preset.name }} - {{ preset.description }}
+            </option>
+          </select>
+          <button
+            type="button"
+            class="load-preset-btn"
+            :disabled="!selectedPresetId"
+            @click="loadPreset"
+          >
+            Load
+          </button>
+        </div>
+      </div>
+
       <!-- Schedule Name -->
       <div class="form-field">
         <label for="sched-name">Schedule Name</label>
@@ -411,6 +457,58 @@ function handleSubmit() {
   color: var(--vt-c-text-light-2);
   font-size: 0.75rem;
   margin-top: 0.25rem;
+}
+
+/* Preset selector */
+.preset-selector {
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.preset-selector label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.preset-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.preset-row select {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+
+.load-preset-btn {
+  padding: 0.5rem 1rem;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.load-preset-btn:hover:not(:disabled) {
+  background-color: #2563eb;
+}
+
+.load-preset-btn:disabled {
+  background-color: var(--color-border);
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .form-row {

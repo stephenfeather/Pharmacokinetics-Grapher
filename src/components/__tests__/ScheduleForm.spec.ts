@@ -4,6 +4,7 @@ import { nextTick } from 'vue'
 import ScheduleForm from '../ScheduleForm.vue'
 import type { DosageSchedule } from '@/core/models/dosageSchedule'
 import type { Prescription } from '@/core/models/prescription'
+import { SCHEDULE_PRESETS } from '@/core/data/schedulePresets'
 
 function makeBasePrescription(overrides: Partial<Prescription> = {}): Prescription {
   return {
@@ -214,6 +215,76 @@ describe('ScheduleForm', () => {
       const wrapper = mountForm({ initial: schedule })
       await nextTick()
       expect(wrapper.find('.validation-warnings').exists()).toBe(true)
+    })
+  })
+
+  describe('preset selector', () => {
+    it('renders preset dropdown', () => {
+      const wrapper = mountForm()
+      expect(wrapper.find('select#sched-preset').exists()).toBe(true)
+    })
+
+    it('renders all presets as options plus "Start from scratch"', () => {
+      const wrapper = mountForm()
+      const options = wrapper.findAll('select#sched-preset option')
+      expect(options).toHaveLength(SCHEDULE_PRESETS.length + 1)
+    })
+
+    it('renders load button', () => {
+      const wrapper = mountForm()
+      expect(wrapper.find('.load-preset-btn').exists()).toBe(true)
+    })
+
+    it('disables load button when no preset selected', () => {
+      const wrapper = mountForm()
+      const btn = wrapper.find('.load-preset-btn')
+      expect((btn.element as HTMLButtonElement).disabled).toBe(true)
+    })
+
+    it('enables load button when a preset is selected', async () => {
+      const wrapper = mountForm()
+      const select = wrapper.find('select#sched-preset')
+      await select.setValue(SCHEDULE_PRESETS[0]!.id)
+      await nextTick()
+      const btn = wrapper.find('.load-preset-btn')
+      expect((btn.element as HTMLButtonElement).disabled).toBe(false)
+    })
+
+    it('populates form when preset is loaded', async () => {
+      const wrapper = mountForm()
+      const preset = SCHEDULE_PRESETS[0]!
+
+      await wrapper.find('select#sched-preset').setValue(preset.id)
+      await nextTick()
+      await wrapper.find('.load-preset-btn').trigger('click')
+      await nextTick()
+
+      expect((wrapper.find('input#sched-name').element as HTMLInputElement).value).toBe(preset.schedule.name)
+      const stepRows = wrapper.findAll('.step-row')
+      expect(stepRows).toHaveLength(preset.schedule.steps.length)
+    })
+
+    it('resets preset selector after loading', async () => {
+      const wrapper = mountForm()
+      const preset = SCHEDULE_PRESETS[0]!
+
+      await wrapper.find('select#sched-preset').setValue(preset.id)
+      await nextTick()
+      await wrapper.find('.load-preset-btn').trigger('click')
+      await nextTick()
+
+      expect((wrapper.find('select#sched-preset').element as HTMLSelectElement).value).toBe('')
+    })
+
+    it('"Start from scratch" does not change form when load clicked', async () => {
+      const wrapper = mountForm()
+      const nameBefore = (wrapper.find('input#sched-name').element as HTMLInputElement).value
+
+      // selectedPresetId is already '' (Start from scratch), click load
+      await wrapper.find('.load-preset-btn').trigger('click')
+      await nextTick()
+
+      expect((wrapper.find('input#sched-name').element as HTMLInputElement).value).toBe(nameBefore)
     })
   })
 

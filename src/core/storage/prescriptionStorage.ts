@@ -194,6 +194,19 @@ export function clearAllPrescriptions(): void {
 }
 
 /**
+ * Export prescriptions as a pretty-printed JSON string.
+ * @param ids - Optional array of prescription IDs to export. If omitted, exports all.
+ * @returns Pretty-printed JSON string of the selected prescriptions
+ */
+export function exportPrescriptionsAsJson(ids?: string[]): string {
+  const prescriptions = getAllPrescriptions()
+  const toExport = ids
+    ? prescriptions.filter(rx => rx.id && ids.includes(rx.id))
+    : prescriptions
+  return JSON.stringify(toExport, null, 2)
+}
+
+/**
  * Get storage usage information.
  * @returns Object with used bytes and available bytes estimate
  */

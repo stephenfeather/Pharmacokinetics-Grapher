@@ -7,7 +7,9 @@ import {
   deletePrescription,
   duplicatePrescription,
   savePrescriptionOrder,
+  exportPrescriptionsAsJson,
 } from '@/core/storage/prescriptionStorage'
+import ImportPrescriptions from './ImportPrescriptions.vue'
 
 // Emits
 const emit = defineEmits<{
@@ -20,6 +22,7 @@ const emit = defineEmits<{
 const prescriptions = ref<Prescription[]>(getAllPrescriptions())
 const compareMode = ref(false)
 const selectedIds = ref<Set<string>>(new Set())
+const showImportModal = ref(false)
 
 // Computed
 const selectedCount = computed(() => selectedIds.value.size)
@@ -71,6 +74,38 @@ function exitCompareMode() {
   selectedIds.value = new Set()
 }
 
+function handleExport() {
+  const json = exportPrescriptionsAsJson()
+  const blob = new Blob([json], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `prescriptions-${new Date().toISOString().split('T')[0]}.json`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
+function handleExportSelected() {
+  const selectedIdsArray = Array.from(selectedIds.value)
+  const json = exportPrescriptionsAsJson(selectedIdsArray)
+  const blob = new Blob([json], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `prescriptions-${new Date().toISOString().split('T')[0]}.json`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
+function handleImportComplete() {
+  showImportModal.value = false
+  refresh()
+}
+
 function onDragEnd() {
   savePrescriptionOrder(prescriptions.value)
 }
@@ -81,13 +116,32 @@ function onDragEnd() {
     <!-- List header with compare toggle -->
     <div class="list-header">
       <h2>Saved Prescriptions</h2>
-      <button
-        data-testid="compare-toggle"
-        @click="compareMode ? exitCompareMode() : (compareMode = true)"
-        class="compare-toggle-btn"
-      >
-        {{ compareMode ? 'Exit Compare' : 'Compare Mode' }}
-      </button>
+      <div class="header-actions">
+        <button
+          data-testid="export-btn"
+          @click="handleExport"
+          class="action-header-btn"
+          :disabled="prescriptions.length === 0"
+          title="Export all prescriptions as JSON"
+        >
+          Export
+        </button>
+        <button
+          data-testid="import-btn"
+          @click="showImportModal = true"
+          class="action-header-btn"
+          title="Import prescriptions from JSON"
+        >
+          Import
+        </button>
+        <button
+          data-testid="compare-toggle"
+          @click="compareMode ? exitCompareMode() : (compareMode = true)"
+          class="compare-toggle-btn"
+        >
+          {{ compareMode ? 'Exit Compare' : 'Compare Mode' }}
+        </button>
+      </div>
     </div>
 
     <!-- Empty state -->
@@ -178,14 +232,30 @@ function onDragEnd() {
       <span :data-testid="compareMode && selectedCount > 0 ? 'selected-count' : ''">
         {{ selectedCount }} selected
       </span>
-      <button
-        :data-testid="compareMode && selectedCount > 0 ? 'compare-submit' : ''"
-        @click="handleCompare"
-        class="compare-submit-btn"
-      >
-        Compare Selected
-      </button>
+      <div class="compare-bar-actions">
+        <button
+          data-testid="export-selected-btn"
+          @click="handleExportSelected"
+          class="export-selected-btn"
+        >
+          Export Selected
+        </button>
+        <button
+          :data-testid="compareMode && selectedCount > 0 ? 'compare-submit' : ''"
+          @click="handleCompare"
+          class="compare-submit-btn"
+        >
+          Compare Selected
+        </button>
+      </div>
     </div>
+
+    <!-- Import modal -->
+    <ImportPrescriptions
+      v-if="showImportModal"
+      @imported="handleImportComplete"
+      @close="showImportModal = false"
+    />
   </div>
 </template>
 
@@ -208,6 +278,32 @@ function onDragEnd() {
   margin: 0;
   font-size: 1.5rem;
   color: var(--color-text);
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.action-header-btn {
+  padding: 0.5rem 1rem;
+  background-color: var(--color-background-soft);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--color-text);
+  transition: background-color 0.2s ease;
+}
+
+.action-header-btn:hover:not(:disabled) {
+  background-color: var(--color-border);
+}
+
+.action-header-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .compare-toggle-btn {
@@ -368,6 +464,26 @@ function onDragEnd() {
   border-radius: 4px;
   margin-top: 1.5rem;
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.compare-bar-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.export-selected-btn {
+  padding: 0.5rem 1rem;
+  background-color: transparent;
+  color: white;
+  border: 1px solid white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.2s ease;
+}
+
+.export-selected-btn:hover {
+  background-color: rgba(255, 255, 255, 0.15);
 }
 
 .compare-submit-btn {

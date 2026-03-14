@@ -9,6 +9,7 @@ export {
   duplicatePrescription,
   clearAllPrescriptions,
   getStorageUsage,
+  exportPrescriptionsAsJson,
 } from './prescriptionStorage'
 
 // Schedule storage and persistence

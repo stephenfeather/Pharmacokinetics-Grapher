@@ -36,6 +36,7 @@ import {
   duplicatePrescription,
   clearAllPrescriptions,
   getStorageUsage,
+  exportPrescriptionsAsJson,
 } from '../index'
 import type { Prescription } from '../../models/prescription'
 import {
@@ -391,6 +392,57 @@ describe('prescriptionStorage', () => {
       // Clear
       clearAllPrescriptions()
       expect(getAllPrescriptions()).toEqual([])
+    })
+  })
+
+  // ─── Export ───
+
+  describe('exportPrescriptionsAsJson', () => {
+    it('exports all prescriptions as valid JSON string', () => {
+      savePrescription(SINGLE_DOSE_FIXTURE)
+      savePrescription(BID_MULTI_DOSE_FIXTURE)
+      const json = exportPrescriptionsAsJson()
+      const parsed = JSON.parse(json) as Prescription[]
+      expect(parsed).toHaveLength(2)
+    })
+
+    it('exports empty array when no prescriptions exist', () => {
+      const json = exportPrescriptionsAsJson()
+      const parsed = JSON.parse(json) as Prescription[]
+      expect(parsed).toEqual([])
+    })
+
+    it('exports only selected prescriptions when ids provided', () => {
+      const a = savePrescription({ ...SINGLE_DOSE_FIXTURE, name: 'A' })
+      savePrescription({ ...BID_MULTI_DOSE_FIXTURE, name: 'B' })
+      const c = savePrescription({ ...IBUPROFEN_FIXTURE, name: 'C' })
+      const json = exportPrescriptionsAsJson([a.id!, c.id!])
+      const parsed = JSON.parse(json) as Prescription[]
+      expect(parsed).toHaveLength(2)
+      expect(parsed[0]!.name).toBe('A')
+      expect(parsed[1]!.name).toBe('C')
+    })
+
+    it('produces pretty-printed JSON', () => {
+      savePrescription(SINGLE_DOSE_FIXTURE)
+      const json = exportPrescriptionsAsJson()
+      expect(json).toContain('\n')
+      expect(json).toContain('  ')
+    })
+
+    it('round-trips: exported JSON can be parsed and re-saved', () => {
+      const saved = savePrescription({ ...SINGLE_DOSE_FIXTURE, name: 'Round Trip' })
+      const json = exportPrescriptionsAsJson()
+      clearAllPrescriptions()
+      const parsed = JSON.parse(json) as Prescription[]
+      for (const rx of parsed) {
+        savePrescription(rx)
+      }
+      const all = getAllPrescriptions()
+      expect(all).toHaveLength(1)
+      expect(all[0]!.name).toBe('Round Trip')
+      // ID should be new (savePrescription generates new IDs)
+      expect(all[0]!.id).not.toBe(saved.id)
     })
   })
 

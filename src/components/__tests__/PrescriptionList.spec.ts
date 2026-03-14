@@ -11,6 +11,7 @@ vi.mock('@/core/storage/prescriptionStorage', () => ({
   deletePrescription: vi.fn(() => true),
   duplicatePrescription: vi.fn(),
   savePrescriptionOrder: vi.fn(),
+  exportPrescriptionsAsJson: vi.fn(() => '[]'),
 }))
 
 import {
@@ -18,12 +19,14 @@ import {
   deletePrescription,
   duplicatePrescription,
   savePrescriptionOrder,
+  exportPrescriptionsAsJson,
 } from '@/core/storage/prescriptionStorage'
 
 const mockGetAll = vi.mocked(getAllPrescriptions)
 const mockDelete = vi.mocked(deletePrescription)
 const mockDuplicate = vi.mocked(duplicatePrescription)
 const mockSaveOrder = vi.mocked(savePrescriptionOrder)
+const mockExport = vi.mocked(exportPrescriptionsAsJson)
 
 describe('PrescriptionList', () => {
   beforeEach(() => {
@@ -320,6 +323,123 @@ describe('PrescriptionList', () => {
 
       expect(mockSaveOrder).toHaveBeenCalledTimes(1)
       expect(mockSaveOrder).toHaveBeenCalledWith(MOCK_PRESCRIPTIONS)
+    })
+  })
+
+  describe('export button', () => {
+    it('renders export button in header', () => {
+      mockGetAll.mockReturnValueOnce(MOCK_PRESCRIPTIONS as Prescription[])
+      const wrapper = mount(PrescriptionList)
+
+      const exportBtn = wrapper.find('[data-testid="export-btn"]')
+      expect(exportBtn.exists()).toBe(true)
+      expect(exportBtn.text()).toBe('Export')
+    })
+
+    it('export button is disabled when no prescriptions exist', () => {
+      mockGetAll.mockReturnValueOnce([])
+      const wrapper = mount(PrescriptionList)
+
+      const exportBtn = wrapper.find('[data-testid="export-btn"]')
+      expect(exportBtn.attributes('disabled')).toBeDefined()
+    })
+
+    it('export button is enabled when prescriptions exist', () => {
+      mockGetAll.mockReturnValueOnce(MOCK_PRESCRIPTIONS as Prescription[])
+      const wrapper = mount(PrescriptionList)
+
+      const exportBtn = wrapper.find('[data-testid="export-btn"]')
+      expect(exportBtn.attributes('disabled')).toBeUndefined()
+    })
+
+    it('calls exportPrescriptionsAsJson when export clicked', async () => {
+      mockGetAll.mockReturnValueOnce(MOCK_PRESCRIPTIONS as Prescription[])
+      const wrapper = mount(PrescriptionList)
+
+      // Mock URL.createObjectURL and related DOM APIs
+      const createObjectURLMock = vi.fn(() => 'blob:test')
+      const revokeObjectURLMock = vi.fn()
+      globalThis.URL.createObjectURL = createObjectURLMock
+      globalThis.URL.revokeObjectURL = revokeObjectURLMock
+
+      const clickMock = vi.fn()
+      vi.spyOn(document, 'createElement').mockReturnValueOnce({
+        href: '',
+        download: '',
+        click: clickMock,
+      } as unknown as HTMLAnchorElement)
+      vi.spyOn(document.body, 'appendChild').mockImplementationOnce(() => null as unknown as Node)
+      vi.spyOn(document.body, 'removeChild').mockImplementationOnce(() => null as unknown as Node)
+
+      await wrapper.find('[data-testid="export-btn"]').trigger('click')
+
+      expect(mockExport).toHaveBeenCalledTimes(1)
+      expect(mockExport).toHaveBeenCalledWith()
+      expect(clickMock).toHaveBeenCalled()
+    })
+  })
+
+  describe('import button', () => {
+    it('renders import button in header', () => {
+      mockGetAll.mockReturnValueOnce(MOCK_PRESCRIPTIONS as Prescription[])
+      const wrapper = mount(PrescriptionList)
+
+      const importBtn = wrapper.find('[data-testid="import-btn"]')
+      expect(importBtn.exists()).toBe(true)
+      expect(importBtn.text()).toBe('Import')
+    })
+
+    it('shows import modal when import button clicked', async () => {
+      mockGetAll.mockReturnValueOnce(MOCK_PRESCRIPTIONS as Prescription[])
+      const wrapper = mount(PrescriptionList)
+
+      expect(wrapper.findComponent({ name: 'ImportPrescriptions' }).exists()).toBe(false)
+
+      await wrapper.find('[data-testid="import-btn"]').trigger('click')
+
+      expect(wrapper.findComponent({ name: 'ImportPrescriptions' }).exists()).toBe(true)
+    })
+  })
+
+  describe('export selected', () => {
+    it('shows Export Selected button in compare bar when items selected', async () => {
+      mockGetAll.mockReturnValueOnce([MOCK_PRESCRIPTIONS[0]] as Prescription[])
+      const wrapper = mount(PrescriptionList)
+
+      await wrapper.find('[data-testid="compare-toggle"]').trigger('click')
+      await wrapper.find('[data-testid="compare-checkbox-rx-test-001"]').trigger('change')
+
+      const exportSelectedBtn = wrapper.find('[data-testid="export-selected-btn"]')
+      expect(exportSelectedBtn.exists()).toBe(true)
+      expect(exportSelectedBtn.text()).toBe('Export Selected')
+    })
+
+    it('calls exportPrescriptionsAsJson with selected ids', async () => {
+      mockGetAll.mockReturnValueOnce(MOCK_PRESCRIPTIONS.slice(0, 2) as Prescription[])
+      const wrapper = mount(PrescriptionList)
+
+      await wrapper.find('[data-testid="compare-toggle"]').trigger('click')
+      await wrapper.find('[data-testid="compare-checkbox-rx-test-001"]').trigger('change')
+
+      // Mock URL.createObjectURL and related DOM APIs
+      const createObjectURLMock = vi.fn(() => 'blob:test')
+      const revokeObjectURLMock = vi.fn()
+      globalThis.URL.createObjectURL = createObjectURLMock
+      globalThis.URL.revokeObjectURL = revokeObjectURLMock
+
+      const clickMock = vi.fn()
+      vi.spyOn(document, 'createElement').mockReturnValueOnce({
+        href: '',
+        download: '',
+        click: clickMock,
+      } as unknown as HTMLAnchorElement)
+      vi.spyOn(document.body, 'appendChild').mockImplementationOnce(() => null as unknown as Node)
+      vi.spyOn(document.body, 'removeChild').mockImplementationOnce(() => null as unknown as Node)
+
+      await wrapper.find('[data-testid="export-selected-btn"]').trigger('click')
+
+      expect(mockExport).toHaveBeenCalledTimes(1)
+      expect(mockExport).toHaveBeenCalledWith(['rx-test-001'])
     })
   })
 

@@ -14,6 +14,7 @@ import ScheduleList from '@/components/ScheduleList.vue'
 import ScheduleGraphViewer from '@/components/ScheduleGraphViewer.vue'
 import ScheduleComparisonViewer from '@/components/ScheduleComparisonViewer.vue'
 import ScheduleSummaryTable from '@/components/ScheduleSummaryTable.vue'
+import ImportSchedules from '@/components/ImportSchedules.vue'
 
 // ---- State ----
 
@@ -34,6 +35,7 @@ const scheduleSubView = ref<'form' | 'list' | 'graph' | 'compare'>('form')
 const currentSchedule = ref<DosageSchedule | null>(null)
 const compareSchedules = ref<DosageSchedule[]>([])
 const scheduleListRef = ref<InstanceType<typeof ScheduleList> | null>(null)
+const showScheduleImport = ref(false)
 
 // ---- Graph settings ----
 
@@ -267,6 +269,21 @@ function handleScheduleView(schedule: DosageSchedule) {
 function handleScheduleEdit(schedule: DosageSchedule) {
   currentSchedule.value = schedule
   scheduleSubView.value = 'form'
+}
+
+function handleScheduleImportOpen() {
+  showScheduleImport.value = true
+}
+
+function handleScheduleImported(count: number) {
+  showScheduleImport.value = false
+  scheduleListRef.value?.refresh()
+  statusMessage.value = `Successfully imported ${count} schedule${count !== 1 ? 's' : ''}.`
+  scheduleSubView.value = 'list'
+}
+
+function handleScheduleImportClose() {
+  showScheduleImport.value = false
 }
 
 function handleScheduleCompare(schedules: DosageSchedule[]) {
@@ -524,6 +541,7 @@ watch(comparePrescriptions, (newVal) => {
             @view="handleScheduleView"
             @edit="handleScheduleEdit"
             @compare="handleScheduleCompare"
+            @import="handleScheduleImportOpen"
           />
         </div>
 
@@ -535,6 +553,13 @@ watch(comparePrescriptions, (newVal) => {
         <div v-if="scheduleSubView === 'compare' && compareSchedules.length >= 2" class="schedule-compare-container">
           <ScheduleComparisonViewer :schedules="compareSchedules" />
         </div>
+
+        <!-- Import Schedules Modal -->
+        <ImportSchedules
+          v-if="showScheduleImport"
+          @imported="handleScheduleImported"
+          @close="handleScheduleImportClose"
+        />
       </div>
     </main>
   </div>

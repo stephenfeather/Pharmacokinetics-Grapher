@@ -5,6 +5,7 @@ import {
   getAllSchedules,
   deleteSchedule,
   duplicateSchedule,
+  exportSchedulesAsJson,
 } from '@/core/storage/scheduleStorage'
 
 // Emits
@@ -12,6 +13,7 @@ const emit = defineEmits<{
   view: [schedule: DosageSchedule]
   edit: [schedule: DosageSchedule]
   compare: [schedules: DosageSchedule[]]
+  import: []
 }>()
 
 // Reactive state
@@ -58,6 +60,17 @@ function handleCompare() {
   }
 }
 
+function handleExport() {
+  const json = exportSchedulesAsJson()
+  const blob = new Blob([json], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'schedules-export.json'
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 function formatStepSummary(schedule: DosageSchedule): string {
   const doses = schedule.steps.map(s => `${s.dose}mg`).join(' \u2192 ')
   return `${doses} over ${schedule.totalDuration} days`
@@ -70,6 +83,25 @@ defineExpose({ refresh })
   <div class="schedule-list-container">
     <div class="list-header">
       <h2>Saved Schedules</h2>
+      <div class="header-actions">
+        <button
+          v-if="schedules.length > 0"
+          type="button"
+          class="action-btn"
+          data-testid="export-btn"
+          @click="handleExport"
+        >
+          Export JSON
+        </button>
+        <button
+          type="button"
+          class="action-btn"
+          data-testid="import-btn"
+          @click="emit('import')"
+        >
+          Import
+        </button>
+      </div>
     </div>
 
     <!-- Empty state -->
@@ -182,6 +214,11 @@ defineExpose({ refresh })
   margin: 0;
   font-size: 1.5rem;
   color: var(--color-text);
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.5rem;
 }
 
 .empty-state {

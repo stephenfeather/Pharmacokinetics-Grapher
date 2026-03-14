@@ -159,3 +159,16 @@ export function duplicateSchedule(id: string): DosageSchedule | undefined {
 export function clearAllSchedules(): void {
   localStorage.removeItem(STORAGE_KEY)
 }
+
+/**
+ * Export schedules as a pretty-printed JSON string.
+ * @param ids - Optional array of schedule IDs to export. If omitted, exports all.
+ * @returns Pretty-printed JSON string of the selected schedules
+ */
+export function exportSchedulesAsJson(ids?: string[]): string {
+  const schedules = getAllSchedules()
+  const toExport = ids
+    ? schedules.filter(s => s.id && ids.includes(s.id))
+    : schedules
+  return JSON.stringify(toExport, null, 2)
+}

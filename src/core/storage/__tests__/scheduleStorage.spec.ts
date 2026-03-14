@@ -34,6 +34,7 @@ import {
   deleteSchedule,
   duplicateSchedule,
   clearAllSchedules,
+  exportSchedulesAsJson,
 } from '../scheduleStorage'
 import type { DosageSchedule } from '../../models/dosageSchedule'
 import type { Prescription } from '../../models/prescription'
@@ -211,6 +212,59 @@ describe('scheduleStorage', () => {
     it('is safe to call on empty storage', () => {
       clearAllSchedules()
       expect(getAllSchedules()).toEqual([])
+    })
+  })
+
+  // ─── Export ───
+
+  describe('exportSchedulesAsJson', () => {
+    it('exports all schedules as valid JSON string', () => {
+      saveSchedule(makeSchedule({ name: 'A' }))
+      saveSchedule(makeSchedule({ name: 'B' }))
+      const json = exportSchedulesAsJson()
+      const parsed = JSON.parse(json) as DosageSchedule[]
+      expect(parsed).toHaveLength(2)
+      expect(parsed[0]!.name).toBe('A')
+      expect(parsed[1]!.name).toBe('B')
+    })
+
+    it('exports empty array when no schedules exist', () => {
+      const json = exportSchedulesAsJson()
+      const parsed = JSON.parse(json) as DosageSchedule[]
+      expect(parsed).toEqual([])
+    })
+
+    it('exports only selected schedules when ids provided', () => {
+      const a = saveSchedule(makeSchedule({ name: 'A' }))
+      saveSchedule(makeSchedule({ name: 'B' }))
+      const c = saveSchedule(makeSchedule({ name: 'C' }))
+      const json = exportSchedulesAsJson([a.id!, c.id!])
+      const parsed = JSON.parse(json) as DosageSchedule[]
+      expect(parsed).toHaveLength(2)
+      expect(parsed[0]!.name).toBe('A')
+      expect(parsed[1]!.name).toBe('C')
+    })
+
+    it('produces pretty-printed JSON', () => {
+      saveSchedule(makeSchedule({ name: 'A' }))
+      const json = exportSchedulesAsJson()
+      expect(json).toContain('\n')
+      expect(json).toContain('  ')
+    })
+
+    it('round-trips: exported JSON can be parsed and re-saved', () => {
+      const saved = saveSchedule(makeSchedule({ name: 'Round Trip' }))
+      const json = exportSchedulesAsJson()
+      clearAllSchedules()
+      const parsed = JSON.parse(json) as DosageSchedule[]
+      for (const schedule of parsed) {
+        saveSchedule(schedule)
+      }
+      const all = getAllSchedules()
+      expect(all).toHaveLength(1)
+      expect(all[0]!.name).toBe('Round Trip')
+      // ID should be new (saveSchedule generates new IDs)
+      expect(all[0]!.id).not.toBe(saved.id)
     })
   })
 })

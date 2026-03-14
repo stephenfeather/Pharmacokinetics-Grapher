@@ -9,14 +9,16 @@ A Vue 3 + TypeScript application that visualizes medication concentration levels
 ## Features
 
 - **Pharmacokinetic curve visualization** — one-compartment first-order absorption model with multi-dose accumulation
-- **Prescription management** — create, edit, delete, duplicate, and import prescriptions (JSON)
+- **Prescription management** — create, edit, delete, duplicate, drag-to-reorder, and export/import prescriptions (JSON)
 - **Multi-drug comparison** — overlay multiple medications on a single graph
 - **PK summary table** — peak time, peak concentration, trough time, and trough concentration for each dose
 - **Auto-extending timeframe** — intelligent graph duration based on half-lives (24–2520 hours), with manual override
 - **Clock time X-axis** — toggle between elapsed hours and wall-clock time (HH:MM) display
+- **Titration & taper schedules** — build multi-step dose schedules with preset templates, comparison overlay, and summary table with steady-state warnings
+- **Schedule export/import** — share and back up schedules as JSON files
 - **Downloadable graphs** — export as PNG images
 - **Dark mode** — full dark mode support with WCAG AA contrast compliance
-- **Keyboard-accessible navigation** — tab-based navigation with aria-labels
+- **Keyboard-accessible navigation** — tab-based navigation with aria-labels and help tooltips
 - **Desktop app** — native cross-platform builds via Tauri v2 (macOS, Windows, Linux)
 - **Metabolite visualization** — optional display of active metabolite concentration curves (work in progress, parameters being refined)
 - **Privacy-first** — zero network requests, no accounts, no telemetry
@@ -56,7 +58,8 @@ Open the downloaded file and follow your platform's standard install process.
    - Normalized relative concentration (0–1 scale)
    - PK summary table with per-dose milestones
 4. **Save and compare**: Save prescriptions locally and overlay multiple drugs on the same graph
-5. **Export**: Download graphs as PNG images
+5. **Export/Import**: Export prescriptions or schedules as JSON, import them back, or download graphs as PNG images
+6. **Titration/Taper schedules**: Build multi-step dose schedules from presets or custom configurations, compare schedules side-by-side, and review summary tables
 
 ## Pharmacokinetics Model
 

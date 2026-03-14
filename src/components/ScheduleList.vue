@@ -110,7 +110,7 @@ defineExpose({ refresh })
     </div>
 
     <!-- Schedule list -->
-    <ul v-else class="schedule-list">
+    <ul v-else class="schedule-list" aria-label="Saved schedules">
       <li
         v-for="schedule in schedules"
         :key="schedule.id"

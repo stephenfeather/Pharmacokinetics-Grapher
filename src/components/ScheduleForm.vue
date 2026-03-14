@@ -5,6 +5,7 @@ import { DEFAULT_TIMES } from '@/core/models/prescription'
 import type { DosageSchedule, DoseStep, ScheduleDirection } from '@/core/models/dosageSchedule'
 import { validateDosageSchedule, computeStartDays } from '@/core/models/dosageSchedule'
 import { SCHEDULE_PRESETS } from '@/core/data/schedulePresets'
+import HelpTooltip from '@/components/HelpTooltip.vue'
 import draggable from 'vuedraggable-es'
 
 // Props & Emits
@@ -38,6 +39,9 @@ const steps = ref<DoseStep[]>(
         { stepNumber: 2, dose: 50, durationDays: 7, startDay: 7 },
       ],
 )
+
+// Screen reader announcements
+const stepAnnouncement = ref('')
 
 // Preset selection
 const selectedPresetId = ref('')
@@ -109,12 +113,15 @@ function addStep() {
     startDay: 0,
   })
   recomputeSteps()
+  stepAnnouncement.value = `Step ${steps.value.length} added at ${Math.round(newDose * 10) / 10}mg.`
 }
 
 function removeStep(index: number) {
   if (steps.value.length <= 2) return
+  const removedNum = index + 1
   steps.value.splice(index, 1)
   recomputeSteps()
+  stepAnnouncement.value = `Step ${removedNum} removed. ${steps.value.length} steps remaining.`
 }
 
 function recomputeSteps() {
@@ -201,7 +208,7 @@ function handleSubmit() {
 
       <!-- Direction Toggle -->
       <fieldset class="direction-fieldset">
-        <legend>Schedule Type</legend>
+        <legend>Schedule Type <HelpTooltip text="Choose titration to gradually increase dose, or taper to gradually decrease dose." /></legend>
         <div class="direction-options">
           <label class="direction-option">
             <input
@@ -211,7 +218,7 @@ function handleSubmit() {
               v-model="direction"
             />
             <span class="direction-label titration-label">Titration</span>
-            <small>Gradually increasing dose</small>
+            <small>Gradually increasing dose to find therapeutic level</small>
           </label>
           <label class="direction-option">
             <input
@@ -221,7 +228,7 @@ function handleSubmit() {
               v-model="direction"
             />
             <span class="direction-label taper-label">Taper</span>
-            <small>Gradually decreasing dose</small>
+            <small>Gradually decreasing dose to minimize withdrawal</small>
           </label>
         </div>
       </fieldset>
@@ -248,7 +255,7 @@ function handleSubmit() {
 
         <div class="form-row">
           <div class="form-field">
-            <label for="sched-halflife">Half-life (hours)</label>
+            <label for="sched-halflife">Half-life (hours) <HelpTooltip text="Time for drug concentration to decrease by half. From pharmacy insert." /></label>
             <input
               id="sched-halflife"
               v-model.number="halfLife"
@@ -256,11 +263,13 @@ function handleSubmit() {
               min="0.1"
               max="240"
               step="0.01"
+              aria-describedby="hint-halflife"
             />
+            <small id="hint-halflife" class="field-hint">From pharmacy insert (0.1-240 hours)</small>
           </div>
 
           <div class="form-field">
-            <label for="sched-peak">Tmax (hours)</label>
+            <label for="sched-peak">Tmax (hours) <HelpTooltip text="Time to reach peak concentration after a dose. From pharmacy insert." /></label>
             <input
               id="sched-peak"
               v-model.number="peak"
@@ -268,11 +277,13 @@ function handleSubmit() {
               min="0.1"
               max="48"
               step="0.01"
+              aria-describedby="hint-peak"
             />
+            <small id="hint-peak" class="field-hint">Time to peak concentration (0.1-48 hours)</small>
           </div>
 
           <div class="form-field">
-            <label for="sched-uptake">Absorption (hours)</label>
+            <label for="sched-uptake">Absorption (hours) <HelpTooltip text="Time for the drug to be absorbed into the bloodstream. From pharmacy insert." /></label>
             <input
               id="sched-uptake"
               v-model.number="uptake"
@@ -280,7 +291,9 @@ function handleSubmit() {
               min="0.1"
               max="24"
               step="0.01"
+              aria-describedby="hint-uptake"
             />
+            <small id="hint-uptake" class="field-hint">Absorption time (0.1-24 hours)</small>
           </div>
         </div>
 
@@ -301,7 +314,7 @@ function handleSubmit() {
 
       <!-- Steps -->
       <fieldset class="steps-fieldset">
-        <legend>Dose Steps</legend>
+        <legend>Dose Steps <HelpTooltip text="Each step defines a dose level and how long to stay at that dose before changing." /></legend>
         <small class="steps-hint">
           Define dose amounts and durations for each step. Drag to reorder.
         </small>
@@ -398,6 +411,11 @@ function handleSubmit() {
         <ul>
           <li v-for="warning in validation.warnings" :key="warning">{{ warning }}</li>
         </ul>
+      </div>
+
+      <!-- Screen reader step announcements -->
+      <div class="sr-only" aria-live="polite" aria-atomic="true">
+        {{ stepAnnouncement }}
       </div>
 
       <!-- Submit -->
@@ -804,6 +822,18 @@ button[type='submit']:disabled {
   background-color: var(--color-border);
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
 }
 
 @media (max-width: 600px) {

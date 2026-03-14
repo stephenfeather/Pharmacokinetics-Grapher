@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import type { DosageSchedule } from '@/core/models/dosageSchedule'
 import {
   getAllSchedules,
@@ -11,10 +11,12 @@ import {
 const emit = defineEmits<{
   view: [schedule: DosageSchedule]
   edit: [schedule: DosageSchedule]
+  compare: [schedules: DosageSchedule[]]
 }>()
 
 // Reactive state
 const schedules = ref<DosageSchedule[]>(getAllSchedules())
+const selectedIds = ref<Set<string>>(new Set())
 
 // Functions
 function refresh() {
@@ -35,6 +37,25 @@ function handleDuplicate(id: string) {
 
 function handleEdit(schedule: DosageSchedule) {
   emit('edit', schedule)
+}
+
+function toggleSelection(id: string) {
+  if (selectedIds.value.has(id)) {
+    selectedIds.value.delete(id)
+  } else {
+    selectedIds.value.add(id)
+  }
+  // Trigger reactivity
+  selectedIds.value = new Set(selectedIds.value)
+}
+
+const canCompare = computed(() => selectedIds.value.size >= 2)
+
+function handleCompare() {
+  const selected = schedules.value.filter(s => s.id && selectedIds.value.has(s.id))
+  if (selected.length >= 2) {
+    emit('compare', selected)
+  }
 }
 
 function formatStepSummary(schedule: DosageSchedule): string {
@@ -63,6 +84,16 @@ defineExpose({ refresh })
         :key="schedule.id"
         class="schedule-item"
       >
+        <!-- Compare checkbox -->
+        <input
+          v-if="schedule.id"
+          type="checkbox"
+          class="compare-checkbox"
+          :checked="selectedIds.has(schedule.id)"
+          :aria-label="`Select ${schedule.name} for comparison`"
+          @change="toggleSelection(schedule.id!)"
+        />
+
         <!-- Schedule info -->
         <div class="sched-info">
           <div class="sched-name-row">
@@ -118,6 +149,17 @@ defineExpose({ refresh })
         </div>
       </li>
     </ul>
+
+    <!-- Compare button (shown when 2+ schedules selected) -->
+    <div v-if="canCompare" class="compare-bar">
+      <button
+        data-testid="compare-btn"
+        class="compare-btn"
+        @click="handleCompare"
+      >
+        Compare Selected ({{ selectedIds.size }})
+      </button>
+    </div>
   </div>
 </template>
 
@@ -273,6 +315,35 @@ defineExpose({ refresh })
 
 .action-btn.danger:hover {
   background-color: #fef2f2;
+}
+
+.compare-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #3b82f6;
+  flex-shrink: 0;
+}
+
+.compare-bar {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.compare-btn {
+  padding: 0.65rem 1.5rem;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.compare-btn:hover {
+  background-color: #2563eb;
 }
 
 /* Dark mode */

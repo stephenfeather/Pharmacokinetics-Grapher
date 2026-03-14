@@ -201,4 +201,68 @@ describe('ScheduleList', () => {
       expect(summary).toContain('21 days')
     })
   })
+
+  // ─── Compare Selection ───
+
+  describe('compare selection', () => {
+    it('renders checkboxes for each schedule', () => {
+      mockSchedules.push(
+        makeSchedule({ name: 'A' }),
+        makeSchedule({ name: 'B' }),
+      )
+      const wrapper = mountList()
+      const checkboxes = wrapper.findAll('.compare-checkbox')
+      expect(checkboxes).toHaveLength(2)
+    })
+
+    it('does not show compare button when fewer than 2 selected', () => {
+      mockSchedules.push(
+        makeSchedule({ name: 'A' }),
+        makeSchedule({ name: 'B' }),
+      )
+      const wrapper = mountList()
+      expect(wrapper.find('[data-testid="compare-btn"]').exists()).toBe(false)
+    })
+
+    it('shows compare button when 2 or more selected', async () => {
+      mockSchedules.push(
+        makeSchedule({ name: 'A' }),
+        makeSchedule({ name: 'B' }),
+      )
+      const wrapper = mountList()
+      const checkboxes = wrapper.findAll('.compare-checkbox')
+      await checkboxes[0]!.setValue(true)
+      await checkboxes[1]!.setValue(true)
+      expect(wrapper.find('[data-testid="compare-btn"]').exists()).toBe(true)
+    })
+
+    it('emits compare with selected schedules', async () => {
+      const schedA = makeSchedule({ name: 'A' })
+      const schedB = makeSchedule({ name: 'B' })
+      mockSchedules.push(schedA, schedB)
+      const wrapper = mountList()
+      const checkboxes = wrapper.findAll('.compare-checkbox')
+      await checkboxes[0]!.setValue(true)
+      await checkboxes[1]!.setValue(true)
+      await wrapper.find('[data-testid="compare-btn"]').trigger('click')
+      const emitted = wrapper.emitted('compare')
+      expect(emitted).toBeTruthy()
+      const compared = emitted![0]![0] as DosageSchedule[]
+      expect(compared).toHaveLength(2)
+    })
+
+    it('shows count of selected schedules on compare button', async () => {
+      mockSchedules.push(
+        makeSchedule({ name: 'A' }),
+        makeSchedule({ name: 'B' }),
+        makeSchedule({ name: 'C' }),
+      )
+      const wrapper = mountList()
+      const checkboxes = wrapper.findAll('.compare-checkbox')
+      await checkboxes[0]!.setValue(true)
+      await checkboxes[1]!.setValue(true)
+      await checkboxes[2]!.setValue(true)
+      expect(wrapper.find('[data-testid="compare-btn"]').text()).toContain('3')
+    })
+  })
 })

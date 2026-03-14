@@ -12,6 +12,7 @@ import PkSummaryTable from '@/components/PkSummaryTable.vue'
 import ScheduleForm from '@/components/ScheduleForm.vue'
 import ScheduleList from '@/components/ScheduleList.vue'
 import ScheduleGraphViewer from '@/components/ScheduleGraphViewer.vue'
+import ScheduleComparisonViewer from '@/components/ScheduleComparisonViewer.vue'
 
 // ---- State ----
 
@@ -28,8 +29,9 @@ const showSummaryTable = ref(true)
 // ---- Schedule state ----
 
 const showSchedules = ref(false)
-const scheduleSubView = ref<'form' | 'list' | 'graph'>('form')
+const scheduleSubView = ref<'form' | 'list' | 'graph' | 'compare'>('form')
 const currentSchedule = ref<DosageSchedule | null>(null)
+const compareSchedules = ref<DosageSchedule[]>([])
 const scheduleListRef = ref<InstanceType<typeof ScheduleList> | null>(null)
 
 // ---- Graph settings ----
@@ -266,7 +268,12 @@ function handleScheduleEdit(schedule: DosageSchedule) {
   scheduleSubView.value = 'form'
 }
 
-function switchScheduleSubView(sub: 'form' | 'list' | 'graph') {
+function handleScheduleCompare(schedules: DosageSchedule[]) {
+  compareSchedules.value = schedules
+  scheduleSubView.value = 'compare'
+}
+
+function switchScheduleSubView(sub: 'form' | 'list' | 'graph' | 'compare') {
   scheduleSubView.value = sub
   if (sub === 'form') {
     currentSchedule.value = null
@@ -494,6 +501,13 @@ watch(comparePrescriptions, (newVal) => {
           >
             View Graph
           </button>
+          <button
+            v-if="compareSchedules.length >= 2"
+            :class="{ active: scheduleSubView === 'compare' }"
+            @click="switchScheduleSubView('compare')"
+          >
+            Compare ({{ compareSchedules.length }})
+          </button>
         </nav>
 
         <div v-if="scheduleSubView === 'form'" class="schedule-form-container">
@@ -508,11 +522,16 @@ watch(comparePrescriptions, (newVal) => {
             ref="scheduleListRef"
             @view="handleScheduleView"
             @edit="handleScheduleEdit"
+            @compare="handleScheduleCompare"
           />
         </div>
 
         <div v-if="scheduleSubView === 'graph' && currentSchedule" class="schedule-graph-container">
           <ScheduleGraphViewer :schedule="currentSchedule" />
+        </div>
+
+        <div v-if="scheduleSubView === 'compare' && compareSchedules.length >= 2" class="schedule-compare-container">
+          <ScheduleComparisonViewer :schedules="compareSchedules" />
         </div>
       </div>
     </main>

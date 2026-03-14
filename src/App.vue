@@ -13,6 +13,7 @@ import ScheduleForm from '@/components/ScheduleForm.vue'
 import ScheduleList from '@/components/ScheduleList.vue'
 import ScheduleGraphViewer from '@/components/ScheduleGraphViewer.vue'
 import ScheduleComparisonViewer from '@/components/ScheduleComparisonViewer.vue'
+import ScheduleSummaryTable from '@/components/ScheduleSummaryTable.vue'
 
 // ---- State ----
 
@@ -528,6 +529,7 @@ watch(comparePrescriptions, (newVal) => {
 
         <div v-if="scheduleSubView === 'graph' && currentSchedule" class="schedule-graph-container">
           <ScheduleGraphViewer :schedule="currentSchedule" />
+          <ScheduleSummaryTable :schedule="currentSchedule" />
         </div>
 
         <div v-if="scheduleSubView === 'compare' && compareSchedules.length >= 2" class="schedule-compare-container">

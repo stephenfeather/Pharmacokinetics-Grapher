@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, watch } from 'vue'
 import type { Prescription, GraphDataset } from '@/core/models/prescription'
+import type { DosageSchedule } from '@/core/models/dosageSchedule'
 import { getGraphData, getLastDoseTime, calculateTailOffDuration, generateSummaryData } from '@/core/calculations'
 import { savePrescription, updatePrescription, getAllPrescriptions } from '@/core/storage/prescriptionStorage'
+import { saveSchedule } from '@/core/storage/scheduleStorage'
 import PrescriptionForm from '@/components/PrescriptionForm.vue'
 import GraphViewer from '@/components/GraphViewer.vue'
 import PrescriptionList from '@/components/PrescriptionList.vue'
 import PkSummaryTable from '@/components/PkSummaryTable.vue'
+import ScheduleForm from '@/components/ScheduleForm.vue'
+import ScheduleList from '@/components/ScheduleList.vue'
+import ScheduleGraphViewer from '@/components/ScheduleGraphViewer.vue'
 
 // ---- State ----
 
@@ -16,9 +21,16 @@ const showForm = ref(true)
 const showGraph = ref(false)
 const showList = ref(false)
 const comparePrescriptions = ref<Prescription[]>([])
-const activeTab = ref<'form' | 'list' | 'graph'>('form')
+const activeTab = ref<'form' | 'list' | 'graph' | 'schedules'>('form')
 const statusMessage = ref('')
 const showSummaryTable = ref(true)
+
+// ---- Schedule state ----
+
+const showSchedules = ref(false)
+const scheduleSubView = ref<'form' | 'list' | 'graph'>('form')
+const currentSchedule = ref<DosageSchedule | null>(null)
+const scheduleListRef = ref<InstanceType<typeof ScheduleList> | null>(null)
 
 // ---- Graph settings ----
 
@@ -146,10 +158,11 @@ const sliderMax = computed<number>(() => {
 
 // ---- View switching ----
 
-function switchView(view: 'form' | 'list' | 'graph') {
+function switchView(view: 'form' | 'list' | 'graph' | 'schedules') {
   showForm.value = view === 'form'
   showList.value = view === 'list'
   showGraph.value = view === 'graph'
+  showSchedules.value = view === 'schedules'
   activeTab.value = view
 
   // Announce view change to screen readers
@@ -159,6 +172,8 @@ function switchView(view: 'form' | 'list' | 'graph') {
     statusMessage.value = `Switched to saved prescriptions. ${savedPrescriptions.value.length} prescriptions available.`
   } else if (view === 'graph') {
     statusMessage.value = `Switched to graph view. Displaying ${comparePrescriptions.value.length} prescription${comparePrescriptions.value.length !== 1 ? 's' : ''}.`
+  } else if (view === 'schedules') {
+    statusMessage.value = 'Switched to titration and taper schedules.'
   }
 
   // Focus management after next render
@@ -233,6 +248,31 @@ function handleComparePrescriptions(rxs: Prescription[]) {
   switchView('graph')
 }
 
+// ---- Schedule event handlers ----
+
+function handleScheduleSubmit(schedule: DosageSchedule) {
+  saveSchedule(schedule)
+  currentSchedule.value = schedule
+  scheduleSubView.value = 'graph'
+}
+
+function handleScheduleView(schedule: DosageSchedule) {
+  currentSchedule.value = schedule
+  scheduleSubView.value = 'graph'
+}
+
+function handleScheduleEdit(schedule: DosageSchedule) {
+  currentSchedule.value = schedule
+  scheduleSubView.value = 'form'
+}
+
+function switchScheduleSubView(sub: 'form' | 'list' | 'graph') {
+  scheduleSubView.value = sub
+  if (sub === 'form') {
+    currentSchedule.value = null
+  }
+}
+
 // ---- Tab keyboard navigation ----
 
 function handleTabKeydown(event: KeyboardEvent) {
@@ -304,6 +344,13 @@ watch(comparePrescriptions, (newVal) => {
         @click="switchView('list')"
       >
         Saved Prescriptions
+      </button>
+      <button
+        :class="{ active: activeTab === 'schedules' }"
+        :aria-current="activeTab === 'schedules' ? 'page' : undefined"
+        @click="switchView('schedules')"
+      >
+        Titration/Taper
       </button>
       <button
         v-if="comparePrescriptions.length > 0"
@@ -422,6 +469,50 @@ watch(comparePrescriptions, (newVal) => {
           <button class="btn btn-secondary" @click="newPrescription">
             New Prescription
           </button>
+        </div>
+      </div>
+
+      <!-- Schedule Section -->
+      <div v-if="showSchedules" class="schedule-section" role="region" aria-label="Titration and taper schedules">
+        <nav class="schedule-sub-nav" aria-label="Schedule sub-navigation">
+          <button
+            :class="{ active: scheduleSubView === 'form' }"
+            @click="switchScheduleSubView('form')"
+          >
+            New Schedule
+          </button>
+          <button
+            :class="{ active: scheduleSubView === 'list' }"
+            @click="switchScheduleSubView('list')"
+          >
+            Saved Schedules
+          </button>
+          <button
+            v-if="currentSchedule"
+            :class="{ active: scheduleSubView === 'graph' }"
+            @click="switchScheduleSubView('graph')"
+          >
+            View Graph
+          </button>
+        </nav>
+
+        <div v-if="scheduleSubView === 'form'" class="schedule-form-container">
+          <ScheduleForm
+            :initial="currentSchedule ?? undefined"
+            @submit="handleScheduleSubmit"
+          />
+        </div>
+
+        <div v-if="scheduleSubView === 'list'" class="schedule-list-container">
+          <ScheduleList
+            ref="scheduleListRef"
+            @view="handleScheduleView"
+            @edit="handleScheduleEdit"
+          />
+        </div>
+
+        <div v-if="scheduleSubView === 'graph' && currentSchedule" class="schedule-graph-container">
+          <ScheduleGraphViewer :schedule="currentSchedule" />
         </div>
       </div>
     </main>
@@ -684,6 +775,51 @@ watch(comparePrescriptions, (newVal) => {
   background: #4b5563;
 }
 
+.schedule-section {
+  background: white;
+  border-radius: 8px;
+  padding: 2rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  animation: slideIn 0.3s ease-out;
+}
+
+.schedule-sub-nav {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.schedule-sub-nav button {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  min-height: 36px;
+  border: 1px solid #d1d5db;
+  background: white;
+  color: #374151;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.schedule-sub-nav button:hover:not(.active) {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.schedule-sub-nav button.active {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+.schedule-sub-nav button:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
 @media (prefers-color-scheme: dark) {
   .tab-navigation {
     background: #1f2937;
@@ -764,6 +900,32 @@ watch(comparePrescriptions, (newVal) => {
 
   .summary-toggle {
     border-top-color: #374151;
+  }
+
+  .schedule-section {
+    background: #1f2937;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  }
+
+  .schedule-sub-nav {
+    border-bottom-color: #374151;
+  }
+
+  .schedule-sub-nav button {
+    background: #374151;
+    color: #e5e7eb;
+    border-color: #4b5563;
+  }
+
+  .schedule-sub-nav button:hover:not(.active) {
+    background: #4b5563;
+    border-color: #6b7280;
+  }
+
+  .schedule-sub-nav button.active {
+    background: #3b82f6;
+    color: white;
+    border-color: #3b82f6;
   }
 }
 

@@ -31,18 +31,20 @@ interface AppComponentState {
   showForm: boolean
   showGraph: boolean
   showList: boolean
+  showSchedules: boolean
   comparePrescriptions: Prescription[]
-  activeTab: 'form' | 'list' | 'graph'
+  activeTab: 'form' | 'list' | 'graph' | 'schedules'
   startHours: number
   endHours: number
   autoEndHours: number
   useAutoTimeframe: boolean
   effectiveEndHours: number
-  switchView: (view: 'form' | 'list' | 'graph') => void
+  switchView: (view: 'form' | 'list' | 'graph' | 'schedules') => void
   handleFormSubmit: (rx: Prescription) => void
   saveCurrentPrescription: () => void
   newPrescription: () => void
   handleTabKeydown: (event: KeyboardEvent) => void
+  scheduleSubView: 'form' | 'list' | 'graph'
 }
 
 function getComponentState(wrapper: VueWrapper): AppComponentState {
@@ -56,12 +58,13 @@ describe('App.vue - Phase 1: Tab Navigation and State Management', () => {
   })
 
   describe('Tab Navigation - Initial State', () => {
-    it('renders two tabs initially: "Add New" and "Saved Prescriptions"', () => {
+    it('renders three tabs initially: "Add New", "Saved Prescriptions", and "Titration/Taper"', () => {
       const wrapper = mount(App)
       const tabs = wrapper.findAll('nav[role="navigation"] button')
-      expect(tabs.length).toBe(2)
+      expect(tabs.length).toBe(3)
       expect(tabs[0]?.text()).toContain('Add New')
       expect(tabs[1]?.text()).toContain('Saved')
+      expect(tabs[2]?.text()).toContain('Titration')
     })
 
     it('sets active tab to "form" initially', () => {
@@ -2970,6 +2973,212 @@ describe('App.vue - Phase 4: Styling and Polish', () => {
       vm.endHours = maxAttr
       await flushPromises()
       expect(vm.endHours).toBeLessThanOrEqual(maxAttr)
+    })
+  })
+})
+
+// ---- Schedule Tab Integration Tests ----
+
+describe('App.vue - Schedule Tab Integration', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  describe('Schedule tab in navigation', () => {
+    it('renders a Titration/Taper tab in the navigation', () => {
+      const wrapper = mount(App)
+      const tabs = wrapper.findAll('nav[role="navigation"] button')
+      const scheduleTab = tabs.find((tab) => tab.text().includes('Titration'))
+      expect(scheduleTab).toBeDefined()
+    })
+
+    it('switches to schedules view when Titration/Taper tab clicked', async () => {
+      const wrapper = mount(App)
+      const tabs = wrapper.findAll('nav[role="navigation"] button')
+      const scheduleTab = tabs.find((tab) => tab.text().includes('Titration'))
+
+      expect(scheduleTab).toBeDefined()
+      await scheduleTab!.trigger('click')
+      await flushPromises()
+
+      const vm = getComponentState(wrapper)
+      expect(vm.activeTab).toBe('schedules')
+    })
+
+    it('sets aria-current on schedule tab when active', async () => {
+      const wrapper = mount(App)
+      const tabs = wrapper.findAll('nav[role="navigation"] button')
+      const scheduleTab = tabs.find((tab) => tab.text().includes('Titration'))
+
+      await scheduleTab!.trigger('click')
+      await flushPromises()
+
+      const updatedTabs = wrapper.findAll('nav[role="navigation"] button')
+      const updatedScheduleTab = updatedTabs.find((tab) => tab.text().includes('Titration'))
+      expect(updatedScheduleTab?.attributes('aria-current')).toBe('page')
+    })
+
+    it('hides prescription sections when schedule tab is active', async () => {
+      const wrapper = mount(App)
+      const tabs = wrapper.findAll('nav[role="navigation"] button')
+      const scheduleTab = tabs.find((tab) => tab.text().includes('Titration'))
+
+      await scheduleTab!.trigger('click')
+      await flushPromises()
+
+      expect(wrapper.findComponent({ name: 'PrescriptionForm' }).exists()).toBe(false)
+      expect(wrapper.find('.list-section').exists()).toBe(false)
+      expect(wrapper.find('.graph-section').exists()).toBe(false)
+    })
+  })
+
+  describe('Schedule sub-navigation', () => {
+    it('shows schedule sub-navigation when schedule tab is active', async () => {
+      const wrapper = mount(App)
+      const tabs = wrapper.findAll('nav[role="navigation"] button')
+      const scheduleTab = tabs.find((tab) => tab.text().includes('Titration'))
+
+      await scheduleTab!.trigger('click')
+      await flushPromises()
+
+      const subNav = wrapper.find('.schedule-sub-nav')
+      expect(subNav.exists()).toBe(true)
+    })
+
+    it('shows New Schedule and Saved Schedules sub-tabs', async () => {
+      const wrapper = mount(App)
+      const tabs = wrapper.findAll('nav[role="navigation"] button')
+      const scheduleTab = tabs.find((tab) => tab.text().includes('Titration'))
+
+      await scheduleTab!.trigger('click')
+      await flushPromises()
+
+      const subButtons = wrapper.findAll('.schedule-sub-nav button')
+      expect(subButtons.length).toBeGreaterThanOrEqual(2)
+      expect(subButtons.some((b) => b.text().includes('New Schedule'))).toBe(true)
+      expect(subButtons.some((b) => b.text().includes('Saved Schedules'))).toBe(true)
+    })
+
+    it('defaults to schedule form sub-view', async () => {
+      const wrapper = mount(App)
+      const tabs = wrapper.findAll('nav[role="navigation"] button')
+      const scheduleTab = tabs.find((tab) => tab.text().includes('Titration'))
+
+      await scheduleTab!.trigger('click')
+      await flushPromises()
+
+      expect(wrapper.findComponent({ name: 'ScheduleForm' }).exists()).toBe(true)
+    })
+
+    it('switches to schedule list sub-view', async () => {
+      const wrapper = mount(App)
+      const tabs = wrapper.findAll('nav[role="navigation"] button')
+      const scheduleTab = tabs.find((tab) => tab.text().includes('Titration'))
+
+      await scheduleTab!.trigger('click')
+      await flushPromises()
+
+      const subButtons = wrapper.findAll('.schedule-sub-nav button')
+      const listBtn = subButtons.find((b) => b.text().includes('Saved Schedules'))
+      await listBtn!.trigger('click')
+      await flushPromises()
+
+      expect(wrapper.findComponent({ name: 'ScheduleList' }).exists()).toBe(true)
+    })
+  })
+
+  describe('Schedule event handling', () => {
+    it('switches to schedule graph when schedule form emits submit', async () => {
+      const wrapper = mount(App)
+      const tabs = wrapper.findAll('nav[role="navigation"] button')
+      const scheduleTab = tabs.find((tab) => tab.text().includes('Titration'))
+
+      await scheduleTab!.trigger('click')
+      await flushPromises()
+
+      const scheduleForm = wrapper.findComponent({ name: 'ScheduleForm' })
+      scheduleForm.vm.$emit('submit', {
+        id: 'test-1',
+        name: 'Test Titration',
+        direction: 'titration',
+        basePrescription: {
+          name: 'Test Drug',
+          frequency: 'bid',
+          times: ['09:00', '21:00'],
+          dose: 25,
+          halfLife: 6,
+          peak: 2,
+          uptake: 1.5,
+        },
+        steps: [
+          { stepNumber: 1, dose: 25, durationDays: 7, startDay: 0 },
+          { stepNumber: 2, dose: 50, durationDays: 7, startDay: 7 },
+        ],
+        totalDuration: 14,
+      })
+      await flushPromises()
+
+      expect(wrapper.findComponent({ name: 'ScheduleGraphViewer' }).exists()).toBe(true)
+    })
+
+    it('switches to schedule form for editing when list emits edit', async () => {
+      const wrapper = mount(App)
+      const tabs = wrapper.findAll('nav[role="navigation"] button')
+      const scheduleTab = tabs.find((tab) => tab.text().includes('Titration'))
+
+      await scheduleTab!.trigger('click')
+      await flushPromises()
+
+      // Switch to list sub-view
+      const subButtons = wrapper.findAll('.schedule-sub-nav button')
+      const listBtn = subButtons.find((b) => b.text().includes('Saved Schedules'))
+      await listBtn!.trigger('click')
+      await flushPromises()
+
+      const scheduleList = wrapper.findComponent({ name: 'ScheduleList' })
+      const schedule = {
+        id: 'test-1',
+        name: 'Test Titration',
+        direction: 'titration' as const,
+        basePrescription: {
+          name: 'Test Drug',
+          frequency: 'bid' as const,
+          times: ['09:00', '21:00'],
+          dose: 25,
+          halfLife: 6,
+          peak: 2,
+          uptake: 1.5,
+        },
+        steps: [
+          { stepNumber: 1, dose: 25, durationDays: 7, startDay: 0 },
+          { stepNumber: 2, dose: 50, durationDays: 7, startDay: 7 },
+        ],
+        totalDuration: 14,
+      }
+
+      scheduleList.vm.$emit('edit', schedule)
+      await flushPromises()
+
+      expect(wrapper.findComponent({ name: 'ScheduleForm' }).exists()).toBe(true)
+    })
+  })
+
+  describe('Keyboard navigation includes schedule tab', () => {
+    it('includes schedule tab in arrow key navigation', async () => {
+      const wrapper = mount(App)
+      const nav = wrapper.find('nav[role="navigation"]')
+      const tabs = wrapper.findAll('nav[role="navigation"] button')
+
+      // Navigate right from list tab to schedule tab
+      // tabs: [form, list, schedules] (graph only shows conditionally)
+      await tabs[1]!.trigger('click')
+      await flushPromises()
+
+      await nav.trigger('keydown', { key: 'ArrowRight' })
+      await flushPromises()
+
+      const vm = getComponentState(wrapper)
+      expect(vm.activeTab).toBe('schedules')
     })
   })
 })

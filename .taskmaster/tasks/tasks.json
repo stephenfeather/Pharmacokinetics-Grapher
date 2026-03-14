@@ -2987,13 +2987,191 @@
           }
         ],
         "updatedAt": "2026-03-08T14:31:42.682Z"
+      },
+      {
+        "id": "42",
+        "title": "Update GitHub Actions to Node.js 24-compatible versions",
+        "description": "Node.js 20 actions are deprecated and will be forced to Node.js 24 starting June 2, 2026. Update the following actions in both ci.yml and release.yml to versions that support Node.js 24: actions/checkout@v4, actions/setup-node@v4, mozilla-actions/sccache-action@v0.0.7. See: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/",
+        "details": "1. Check for updated versions of actions/checkout, actions/setup-node, and mozilla-actions/sccache-action that support Node.js 24\n2. Update both .github/workflows/ci.yml and .github/workflows/release.yml\n3. Test by triggering a CI run\n4. Deadline: before June 2, 2026 when Node.js 24 becomes forced default",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-03-14T13:09:08.610Z"
+      },
+      {
+        "id": "43",
+        "title": "Define Titration and Taper Data Models",
+        "description": "Create TypeScript interfaces for titration schedules (dose increases) and taper schedules (dose decreases), extending the existing Prescription model to support variable dosing over time.",
+        "details": "Create new file `src/core/models/dosageSchedule.ts` with interfaces:\n\n```typescript\n// Direction of dose change\nexport type ScheduleDirection = 'titration' | 'taper'\n\n// Single step in a dose adjustment schedule\nexport interface DoseStep {\n  stepNumber: number          // 1-indexed step\n  dose: number                // Dose for this step (mg)\n  durationDays: number        // How long to stay at this dose\n  startDay: number            // Computed: when this step begins (day 0 = start)\n}\n\n// Complete schedule definition\nexport interface DosageSchedule {\n  id?: string\n  name: string                // Schedule name (e.g., 'Sertraline Titration')\n  direction: ScheduleDirection\n  basePrescription: Prescription  // Base drug params (halfLife, uptake, peak, frequency, times)\n  steps: DoseStep[]\n  totalDuration: number       // Computed: sum of all step durations\n}\n\n// Validation for schedules\nexport interface ScheduleValidationResult {\n  valid: boolean\n  errors: string[]\n  warnings: string[]\n}\n```\n\nAdd validation function `validateDosageSchedule()` that checks:\n- At least 2 steps required\n- All doses > 0\n- All durations >= 1 day\n- For titration: doses should generally increase\n- For taper: doses should generally decrease\n- basePrescription must be valid\n\nExport from `src/core/models/index.ts`.",
+        "testStrategy": "Unit tests in `src/core/models/__tests__/dosageSchedule.spec.ts`:\n- Test interface compliance with valid schedules\n- Test validation catches missing/invalid steps\n- Test validation warns on non-monotonic dose changes\n- Test computed totalDuration calculation\n- Test edge cases: single step (error), 100+ steps (allowed)\n- Integration with existing Prescription validation",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-03-14T13:53:44.329Z"
+      },
+      {
+        "id": "44",
+        "title": "Implement Multi-Step Dose Calculation Engine",
+        "description": "Create calculation functions that generate concentration curves for schedules with changing doses over time, building on the existing accumulateDoses() infrastructure.",
+        "details": "Create `src/core/calculations/scheduleCalculator.ts`:\n\n```typescript\nimport type { DosageSchedule, DoseStep } from '../models/dosageSchedule'\nimport type { TimeSeriesPoint, Prescription } from '../models/prescription'\nimport { calculateConcentration, resetCalculationWarnings } from './pkCalculator'\n\n/**\n * Expand a DosageSchedule into dose administration events with variable doses\n * Returns array of { time: number, dose: number } for each administration\n */\nexport function expandScheduleDoses(\n  schedule: DosageSchedule\n): Array<{ time: number; dose: number }> {\n  // For each step, expand prescription times across step duration\n  // Track cumulative day offset\n  const events: Array<{ time: number; dose: number }> = []\n  let dayOffset = 0\n  \n  for (const step of schedule.steps) {\n    const { times, frequency } = schedule.basePrescription\n    for (let day = 0; day < step.durationDays; day++) {\n      for (const timeStr of times) {\n        const [h, m] = timeStr.split(':').map(Number)\n        const time = (dayOffset + day) * 24 + h + m / 60\n        events.push({ time, dose: step.dose })\n      }\n    }\n    dayOffset += step.durationDays\n  }\n  \n  return events.sort((a, b) => a.time - b.time)\n}\n\n/**\n * Calculate accumulated concentration for a variable-dose schedule\n * Similar to accumulateDoses but handles changing dose amounts\n */\nexport function accumulateScheduleDoses(\n  schedule: DosageSchedule,\n  startHours: number,\n  endHours: number,\n  intervalMinutes: number = 15\n): TimeSeriesPoint[] {\n  resetCalculationWarnings()\n  \n  const events = expandScheduleDoses(schedule)\n  const { halfLife, uptake, peak } = schedule.basePrescription\n  \n  // Generate timepoints\n  const points: TimeSeriesPoint[] = []\n  const steps = Math.ceil((endHours - startHours) * 60 / intervalMinutes)\n  let maxConc = 0\n  \n  for (let i = 0; i <= steps; i++) {\n    const time = startHours + i * intervalMinutes / 60\n    let totalConc = 0\n    \n    for (const event of events) {\n      if (event.time <= time) {\n        const elapsed = time - event.time\n        totalConc += calculateConcentration(\n          elapsed,\n          event.dose,  // Variable dose per event!\n          halfLife,\n          uptake,\n          peak\n        )\n      }\n    }\n    \n    points.push({ time, concentration: Math.max(0, totalConc) })\n    maxConc = Math.max(maxConc, totalConc)\n  }\n  \n  // Normalize to peak = 1.0\n  if (maxConc > 0) {\n    for (const p of points) {\n      p.concentration /= maxConc\n    }\n  }\n  \n  return points\n}\n```\n\nExport from `src/core/calculations/index.ts`.",
+        "testStrategy": "Unit tests in `src/core/calculations/__tests__/scheduleCalculator.spec.ts`:\n- Test expandScheduleDoses generates correct number of events\n- Test dose values match step configuration\n- Test time calculations across day boundaries\n- Test accumulateScheduleDoses produces valid concentration curves\n- Compare titration curve (doses increasing) vs taper curve (doses decreasing)\n- Verify normalization works correctly with variable doses\n- Test edge case: very short steps (1 day)\n- Test long schedules (30+ days)",
+        "priority": "high",
+        "dependencies": [
+          "43"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "45",
+        "title": "Create Schedule Storage Module",
+        "description": "Implement localStorage persistence for DosageSchedule objects, following the pattern established by prescriptionStorage.ts.",
+        "details": "Create `src/core/storage/scheduleStorage.ts`:\n\n```typescript\nimport type { DosageSchedule } from '../models/dosageSchedule'\nimport { logError, logWarn } from '../utils/logger'\n\nconst STORAGE_KEY = 'pk-grapher-schedules'\n\nfunction generateId(): string {\n  return `sched-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`\n}\n\nexport function getAllSchedules(): DosageSchedule[] {\n  const data = localStorage.getItem(STORAGE_KEY)\n  if (!data) return []\n  try {\n    return JSON.parse(data) as DosageSchedule[]\n  } catch {\n    logError('scheduleStorage.getAllSchedules', 'Failed to parse')\n    return []\n  }\n}\n\nexport function getSchedule(id: string): DosageSchedule | undefined {\n  return getAllSchedules().find(s => s.id === id)\n}\n\nexport function saveSchedule(schedule: DosageSchedule): DosageSchedule {\n  const schedules = getAllSchedules()\n  const newSchedule = { ...schedule, id: generateId() }\n  schedules.push(newSchedule)\n  localStorage.setItem(STORAGE_KEY, JSON.stringify(schedules))\n  return newSchedule\n}\n\nexport function updateSchedule(schedule: DosageSchedule): boolean {\n  if (!schedule.id) return false\n  const schedules = getAllSchedules()\n  const index = schedules.findIndex(s => s.id === schedule.id)\n  if (index === -1) return false\n  schedules[index] = schedule\n  localStorage.setItem(STORAGE_KEY, JSON.stringify(schedules))\n  return true\n}\n\nexport function deleteSchedule(id: string): boolean {\n  const schedules = getAllSchedules()\n  const filtered = schedules.filter(s => s.id !== id)\n  if (filtered.length === schedules.length) return false\n  localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered))\n  return true\n}\n\nexport function duplicateSchedule(id: string): DosageSchedule | undefined {\n  const original = getSchedule(id)\n  if (!original) return undefined\n  const { id: _, ...data } = original\n  return saveSchedule({\n    ...data,\n    name: `${data.name} (copy)`,\n  } as DosageSchedule)\n}\n```\n\nExport from `src/core/storage/index.ts`.",
+        "testStrategy": "Unit tests in `src/core/storage/__tests__/scheduleStorage.spec.ts`:\n- Test CRUD operations (create, read, update, delete)\n- Test ID generation uniqueness\n- Test duplicate functionality\n- Test handling of corrupted localStorage data\n- Test empty state returns empty array\n- Mock localStorage for isolation",
+        "priority": "medium",
+        "dependencies": [
+          "43"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "46",
+        "title": "Build Schedule Form Component",
+        "description": "Create a Vue component for inputting titration/taper schedules with dynamic step management, building on PrescriptionForm patterns.",
+        "details": "Create `src/components/ScheduleForm.vue`:\n\nKey features:\n1. **Schedule Type Toggle**: Radio buttons for 'Titration' vs 'Taper'\n2. **Base Drug Parameters**: Reuse fields from PrescriptionForm (name, halfLife, uptake, peak, frequency, times)\n3. **Dynamic Step List**: \n   - Each step has: dose (number input), duration in days (number input)\n   - \"Add Step\" button to append new steps\n   - \"Remove\" button per step (minimum 2 steps required)\n   - Drag handle for reordering (use vuedraggable-es already in dependencies)\n4. **Visual Step Preview**: Small inline visualization showing step progression\n5. **Validation Display**: Show errors/warnings from validateDosageSchedule()\n\n```vue\n<script setup lang=\"ts\">\nimport { ref, computed, watch } from 'vue'\nimport type { DosageSchedule, DoseStep, ScheduleDirection } from '@/core/models/dosageSchedule'\nimport type { FrequencyLabel } from '@/core/models/prescription'\nimport { DEFAULT_TIMES } from '@/core/models/prescription'\nimport { validateDosageSchedule } from '@/core/models/dosageSchedule'\nimport draggable from 'vuedraggable-es'\n\nconst emit = defineEmits<{\n  submit: [schedule: DosageSchedule]\n}>()\n\n// Form state\nconst name = ref('New Schedule')\nconst direction = ref<ScheduleDirection>('titration')\nconst frequency = ref<FrequencyLabel>('bid')\nconst times = ref<string[]>(['09:00', '21:00'])\nconst halfLife = ref(6)\nconst uptake = ref(1.5)\nconst peak = ref(2)\n\n// Steps (mutable array)\nconst steps = ref<DoseStep[]>([\n  { stepNumber: 1, dose: 25, durationDays: 7, startDay: 0 },\n  { stepNumber: 2, dose: 50, durationDays: 7, startDay: 7 },\n])\n\nfunction addStep() {\n  const lastStep = steps.value[steps.value.length - 1]\n  const newDose = direction.value === 'titration' \n    ? lastStep.dose * 2 \n    : lastStep.dose / 2\n  steps.value.push({\n    stepNumber: steps.value.length + 1,\n    dose: Math.round(newDose * 10) / 10,\n    durationDays: 7,\n    startDay: 0  // Will be recomputed\n  })\n  recomputeStartDays()\n}\n\nfunction removeStep(index: number) {\n  if (steps.value.length <= 2) return\n  steps.value.splice(index, 1)\n  recomputeStartDays()\n}\n\nfunction recomputeStartDays() {\n  let day = 0\n  for (let i = 0; i < steps.value.length; i++) {\n    steps.value[i].stepNumber = i + 1\n    steps.value[i].startDay = day\n    day += steps.value[i].durationDays\n  }\n}\n\n// Watch for drag reorder\nwatch(steps, recomputeStartDays, { deep: true })\n</script>\n```\n\nStyle to match existing form aesthetics. Include accessibility attributes (aria-labels, fieldset/legend).",
+        "testStrategy": "Component tests with Vue Test Utils:\n- Test adding/removing steps updates state correctly\n- Test drag reordering recalculates startDay values\n- Test form validation prevents submission with < 2 steps\n- Test direction toggle updates default dose suggestions\n- Test frequency change updates times array\n- Test submit emits correctly formed DosageSchedule\n- Accessibility: test form labels and fieldsets",
+        "priority": "high",
+        "dependencies": [
+          "43"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "47",
+        "title": "Create Schedule Graph Viewer Component",
+        "description": "Build a specialized graph viewer that displays titration/taper curves with step boundaries and dose annotations.",
+        "details": "Create `src/components/ScheduleGraphViewer.vue`:\n\nExtend GraphViewer patterns but add:\n1. **Step Boundary Markers**: Vertical dashed lines at each dose change point\n2. **Dose Annotations**: Labels showing current dose at each step region\n3. **Timeline Reference**: X-axis markers for day numbers (Day 1, Day 7, Day 14...)\n4. **Concentration Curve**: Single normalized curve showing drug levels over entire schedule\n\n```vue\n<script setup lang=\"ts\">\nimport { computed, ref, onMounted, onUnmounted, watch } from 'vue'\nimport { Chart, registerables } from 'chart.js'\nimport type { DosageSchedule } from '@/core/models/dosageSchedule'\nimport type { TimeSeriesPoint } from '@/core/models/prescription'\nimport { accumulateScheduleDoses } from '@/core/calculations/scheduleCalculator'\n\nChart.register(...registerables)\n\nconst props = defineProps<{\n  schedule: DosageSchedule\n  endHours?: number\n}>()\n\nconst canvasRef = ref<HTMLCanvasElement | null>(null)\nlet chartInstance: Chart | null = null\n\nconst curveData = computed(() => {\n  const totalHours = props.schedule.totalDuration * 24\n  const endHours = props.endHours ?? totalHours + 48 // Show 48h tail-off\n  return accumulateScheduleDoses(props.schedule, 0, endHours)\n})\n\n// Step boundary lines for Chart.js annotation plugin or manual drawing\nconst stepBoundaries = computed(() => {\n  return props.schedule.steps.map(step => ({\n    x: step.startDay * 24,\n    label: `${step.dose}mg`,\n  }))\n})\n\nfunction renderChart() {\n  if (!canvasRef.value) return\n  if (chartInstance) chartInstance.destroy()\n  \n  const ctx = canvasRef.value.getContext('2d')\n  if (!ctx) return\n  \n  chartInstance = new Chart(ctx, {\n    type: 'line',\n    data: {\n      datasets: [{\n        label: props.schedule.name,\n        data: curveData.value.map(p => ({ x: p.time, y: p.concentration })),\n        borderColor: props.schedule.direction === 'titration' ? '#22c55e' : '#ef4444',\n        fill: false,\n        tension: 0.1,\n        pointRadius: 0,\n      }]\n    },\n    options: {\n      responsive: true,\n      scales: {\n        x: {\n          type: 'linear',\n          title: { display: true, text: 'Time (hours)' }\n        },\n        y: {\n          title: { display: true, text: 'Relative Concentration' },\n          min: 0,\n          max: 1.1,\n        }\n      }\n    }\n  })\n}\n\nonMounted(renderChart)\nwatch([curveData, () => props.schedule], renderChart)\nonUnmounted(() => chartInstance?.destroy())\n</script>\n```\n\nUse green for titration (ascending doses), red for taper (descending doses). Include chartjs-plugin-annotation for vertical lines at step boundaries.",
+        "testStrategy": "Component tests:\n- Test chart renders without errors\n- Test curve data is computed from schedule\n- Test step boundaries calculated correctly\n- Test color changes based on direction (titration=green, taper=red)\n- Test cleanup on unmount (no memory leaks)\n- Visual regression: snapshot canvas output for known schedules",
+        "priority": "high",
+        "dependencies": [
+          "44",
+          "46"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "48",
+        "title": "Create Schedule List Component",
+        "description": "Build a list component for viewing, editing, and managing saved titration/taper schedules, similar to PrescriptionList.",
+        "details": "Create `src/components/ScheduleList.vue`:\n\nFeatures:\n1. **Schedule Cards**: Display each saved schedule with:\n   - Name and direction badge (Titration/Taper)\n   - Step summary (e.g., \"25mg → 50mg → 100mg over 21 days\")\n   - Quick actions: View, Edit, Delete, Duplicate\n2. **Empty State**: Helpful message when no schedules saved\n3. **Sorting**: By name or date created\n4. **Selection Mode**: Multi-select for batch operations or comparison\n\n```vue\n<script setup lang=\"ts\">\nimport { ref, onMounted } from 'vue'\nimport type { DosageSchedule } from '@/core/models/dosageSchedule'\nimport { getAllSchedules, deleteSchedule, duplicateSchedule } from '@/core/storage/scheduleStorage'\n\nconst emit = defineEmits<{\n  view: [schedule: DosageSchedule]\n  edit: [schedule: DosageSchedule]\n  compare: [schedules: DosageSchedule[]]\n}>()\n\nconst schedules = ref<DosageSchedule[]>([])\nconst selectedIds = ref<Set<string>>(new Set())\n\nonMounted(() => {\n  schedules.value = getAllSchedules()\n})\n\nfunction handleDelete(id: string) {\n  if (confirm('Delete this schedule?')) {\n    deleteSchedule(id)\n    schedules.value = getAllSchedules()\n  }\n}\n\nfunction handleDuplicate(id: string) {\n  duplicateSchedule(id)\n  schedules.value = getAllSchedules()\n}\n\nfunction formatStepSummary(schedule: DosageSchedule): string {\n  const doses = schedule.steps.map(s => `${s.dose}mg`).join(' → ')\n  return `${doses} over ${schedule.totalDuration} days`\n}\n\nfunction toggleSelection(id: string) {\n  if (selectedIds.value.has(id)) {\n    selectedIds.value.delete(id)\n  } else {\n    selectedIds.value.add(id)\n  }\n}\n\nfunction compareSelected() {\n  const selected = schedules.value.filter(s => s.id && selectedIds.value.has(s.id))\n  if (selected.length >= 2) {\n    emit('compare', selected)\n  }\n}\n</script>\n```\n\nStyle to match PrescriptionList appearance.",
+        "testStrategy": "Component tests:\n- Test list renders all saved schedules\n- Test empty state shown when no schedules\n- Test delete removes schedule and updates list\n- Test duplicate creates copy with '(copy)' suffix\n- Test selection toggle works correctly\n- Test compare emits with 2+ selected schedules\n- Test formatStepSummary generates readable string",
+        "priority": "medium",
+        "dependencies": [
+          "45",
+          "46"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "49",
+        "title": "Add Navigation Tab for Schedules Section",
+        "description": "Integrate the titration/taper schedules section into the main App.vue navigation, adding a fourth tab alongside Form, List, and Graph.",
+        "details": "Modify `src/App.vue`:\n\n1. Add new activeTab option: `'schedules'`\n2. Add new tab button in navigation:\n```vue\n<button\n  :class=\"{ active: activeTab === 'schedules' }\"\n  :aria-current=\"activeTab === 'schedules' ? 'page' : undefined\"\n  @click=\"switchView('schedules')\"\n>\n  Titration/Taper\n</button>\n```\n\n3. Add schedule-related state:\n```typescript\nconst showScheduleForm = ref(false)\nconst showScheduleList = ref(false)\nconst showScheduleGraph = ref(false)\nconst currentSchedule = ref<DosageSchedule | null>(null)\nconst savedSchedules = ref<DosageSchedule[]>(getAllSchedules())\n```\n\n4. Add sub-navigation within schedules section:\n   - \"New Schedule\" (form)\n   - \"Saved Schedules\" (list)\n   - \"View Graph\" (when schedule selected)\n\n5. Import and wire up new components:\n```typescript\nimport ScheduleForm from '@/components/ScheduleForm.vue'\nimport ScheduleList from '@/components/ScheduleList.vue'\nimport ScheduleGraphViewer from '@/components/ScheduleGraphViewer.vue'\nimport { getAllSchedules } from '@/core/storage/scheduleStorage'\n```\n\n6. Add event handlers for schedule CRUD operations.\n\nMaintain accessibility with proper ARIA labels and focus management.",
+        "testStrategy": "Integration tests:\n- Test tab navigation switches between sections\n- Test keyboard navigation (arrow keys) includes new tab\n- Test ARIA attributes correct for new section\n- Test schedule form submission creates schedule\n- Test schedule list shows saved items\n- Test graph view displays selected schedule\n- Manual testing: verify focus management on tab switch",
+        "priority": "high",
+        "dependencies": [
+          "46",
+          "47",
+          "48"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "50",
+        "title": "Implement Schedule Presets/Templates",
+        "description": "Add preset titration and taper schedules for common medications to help users get started quickly.",
+        "details": "Create `src/core/data/schedulePresets.ts`:\n\n```typescript\nimport type { DosageSchedule } from '../models/dosageSchedule'\n\nexport interface SchedulePreset {\n  id: string\n  name: string\n  description: string\n  category: 'antidepressant' | 'anxiolytic' | 'opioid' | 'custom'\n  schedule: Omit<DosageSchedule, 'id'>\n}\n\nexport const SCHEDULE_PRESETS: SchedulePreset[] = [\n  {\n    id: 'sertraline-titration',\n    name: 'Sertraline Titration',\n    description: 'Standard SSRI titration from 25mg to 100mg',\n    category: 'antidepressant',\n    schedule: {\n      name: 'Sertraline Titration',\n      direction: 'titration',\n      basePrescription: {\n        name: 'Sertraline',\n        frequency: 'qd',\n        times: ['09:00'],\n        dose: 25,  // Starting dose\n        halfLife: 26,\n        peak: 6,\n        uptake: 2,\n      },\n      steps: [\n        { stepNumber: 1, dose: 25, durationDays: 7, startDay: 0 },\n        { stepNumber: 2, dose: 50, durationDays: 7, startDay: 7 },\n        { stepNumber: 3, dose: 100, durationDays: 14, startDay: 14 },\n      ],\n      totalDuration: 28,\n    },\n  },\n  {\n    id: 'prednisone-taper',\n    name: 'Prednisone Taper',\n    description: 'Standard corticosteroid taper from 60mg',\n    category: 'custom',\n    schedule: {\n      name: 'Prednisone Taper',\n      direction: 'taper',\n      basePrescription: {\n        name: 'Prednisone',\n        frequency: 'qd',\n        times: ['08:00'],\n        dose: 60,\n        halfLife: 3.5,\n        peak: 1,\n        uptake: 0.5,\n      },\n      steps: [\n        { stepNumber: 1, dose: 60, durationDays: 3, startDay: 0 },\n        { stepNumber: 2, dose: 40, durationDays: 3, startDay: 3 },\n        { stepNumber: 3, dose: 20, durationDays: 3, startDay: 6 },\n        { stepNumber: 4, dose: 10, durationDays: 3, startDay: 9 },\n        { stepNumber: 5, dose: 5, durationDays: 3, startDay: 12 },\n      ],\n      totalDuration: 15,\n    },\n  },\n  // Add more presets...\n]\n\nexport function getPresetById(id: string): SchedulePreset | undefined {\n  return SCHEDULE_PRESETS.find(p => p.id === id)\n}\n\nexport function getPresetsByCategory(category: string): SchedulePreset[] {\n  return SCHEDULE_PRESETS.filter(p => p.category === category)\n}\n```\n\nAdd preset selector dropdown to ScheduleForm with \"Load Preset\" button.",
+        "testStrategy": "Unit tests:\n- Test all presets pass validateDosageSchedule()\n- Test getPresetById returns correct preset\n- Test getPresetsByCategory filters correctly\n- Test preset data is complete (no undefined fields)\n\nComponent test:\n- Test preset dropdown populates form correctly\n- Test 'Start from Scratch' clears preset data",
+        "priority": "low",
+        "dependencies": [
+          "43",
+          "46"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "51",
+        "title": "Add Comparison View for Multiple Schedules",
+        "description": "Enable overlaying multiple titration/taper schedules on a single graph for comparison, useful for evaluating different approaches.",
+        "details": "Extend ScheduleGraphViewer or create `src/components/ScheduleComparisonViewer.vue`:\n\n1. Accept array of schedules as prop: `schedules: DosageSchedule[]`\n2. Generate separate curve data for each schedule\n3. Assign distinct colors to each schedule:\n   - Use color palette: ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6']\n4. Display legend with schedule names\n5. Normalize all curves to same scale (max across all = 1.0) for fair comparison\n6. Add toggle for \"Normalize individually\" vs \"Normalize to max\"\n\n```typescript\nconst allCurves = computed(() => {\n  return props.schedules.map((schedule, index) => ({\n    schedule,\n    data: accumulateScheduleDoses(schedule, 0, maxEndHours.value),\n    color: COLORS[index % COLORS.length],\n  }))\n})\n\n// Cross-schedule normalization\nconst normalizedCurves = computed(() => {\n  if (normalizeMode.value === 'individual') return allCurves.value\n  \n  // Find global max across all curves\n  const globalMax = Math.max(\n    ...allCurves.value.flatMap(c => c.data.map(p => p.concentration))\n  )\n  \n  return allCurves.value.map(curve => ({\n    ...curve,\n    data: curve.data.map(p => ({\n      time: p.time,\n      concentration: p.concentration / globalMax,\n    })),\n  }))\n})\n```\n\nAdd to ScheduleList: \"Compare Selected\" button that emits `compare` event with selected schedules.",
+        "testStrategy": "Component tests:\n- Test multiple schedules render as separate datasets\n- Test colors assigned distinctly\n- Test individual vs global normalization modes\n- Test legend displays all schedule names\n- Test with 2, 3, and 5 schedules simultaneously\n- Test scrolling/overflow with many schedules",
+        "priority": "medium",
+        "dependencies": [
+          "47",
+          "48"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "52",
+        "title": "Create Schedule Summary Table Component",
+        "description": "Build a data table showing key metrics for each step in a schedule: dose, duration, predicted steady-state level, time to reach steady-state.",
+        "details": "Create `src/components/ScheduleSummaryTable.vue`:\n\nColumns:\n1. Step # (1, 2, 3...)\n2. Dose (mg)\n3. Duration (days)\n4. Days Start-End (e.g., 'Day 1-7')\n5. Est. Steady-State Level (relative, 0-1)\n6. Time to ~90% Steady-State (hours from step start)\n\n```vue\n<script setup lang=\"ts\">\nimport { computed } from 'vue'\nimport type { DosageSchedule } from '@/core/models/dosageSchedule'\n\nconst props = defineProps<{\n  schedule: DosageSchedule\n}>()\n\ninterface StepSummary {\n  stepNumber: number\n  dose: number\n  durationDays: number\n  dayRange: string\n  estimatedSteadyState: number\n  timeToSteadyState: number\n}\n\nconst summaryRows = computed<StepSummary[]>(() => {\n  const { halfLife } = props.schedule.basePrescription\n  // ~5 half-lives to reach 97% steady-state\n  const timeToSS = halfLife * 5\n  \n  return props.schedule.steps.map(step => {\n    const dayEnd = step.startDay + step.durationDays\n    // Steady-state proportional to dose (simplified model)\n    const ssLevel = step.dose / Math.max(...props.schedule.steps.map(s => s.dose))\n    \n    return {\n      stepNumber: step.stepNumber,\n      dose: step.dose,\n      durationDays: step.durationDays,\n      dayRange: `Day ${step.startDay + 1}-${dayEnd}`,\n      estimatedSteadyState: Math.round(ssLevel * 100) / 100,\n      timeToSteadyState: Math.round(timeToSS * 10) / 10,\n    }\n  })\n})\n</script>\n\n<template>\n  <table class=\"schedule-summary-table\">\n    <thead>\n      <tr>\n        <th scope=\"col\">Step</th>\n        <th scope=\"col\">Dose</th>\n        <th scope=\"col\">Duration</th>\n        <th scope=\"col\">Days</th>\n        <th scope=\"col\">Est. SS Level</th>\n        <th scope=\"col\">Time to SS</th>\n      </tr>\n    </thead>\n    <tbody>\n      <tr v-for=\"row in summaryRows\" :key=\"row.stepNumber\">\n        <td>{{ row.stepNumber }}</td>\n        <td>{{ row.dose }} mg</td>\n        <td>{{ row.durationDays }} days</td>\n        <td>{{ row.dayRange }}</td>\n        <td>{{ row.estimatedSteadyState }}</td>\n        <td>{{ row.timeToSteadyState }} hrs</td>\n      </tr>\n    </tbody>\n  </table>\n</template>\n```\n\nStyle with accessible table markup and responsive design.",
+        "testStrategy": "Component tests:\n- Test table renders correct number of rows\n- Test day range calculation is accurate\n- Test steady-state estimates are reasonable\n- Test accessibility: proper th/scope attributes\n- Test responsive behavior on narrow screens",
+        "priority": "low",
+        "dependencies": [
+          "44",
+          "47"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "53",
+        "title": "Add Export/Import for Schedules",
+        "description": "Enable exporting schedules as JSON files and importing from JSON, following the pattern from ImportPrescriptions.vue.",
+        "details": "Create `src/components/ImportSchedules.vue` (modal component):\n\n```vue\n<script setup lang=\"ts\">\nimport { ref } from 'vue'\nimport type { DosageSchedule } from '@/core/models/dosageSchedule'\nimport { validateDosageSchedule } from '@/core/models/dosageSchedule'\nimport { saveSchedule } from '@/core/storage/scheduleStorage'\n\nconst emit = defineEmits<{\n  imported: [count: number]\n  close: []\n}>()\n\nconst jsonInput = ref('')\nconst errors = ref<string[]>([])\n\nfunction handleImport() {\n  errors.value = []\n  try {\n    const data = JSON.parse(jsonInput.value)\n    const schedules: DosageSchedule[] = Array.isArray(data) ? data : [data]\n    let importedCount = 0\n    \n    for (const schedule of schedules) {\n      const validation = validateDosageSchedule(schedule)\n      if (validation.valid) {\n        saveSchedule(schedule)\n        importedCount++\n      } else {\n        errors.value.push(`${schedule.name}: ${validation.errors.join(', ')}`)\n      }\n    }\n    \n    if (importedCount > 0) {\n      emit('imported', importedCount)\n    }\n  } catch (e) {\n    errors.value.push('Invalid JSON format')\n  }\n}\n</script>\n```\n\nAdd export function to scheduleStorage.ts:\n```typescript\nexport function exportSchedulesAsJson(ids?: string[]): string {\n  const schedules = getAllSchedules()\n  const toExport = ids \n    ? schedules.filter(s => s.id && ids.includes(s.id))\n    : schedules\n  return JSON.stringify(toExport, null, 2)\n}\n```\n\nAdd \"Export\" button to ScheduleList that triggers download.",
+        "testStrategy": "Unit tests:\n- Test exportSchedulesAsJson produces valid JSON\n- Test selective export with IDs filter\n- Test import validates each schedule\n\nComponent tests:\n- Test import modal parses valid JSON\n- Test import shows errors for invalid schedules\n- Test export button triggers download\n- Test round-trip: export → import produces identical data",
+        "priority": "low",
+        "dependencies": [
+          "45",
+          "48"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "54",
+        "title": "Add Accessibility and Documentation",
+        "description": "Ensure all new components meet WCAG accessibility standards and add inline documentation/tooltips explaining titration and tapering concepts.",
+        "details": "Accessibility improvements:\n\n1. **ScheduleForm.vue**:\n   - Add `aria-describedby` for all inputs\n   - Add fieldset/legend for step groups\n   - Announce step add/remove to screen readers via aria-live region\n   - Ensure color contrast meets WCAG AA\n\n2. **ScheduleGraphViewer.vue**:\n   - Add `role=\"img\"` and `aria-label` to canvas\n   - Provide text alternative describing the trend\n   - Add keyboard navigation for step markers\n\n3. **ScheduleList.vue**:\n   - Use proper list semantics (`<ul>`, `<li>`)\n   - Add `aria-selected` for multi-select\n   - Announce delete confirmations\n\n4. **Educational tooltips**:\n   - Add help icons (?) next to complex fields\n   - Tooltip content:\n     - \"Titration: Gradually increasing dose to find therapeutic level\"\n     - \"Taper: Gradually decreasing dose to minimize withdrawal\"\n     - \"Step Duration: How long to stay at each dose before changing\"\n\nCreate `src/components/HelpTooltip.vue`:\n```vue\n<script setup lang=\"ts\">\ndefineProps<{ text: string }>()\n</script>\n\n<template>\n  <span class=\"help-tooltip\" role=\"tooltip\">\n    <button type=\"button\" aria-label=\"Help\" class=\"help-icon\">?</button>\n    <span class=\"tooltip-content\">{{ text }}</span>\n  </span>\n</template>\n```\n\nUpdate CLAUDE.md with section on Titration/Taper feature documentation.",
+        "testStrategy": "Accessibility audit:\n- Run axe-core automated checks on all new components\n- Manual screen reader testing (VoiceOver on macOS)\n- Keyboard-only navigation test\n- Color contrast verification\n- Focus management verification on modal open/close\n\nDocumentation review:\n- Verify all tooltips are accurate\n- Check CLAUDE.md updates are complete",
+        "priority": "medium",
+        "dependencies": [
+          "46",
+          "47",
+          "48",
+          "49"
+        ],
+        "status": "pending",
+        "subtasks": []
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-08T14:31:42.682Z",
-      "taskCount": 40,
-      "completedCount": 40,
+      "lastModified": "2026-03-14T13:53:44.329Z",
+      "taskCount": 53,
+      "completedCount": 42,
       "tags": [
         "master"
       ]

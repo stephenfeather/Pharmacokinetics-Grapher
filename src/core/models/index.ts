@@ -16,6 +16,19 @@ export {
   validatePrescription,
 } from './prescription'
 
+// Dosage schedule models (titration/taper)
+export type {
+  ScheduleDirection,
+  DoseStep,
+  DosageSchedule,
+  ScheduleValidationResult,
+} from './dosageSchedule'
+
+export {
+  validateDosageSchedule,
+  computeStartDays,
+} from './dosageSchedule'
+
 // PK Summary types
 export type {
   PkEventType,

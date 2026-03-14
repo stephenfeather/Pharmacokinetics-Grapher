@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-03-14
+
+### Added
+
+#### Dosing Frequencies
+- **q3h frequency**: Every-3-hours dosing schedule (8 doses/day)
+- **qd frequency**: Once-daily dosing as explicit option (synonym for 'once')
+- **Standardized default dosing times**: Each frequency label now has clinically appropriate default times
+
+#### UI
+- **Drag-to-sort prescriptions**: Reorder saved prescriptions via drag-and-drop with persistent sort order
+- **Metabolite model improvements**: Replaced `metaboliteConversionFraction` with `relativeMetaboliteLevel` for clearer clinical semantics
+
+#### CI/CD
+- **GitHub Actions CI workflow**: Automated testing, linting, type-checking, and build on push/PR
+- **Release build caching**: Optimized CI with Rust/sccache caching for Tauri builds
+- **Attestation action**: Build provenance attestation for release artifacts
+
+#### Documentation
+- **Split README**: Separated user-facing README from DEVELOPER.md
+- **Screenshots**: Added PK graph and timeline screenshots to README
+
+### Fixed
+- **Metabolite half-life import**: Fixed nested JSON object structure for metabolite parameters
+- **vuedraggable-es resolution**: Fixed package resolution for drag-and-drop dependency
+- **savePrescriptionOrder export**: Fixed missing export for drag reorder persistence
+- **CI lint failures**: Removed unused imports flagged by CI linting
+- **Rust cache warming**: Fixed sccache step in CI workflow
+
+### Security
+- **Dependency vulnerabilities resolved**: All npm audit findings fixed (0 vulnerabilities)
+- **Tauri CSP hardened**: Set restrictive Content Security Policy (was disabled)
+- **Removed unused scaffolding**: Deleted Vue scaffolding components (TheWelcome, HelloWorld, icon components)
+- **Gitignore hardened**: Added `.env.local` and `.env.*.local` patterns
+
+### Changed
+- Test count increased from 734 to 786 (52 new tests across drag-sort, q3h, qd, metabolite features)
+- Production build: 372 KB JS, 24 KB CSS (130 KB gzipped)
+
 ## [0.7.0-beta] - 2026-02-16
 
 ### Added

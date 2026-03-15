@@ -2,14 +2,12 @@
 import { ref, computed } from 'vue'
 import draggable from 'vuedraggable-es'
 import type { Prescription } from '@/core/models/prescription'
-import {
-  getAllPrescriptions,
-  deletePrescription,
-  duplicatePrescription,
-  savePrescriptionOrder,
-  exportPrescriptionsAsJson,
-} from '@/core/storage/prescriptionStorage'
+import { usePrescriptionStore } from '@/stores'
 import ImportPrescriptions from './ImportPrescriptions.vue'
+
+// Store
+const store = usePrescriptionStore()
+if (!store.isLoaded) store.load()
 
 // Emits
 const emit = defineEmits<{
@@ -18,8 +16,11 @@ const emit = defineEmits<{
   compare: [prescriptions: Prescription[]]
 }>()
 
-// Reactive state
-const prescriptions = ref<Prescription[]>(getAllPrescriptions())
+// Writable computed for draggable v-model compatibility
+const prescriptions = computed({
+  get: () => store.prescriptions,
+  set: (val: Prescription[]) => store.reorder(val),
+})
 const compareMode = ref(false)
 const selectedIds = ref<Set<string>>(new Set())
 const showImportModal = ref(false)
@@ -28,24 +29,17 @@ const showImportModal = ref(false)
 const selectedCount = computed(() => selectedIds.value.size)
 
 // Functions
-function refresh() {
-  prescriptions.value = getAllPrescriptions()
-}
-
 function handleDelete(id: string) {
   if (confirm('Delete this prescription?')) {
-    deletePrescription(id)
-    // Also remove from selectedIds if in compare mode
+    store.remove(id)
     const newSet = new Set(selectedIds.value)
     newSet.delete(id)
     selectedIds.value = newSet
-    refresh()
   }
 }
 
 function handleDuplicate(id: string) {
-  duplicatePrescription(id)
-  refresh()
+  store.duplicate(id)
 }
 
 function handleEdit(rx: Prescription) {
@@ -75,7 +69,7 @@ function exitCompareMode() {
 }
 
 function handleExport() {
-  const json = exportPrescriptionsAsJson()
+  const json = store.exportJson()
   const blob = new Blob([json], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
@@ -89,7 +83,7 @@ function handleExport() {
 
 function handleExportSelected() {
   const selectedIdsArray = Array.from(selectedIds.value)
-  const json = exportPrescriptionsAsJson(selectedIdsArray)
+  const json = store.exportJson(selectedIdsArray)
   const blob = new Blob([json], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
@@ -103,11 +97,11 @@ function handleExportSelected() {
 
 function handleImportComplete() {
   showImportModal.value = false
-  refresh()
+  store.load()
 }
 
 function onDragEnd() {
-  savePrescriptionOrder(prescriptions.value)
+  store.reorder(prescriptions.value)
 }
 </script>
 

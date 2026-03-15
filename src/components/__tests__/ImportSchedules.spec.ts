@@ -7,7 +7,13 @@ import type { Prescription } from '@/core/models/prescription'
 
 // Mock storage module
 vi.mock('@/core/storage/scheduleStorage', () => ({
+  getAllSchedules: vi.fn(() => []),
   saveSchedule: vi.fn((s: DosageSchedule) => ({ ...s, id: `sched-mock-${Date.now()}` })),
+  updateSchedule: vi.fn(() => true),
+  deleteSchedule: vi.fn(() => true),
+  duplicateSchedule: vi.fn(),
+  exportSchedulesAsJson: vi.fn(() => '[]'),
+  clearAllSchedules: vi.fn(),
 }))
 
 import { saveSchedule } from '@/core/storage/scheduleStorage'

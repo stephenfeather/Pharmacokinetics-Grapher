@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { validatePrescription } from '@/core/models/prescription'
-import { savePrescription } from '@/core/storage/prescriptionStorage'
+import { usePrescriptionStore } from '@/stores'
 import { transformImportedPrescription } from '@/core/utils/importTransform'
 import { logWarn, logError } from '@/core/utils/logger'
+
+const store = usePrescriptionStore()
 
 const emit = defineEmits<{
   imported: [count: number]
@@ -54,7 +56,7 @@ function handleImport() {
       const validation = validatePrescription(rx)
       if (validation.valid) {
         try {
-          savePrescription(rx)
+          store.save(rx)
           importResult.value.success++
         } catch (e) {
           logError('ImportPrescriptions.handleImport', 'Failed to save imported prescription', {

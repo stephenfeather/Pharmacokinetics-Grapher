@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { ref, computed, nextTick, watch } from 'vue'
+import { ref, computed, nextTick, watch, onMounted } from 'vue'
 import type { Prescription, GraphDataset } from '@/core/models/prescription'
 import type { DosageSchedule } from '@/core/models/dosageSchedule'
 import { getGraphData, getLastDoseTime, calculateTailOffDuration, generateSummaryData } from '@/core/calculations'
-import { savePrescription, updatePrescription, getAllPrescriptions } from '@/core/storage/prescriptionStorage'
-import { saveSchedule } from '@/core/storage/scheduleStorage'
+import { usePrescriptionStore, useScheduleStore } from '@/stores'
 import PrescriptionForm from '@/components/PrescriptionForm.vue'
 import GraphViewer from '@/components/GraphViewer.vue'
 import PrescriptionList from '@/components/PrescriptionList.vue'
@@ -16,10 +15,19 @@ import ScheduleComparisonViewer from '@/components/ScheduleComparisonViewer.vue'
 import ScheduleSummaryTable from '@/components/ScheduleSummaryTable.vue'
 import ImportSchedules from '@/components/ImportSchedules.vue'
 
+// ---- Stores ----
+
+const prescriptionStore = usePrescriptionStore()
+const scheduleStore = useScheduleStore()
+
+onMounted(() => {
+  prescriptionStore.load()
+  scheduleStore.load()
+})
+
 // ---- State ----
 
 const currentPrescription = ref<Prescription | null>(null)
-const savedPrescriptions = ref<Prescription[]>(getAllPrescriptions())
 const showForm = ref(true)
 const showGraph = ref(false)
 const showList = ref(false)
@@ -34,7 +42,6 @@ const showSchedules = ref(false)
 const scheduleSubView = ref<'form' | 'list' | 'graph' | 'compare'>('form')
 const currentSchedule = ref<DosageSchedule | null>(null)
 const compareSchedules = ref<DosageSchedule[]>([])
-const scheduleListRef = ref<InstanceType<typeof ScheduleList> | null>(null)
 const showScheduleImport = ref(false)
 
 // ---- Graph settings ----
@@ -174,7 +181,7 @@ function switchView(view: 'form' | 'list' | 'graph' | 'schedules') {
   if (view === 'form') {
     statusMessage.value = 'Switched to form view. Add or edit a prescription.'
   } else if (view === 'list') {
-    statusMessage.value = `Switched to saved prescriptions. ${savedPrescriptions.value.length} prescriptions available.`
+    statusMessage.value = `Switched to saved prescriptions. ${prescriptionStore.count} prescriptions available.`
   } else if (view === 'graph') {
     statusMessage.value = `Switched to graph view. Displaying ${comparePrescriptions.value.length} prescription${comparePrescriptions.value.length !== 1 ? 's' : ''}.`
   } else if (view === 'schedules') {
@@ -198,8 +205,7 @@ function switchView(view: 'form' | 'list' | 'graph' | 'schedules') {
 function handleFormSubmit(rx: Prescription) {
   // For edit mode: update existing prescription
   if (rx.id) {
-    updatePrescription(rx)
-    savedPrescriptions.value = getAllPrescriptions()
+    prescriptionStore.update(rx)
   }
   currentPrescription.value = rx
   comparePrescriptions.value = [rx]
@@ -207,7 +213,7 @@ function handleFormSubmit(rx: Prescription) {
 }
 
 function handleImportSuccess(count: number) {
-  savedPrescriptions.value = getAllPrescriptions()
+  prescriptionStore.load()
   statusMessage.value = `Successfully imported ${count} prescription${count !== 1 ? 's' : ''}. Showing saved prescriptions.`
   switchView('list')
 }
@@ -217,13 +223,12 @@ function saveCurrentPrescription() {
     let saved: Prescription
     if (currentPrescription.value.id) {
       // Edit mode: update existing
-      updatePrescription(currentPrescription.value)
+      prescriptionStore.update(currentPrescription.value)
       saved = currentPrescription.value
     } else {
       // New mode: save as new
-      saved = savePrescription(currentPrescription.value)
+      saved = prescriptionStore.save(currentPrescription.value)
     }
-    savedPrescriptions.value = getAllPrescriptions()
     currentPrescription.value = saved
   }
 }
@@ -256,7 +261,7 @@ function handleComparePrescriptions(rxs: Prescription[]) {
 // ---- Schedule event handlers ----
 
 function handleScheduleSubmit(schedule: DosageSchedule) {
-  saveSchedule(schedule)
+  scheduleStore.save(schedule)
   currentSchedule.value = schedule
   scheduleSubView.value = 'graph'
 }
@@ -277,7 +282,7 @@ function handleScheduleImportOpen() {
 
 function handleScheduleImported(count: number) {
   showScheduleImport.value = false
-  scheduleListRef.value?.refresh()
+  scheduleStore.load()
   statusMessage.value = `Successfully imported ${count} schedule${count !== 1 ? 's' : ''}.`
   scheduleSubView.value = 'list'
 }
@@ -539,7 +544,6 @@ watch(comparePrescriptions, (newVal) => {
 
         <div v-if="scheduleSubView === 'list'" class="schedule-list-container">
           <ScheduleList
-            ref="scheduleListRef"
             @view="handleScheduleView"
             @edit="handleScheduleEdit"
             @compare="handleScheduleCompare"

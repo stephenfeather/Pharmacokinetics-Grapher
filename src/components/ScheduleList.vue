@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { DosageSchedule } from '@/core/models/dosageSchedule'
-import {
-  getAllSchedules,
-  deleteSchedule,
-  duplicateSchedule,
-  exportSchedulesAsJson,
-} from '@/core/storage/scheduleStorage'
+import { useScheduleStore } from '@/stores'
+
+// Store
+const store = useScheduleStore()
+if (!store.isLoaded) store.load()
 
 // Emits
 const emit = defineEmits<{
@@ -17,24 +16,18 @@ const emit = defineEmits<{
 }>()
 
 // Reactive state
-const schedules = ref<DosageSchedule[]>(getAllSchedules())
+const schedules = computed(() => store.schedules)
 const selectedIds = ref<Set<string>>(new Set())
 
 // Functions
-function refresh() {
-  schedules.value = getAllSchedules()
-}
-
 function handleDelete(id: string) {
   if (confirm('Delete this schedule?')) {
-    deleteSchedule(id)
-    refresh()
+    store.remove(id)
   }
 }
 
 function handleDuplicate(id: string) {
-  duplicateSchedule(id)
-  refresh()
+  store.duplicate(id)
 }
 
 function handleEdit(schedule: DosageSchedule) {
@@ -47,7 +40,6 @@ function toggleSelection(id: string) {
   } else {
     selectedIds.value.add(id)
   }
-  // Trigger reactivity
   selectedIds.value = new Set(selectedIds.value)
 }
 
@@ -61,7 +53,7 @@ function handleCompare() {
 }
 
 function handleExport() {
-  const json = exportSchedulesAsJson()
+  const json = store.exportJson()
   const blob = new Blob([json], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -75,8 +67,6 @@ function formatStepSummary(schedule: DosageSchedule): string {
   const doses = schedule.steps.map(s => `${s.dose}mg`).join(' \u2192 ')
   return `${doses} over ${schedule.totalDuration} days`
 }
-
-defineExpose({ refresh })
 </script>
 
 <template>

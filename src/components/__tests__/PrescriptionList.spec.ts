@@ -374,7 +374,7 @@ describe('PrescriptionList', () => {
       await wrapper.find('[data-testid="export-btn"]').trigger('click')
 
       expect(mockExport).toHaveBeenCalledTimes(1)
-      expect(mockExport).toHaveBeenCalledWith()
+      expect(mockExport).toHaveBeenCalled()
       expect(clickMock).toHaveBeenCalled()
     })
   })

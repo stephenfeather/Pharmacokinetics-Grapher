@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { validateDosageSchedule } from '@/core/models/dosageSchedule'
-import { saveSchedule } from '@/core/storage/scheduleStorage'
+import { useScheduleStore } from '@/stores'
 import { logWarn, logError } from '@/core/utils/logger'
+
+const store = useScheduleStore()
 
 const emit = defineEmits<{
   imported: [count: number]
@@ -50,7 +52,7 @@ function handleImport() {
       const validation = validateDosageSchedule(rawSchedule)
       if (validation.valid) {
         try {
-          saveSchedule(rawSchedule)
+          store.save(rawSchedule)
           importResult.value.success++
         } catch (e) {
           logError('ImportSchedules.handleImport', 'Failed to save imported schedule', {

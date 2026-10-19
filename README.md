@@ -2,6 +2,8 @@
 
 A Vue 3 + TypeScript application that visualizes medication concentration levels over time. Input prescription details and the app generates accurate line graphs showing peak and trough concentrations across your specified timeframe. Available as a web app or a standalone desktop application via Tauri.
 
+**[Try it in your browser →](https://stephenfeather.github.io/Pharmacokinetics-Grapher/)**
+
 ![Pharmacokinetics Grapher desktop app](tauri-desktop-app-featured.jpg)
 
 **Your data stays on your device.** All prescription data is stored locally — in your browser's localStorage when using the web app, or on-disk within the desktop application. Nothing is sent to a server. There are no accounts, no cloud sync, and no telemetry. You own your data completely.
@@ -28,6 +30,12 @@ A Vue 3 + TypeScript application that visualizes medication concentration levels
 ![PK timeline table showing dose, absorption, peak, and decay events](screenshot-pk-timeline.png)
 
 ## Installation
+
+### Web
+
+No install needed — open the [web app](https://stephenfeather.github.io/Pharmacokinetics-Grapher/). Data is stored in your browser's localStorage.
+
+### Desktop
 
 Download the latest release for your platform from the [Releases page](https://github.com/stephenfeather/Pharmacokinetics-Grapher/releases):
 

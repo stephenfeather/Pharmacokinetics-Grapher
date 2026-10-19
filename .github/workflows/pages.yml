@@ -37,9 +37,13 @@ jobs:
         id: pages
         uses: actions/configure-pages@v5
 
-      # Base path comes from Pages (/<repo>/) so the Tauri build keeps base '/'
+      - name: Type check
+        run: npm run type-check
+
+      # Base path comes from Pages (/<repo>/) so the Tauri build keeps base '/'.
+      # Call build-only directly: `npm run build` (run-p) does not forward args to vite.
       - name: Build
-        run: npm run build -- --base=${{ steps.pages.outputs.base_path }}/
+        run: npm run build-only -- --base=${{ steps.pages.outputs.base_path }}/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
